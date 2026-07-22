@@ -1,3 +1,5 @@
+using SimulationInput;
+using SimulationInput.Application;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,6 +7,7 @@ public sealed class SimulationRunner : MonoBehaviour
 {
     const float TickRate = 60f;
     const float TickDeltaTime = 1f / TickRate;
+    ApplicationServices inputRecorder = new ApplicationServices();
 
     [SerializeField] float timeScale = 1f;
 
@@ -14,18 +17,19 @@ public sealed class SimulationRunner : MonoBehaviour
     private void Awake()
     {
         Physics.simulationMode = SimulationMode.Script;
-
-        // 避免 Transform 修改在不可控時間自動同步至 PhysX。
-        // Physics.autoSyncTransforms = false;
     }
 
     private void Update()
     {
         accumulator += Time.unscaledDeltaTime * timeScale;
 
+        inputRecorder.CaptureRenderInput(new CaptureInputCommand());
+
         while (accumulator >= TickDeltaTime)
         {
-            ExecuteTick();
+            TickInputFrame inputFrame = inputRecorder.ConsumeTick(new ConsumeInputCommand(tick));
+
+            ExecuteTick(tick, inputFrame);
             accumulator -= TickDeltaTime;
         }
 
@@ -33,7 +37,7 @@ public sealed class SimulationRunner : MonoBehaviour
         UpdatePresentation();
     }
 
-    private void ExecuteTick()
+    private void ExecuteTick(ulong tick, TickInputFrame inputFrame)
     {
         // 1. 讀取此 Tick 已記錄的輸入
         // SimulationInput input = InputRecorder.GetInput(tick);
