@@ -1,9 +1,12 @@
-public interface IPhysicalActor
+namespace PhysicsActor
 {
-    int ActorId { get; }
+    public interface IPhysicalActor
+    {
+        int ActorId { get; }
 
-    void InitializeActor(int actorId);
-    void PrepareSpawn();
-    void ActivateActor();
-    void DeactivateActor();
+        void InitializeActor(int actorId);
+        void PrepareSpawn();
+        void ActivateActor();
+        void DeactivateActor();
+    }
 }

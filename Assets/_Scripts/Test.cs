@@ -1,17 +1,19 @@
+using PhysicsActor.Application;
+using PhysicsActor.Unity.Infrastructure;
 using UnityEngine;
 
-public class Test : MonoBehaviour
+public class TestCompositionRoot : MonoBehaviour
 {
     [SerializeField] private Enemy enemyPrefab;
-    ActorPoolRegistry poolRegistry = new ActorPoolRegistry();
 
     void Start()
     {
-        ActorPool<Enemy> pool = new ActorPool<Enemy>(0, new UnityActorFactory<Enemy>(enemyPrefab, transform), 10);
-        poolRegistry.Register(pool);
+        UnityActorFactory<Enemy> enemyFactory = new UnityActorFactory<Enemy>(enemyPrefab, transform);
 
-        pool.Initialize();
+        ApplicationService application = new ApplicationService();
 
+        application.RegisterActorPool<Enemy>(0, 10, enemyFactory);
+        application.InitializeActorPools();
     }
 
 }

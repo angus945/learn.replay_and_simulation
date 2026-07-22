@@ -1,167 +1,172 @@
 using System;
 using System.Collections.Generic;
+using PhysicsActor;
+using PhysicsActor.Application.Port;
 
-public sealed class ActorPool<T> : IActorPool where T : class, IPhysicalActor
+namespace PhysicsActor.Domain
 {
-    private readonly IActorFactory<T> factory;
-    private readonly T[] actors;
-    private readonly ActorSlotState[] states;
-    private readonly uint[] generations;
-    private readonly SortedSet<int> freeActorIds;
-
-    private bool initialized;
-
-    public int PoolId { get; }
-    public Type ActorType => typeof(T);
-    public int Capacity => actors.Length;
-
-    public ActorPool(int poolId, IActorFactory<T> factory, int capacity)
+    public sealed class ActorPool<T> : IActorPool where T : class, IPhysicalActor
     {
-        if (factory == null)
-            throw new ArgumentNullException(nameof(factory));
+        private readonly IActorFactory<T> factory;
+        private readonly T[] actors;
+        private readonly ActorSlotState[] states;
+        private readonly uint[] generations;
+        private readonly SortedSet<int> freeActorIds;
 
-        if (capacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(capacity));
+        private bool initialized;
 
-        PoolId = poolId;
-        this.factory = factory;
+        public int PoolId { get; }
+        public Type ActorType => typeof(T);
+        public int Capacity => actors.Length;
 
-        actors = new T[capacity];
-        states = new ActorSlotState[capacity];
-        generations = new uint[capacity];
-        freeActorIds = new SortedSet<int>();
-    }
-
-    public void Initialize()
-    {
-        if (initialized)
+        public ActorPool(int poolId, IActorFactory<T> factory, int capacity)
         {
-            throw new InvalidOperationException(
-                "Actor pool is already initialized.");
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
+            if (capacity <= 0)
+                throw new ArgumentOutOfRangeException(nameof(capacity));
+
+            PoolId = poolId;
+            this.factory = factory;
+
+            actors = new T[capacity];
+            states = new ActorSlotState[capacity];
+            generations = new uint[capacity];
+            freeActorIds = new SortedSet<int>();
         }
 
-        for (int actorId = 0; actorId < actors.Length; actorId++)
+        public void Initialize()
         {
-            T actor = factory.CreateActor()
-                ?? throw new InvalidOperationException(
-                    $"Factory returned null for ActorID {actorId}.");
+            if (initialized)
+            {
+                throw new InvalidOperationException(
+                    "Actor pool is already initialized.");
+            }
 
-            actor.InitializeActor(actorId);
-            actor.DeactivateActor();
+            for (int actorId = 0; actorId < actors.Length; actorId++)
+            {
+                T actor = factory.CreateActor()
+                    ?? throw new InvalidOperationException(
+                        $"Factory returned null for ActorID {actorId}.");
 
-            actors[actorId] = actor;
-            states[actorId] = ActorSlotState.Free;
-            freeActorIds.Add(actorId);
+                actor.InitializeActor(actorId);
+                actor.DeactivateActor();
+
+                actors[actorId] = actor;
+                states[actorId] = ActorSlotState.Free;
+                freeActorIds.Add(actorId);
+            }
+
+            initialized = true;
         }
 
-        initialized = true;
-    }
-
-    public T Acquire(out ActorHandle handle)
-    {
-        EnsureInitialized();
-
-        if (freeActorIds.Count == 0)
+        public T Acquire(out ActorHandle handle)
         {
-            throw new InvalidOperationException(
-                "No free actors available.");
+            EnsureInitialized();
+
+            if (freeActorIds.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "No free actors available.");
+            }
+
+            return AcquireAt(freeActorIds.Min, out handle);
         }
 
-        return AcquireAt(freeActorIds.Min, out handle);
-    }
-
-    public T AcquireAt(int actorId, out ActorHandle handle)
-    {
-        EnsureInitialized();
-        ValidateActorId(actorId);
-
-        if (states[actorId] != ActorSlotState.Free)
+        public T AcquireAt(int actorId, out ActorHandle handle)
         {
-            throw new InvalidOperationException(
-                $"Actor {actorId} is not free.");
+            EnsureInitialized();
+            ValidateActorId(actorId);
+
+            if (states[actorId] != ActorSlotState.Free)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorId} is not free.");
+            }
+
+            freeActorIds.Remove(actorId);
+
+            generations[actorId]++;
+            states[actorId] = ActorSlotState.Reserved;
+
+            handle = new ActorHandle(
+                PoolId,
+                actorId,
+                generations[actorId]);
+
+            T actor = actors[actorId];
+            actor.PrepareSpawn();
+
+            return actor;
         }
 
-        freeActorIds.Remove(actorId);
-
-        generations[actorId]++;
-        states[actorId] = ActorSlotState.Reserved;
-
-        handle = new ActorHandle(
-            PoolId,
-            actorId,
-            generations[actorId]);
-
-        T actor = actors[actorId];
-        actor.PrepareSpawn();
-
-        return actor;
-    }
-
-    public void Activate(ActorHandle handle)
-    {
-        ValidateHandle(handle, ActorSlotState.Reserved);
-
-        actors[handle.ActorId].ActivateActor();
-        states[handle.ActorId] = ActorSlotState.Active;
-    }
-
-    public void Release(ActorHandle handle)
-    {
-        ValidateHandle(handle);
-
-        actors[handle.ActorId].DeactivateActor();
-
-        states[handle.ActorId] = ActorSlotState.Free;
-        freeActorIds.Add(handle.ActorId);
-    }
-
-    IPhysicalActor IActorPool.Acquire(out ActorHandle handle)
-    {
-        return Acquire(out handle);
-    }
-
-    IPhysicalActor IActorPool.AcquireAt(int actorId, out ActorHandle handle)
-    {
-        return AcquireAt(actorId, out handle);
-    }
-
-    private void ValidateHandle(ActorHandle handle, ActorSlotState? expectedState = null)
-    {
-        if (handle.PoolId != PoolId)
-            throw new InvalidOperationException("Wrong actor pool.");
-
-        ValidateActorId(handle.ActorId);
-
-        if (generations[handle.ActorId] != handle.Generation)
-            throw new InvalidOperationException("Stale actor handle.");
-
-        if (states[handle.ActorId] == ActorSlotState.Free)
-            throw new InvalidOperationException("Actor is already free.");
-
-        if (expectedState.HasValue &&
-            states[handle.ActorId] != expectedState.Value)
+        public void Activate(ActorHandle handle)
         {
-            throw new InvalidOperationException(
-                $"Expected {expectedState.Value}, " +
-                $"but actor is {states[handle.ActorId]}.");
+            ValidateHandle(handle, ActorSlotState.Reserved);
+
+            actors[handle.ActorId].ActivateActor();
+            states[handle.ActorId] = ActorSlotState.Active;
         }
-    }
 
-    private void ValidateActorId(int actorId)
-    {
-        if ((uint)actorId >= (uint)actors.Length)
+        public void Release(ActorHandle handle)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(actorId));
+            ValidateHandle(handle);
+
+            actors[handle.ActorId].DeactivateActor();
+
+            states[handle.ActorId] = ActorSlotState.Free;
+            freeActorIds.Add(handle.ActorId);
         }
-    }
 
-    private void EnsureInitialized()
-    {
-        if (!initialized)
+        IPhysicalActor IActorPool.Acquire(out ActorHandle handle)
         {
-            throw new InvalidOperationException(
-                "Actor pool is not initialized.");
+            return Acquire(out handle);
+        }
+
+        IPhysicalActor IActorPool.AcquireAt(int actorId, out ActorHandle handle)
+        {
+            return AcquireAt(actorId, out handle);
+        }
+
+        private void ValidateHandle(ActorHandle handle, ActorSlotState? expectedState = null)
+        {
+            if (handle.PoolId != PoolId)
+                throw new InvalidOperationException("Wrong actor pool.");
+
+            ValidateActorId(handle.ActorId);
+
+            if (generations[handle.ActorId] != handle.Generation)
+                throw new InvalidOperationException("Stale actor handle.");
+
+            if (states[handle.ActorId] == ActorSlotState.Free)
+                throw new InvalidOperationException("Actor is already free.");
+
+            if (expectedState.HasValue &&
+                states[handle.ActorId] != expectedState.Value)
+            {
+                throw new InvalidOperationException(
+                    $"Expected {expectedState.Value}, " +
+                    $"but actor is {states[handle.ActorId]}.");
+            }
+        }
+
+        private void ValidateActorId(int actorId)
+        {
+            if ((uint)actorId >= (uint)actors.Length)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(actorId));
+            }
+        }
+
+        private void EnsureInitialized()
+        {
+            if (!initialized)
+            {
+                throw new InvalidOperationException(
+                    "Actor pool is not initialized.");
+            }
         }
     }
 }

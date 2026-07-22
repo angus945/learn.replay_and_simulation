@@ -1,25 +1,31 @@
 using System;
-using System.Collections.Generic;
+using PhysicsActor;
+using PhysicsActor.Application.Port;
 using UnityEngine;
 
-public sealed class UnityActorFactory<T> : IActorFactory<T> where T : MonoBehaviour, IPhysicalActor
+namespace PhysicsActor.Unity.Infrastructure
 {
-    private readonly T prefab;
-    private readonly Transform parent;
-
-    public UnityActorFactory(T prefab, Transform parent)
+    public sealed class UnityActorFactory<T> : IActorFactory<T> where T : MonoBehaviour, IPhysicalActor
     {
-        this.prefab = prefab ? prefab
-            : throw new ArgumentNullException(nameof(prefab));
+        private readonly T prefab;
+        private readonly Transform prefabsParent;
 
-        this.parent = parent ? parent
-            : throw new ArgumentNullException(nameof(parent));
+        public UnityActorFactory(T prefab, Transform parent)
+        {
+            this.prefab = prefab ? prefab
+                : throw new ArgumentNullException(nameof(prefab));
 
-        parent.gameObject.SetActive(false);
-    }
+            if (parent == null)
+                throw new ArgumentNullException(nameof(parent));
 
-    public T CreateActor()
-    {
-        return UnityEngine.Object.Instantiate(prefab, parent);
+            prefabsParent = new GameObject($"{typeof(T).Name} Prefabs").transform;
+            prefabsParent.gameObject.SetActive(false);
+            prefabsParent.SetParent(parent, false);
+        }
+
+        public T CreateActor()
+        {
+            return UnityEngine.Object.Instantiate(prefab, prefabsParent);
+        }
     }
 }

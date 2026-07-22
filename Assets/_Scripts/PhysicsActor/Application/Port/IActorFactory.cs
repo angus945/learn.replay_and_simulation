@@ -1,4 +1,9 @@
-public interface IActorFactory<out T> where T : class, IPhysicalActor
+using PhysicsActor;
+
+namespace PhysicsActor.Application.Port
 {
-    T CreateActor();
+    public interface IActorFactory<out T> where T : class, IPhysicalActor
+    {
+        T CreateActor();
+    }
 }

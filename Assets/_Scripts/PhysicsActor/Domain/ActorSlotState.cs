@@ -1,6 +1,9 @@
-public enum ActorSlotState : byte
+namespace PhysicsActor.Domain
 {
-    Free,
-    Reserved,
-    Active
+    public enum ActorSlotState : byte
+    {
+        Free,
+        Reserved,
+        Active
+    }
 }
