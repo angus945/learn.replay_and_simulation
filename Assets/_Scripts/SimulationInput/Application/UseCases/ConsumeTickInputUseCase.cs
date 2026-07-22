@@ -5,15 +5,17 @@ namespace SimulationInput.Application
 {
     internal sealed class ConsumeTickInputUseCase
     {
-        private readonly ButtonReaderStats stats;
+        private readonly ApplicationStats stats;
 
-        internal ConsumeTickInputUseCase(ButtonReaderStats stats)
+        internal ConsumeTickInputUseCase(ApplicationStats stats)
         {
             this.stats = stats;
         }
 
         internal TickInputFrame Execute(ConsumeInputCommand command)
         {
+            stats.EnsureInitialized();
+
             ulong tick = command.tick;
 
             if (stats.hasCommittedTick && tick <= stats.lastCommittedTick)
@@ -24,25 +26,18 @@ namespace SimulationInput.Application
                 );
             }
 
-            ButtonInputEvent[] buttonInputs = new ButtonInputEvent[stats.buttonStateReader.Count];
-
-            AxisInputEvent[] axisInputs = new AxisInputEvent[stats.axisStateReader.Count];
+            TickInputFrame frame = stats.reusableFrame;
+            frame.SetTick(tick);
 
             for (int i = 0; i < stats.buttonStateReader.Count; i++)
             {
-                buttonInputs[i] = stats.buttonStateReader[i].ConsumeTickInput();
+                frame.Buttons[i] = stats.buttonStateReader[i].ConsumeTickInput();
             }
 
             for (int i = 0; i < stats.axisStateReader.Count; i++)
             {
-                axisInputs[i] = stats.axisStateReader[i].ReadTickInput();
+                frame.Axes[i] = stats.axisStateReader[i].ReadTickInput();
             }
-
-            TickInputFrame frame = new TickInputFrame(
-                tick,
-                buttonInputs,
-                axisInputs
-            );
 
             stats.hasCommittedTick = true;
             stats.lastCommittedTick = tick;

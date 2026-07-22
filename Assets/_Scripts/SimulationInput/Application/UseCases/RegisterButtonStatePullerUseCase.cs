@@ -5,19 +5,29 @@ namespace SimulationInput.Application
 {
     internal sealed class RegisterButtonStatePullerUseCase
     {
-        private readonly ButtonReaderStats stats;
+        private readonly ApplicationStats stats;
 
-        internal RegisterButtonStatePullerUseCase(ButtonReaderStats stats)
+        internal RegisterButtonStatePullerUseCase(ApplicationStats stats)
         {
             this.stats = stats;
         }
 
-        internal int Execute(IButtonStatePuller puller)
+        internal int Execute<TKey>(IButtonStatePuller puller) where TKey : IButtonKey
         {
+            stats.EnsureCanRegister();
+
             if (puller == null)
                 throw new ArgumentNullException(nameof(puller));
 
+            Type keyType = typeof(TKey);
+            if (stats.buttonReaderIndexByKey.ContainsKey(keyType))
+            {
+                throw new InvalidOperationException(
+                    $"Button input key {keyType.FullName} is already registered.");
+            }
+
             int index = stats.buttonStateReader.Count;
+            stats.buttonReaderIndexByKey.Add(keyType, index);
             stats.buttonStatePullers.Add(puller);
             stats.buttonStateReader.Add(new ButtonStateReader());
 
