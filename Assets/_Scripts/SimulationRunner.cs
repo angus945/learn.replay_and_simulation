@@ -1,16 +1,23 @@
-using SimulationInput;
-using SimulationInput.Application;
+using GamePlay.API;
+using ExternalIntent.API;
+using ExternalIntent.Contract;
+using SimulationInput.API;
 using UnityEngine;
 
-public sealed class SimulationRunner
+internal sealed class SimulationRunner
 {
     const float TickRate = 60f;
     const float TickDeltaTime = 1f / TickRate;
 
-    SimulationInputs simulationInputs;
-    public SimulationRunner(SimulationInputs simulationInputs)
+    readonly ISimulationInputRuntime simulationInputs;
+    readonly IIntentProducer intentAcquire;
+    readonly IGameplayOrchestrator gameplayOrchestrator;
+
+    public SimulationRunner(ISimulationInputRuntime inputs, IIntentProducer intentAcquire, IGameplayOrchestrator orchestrator)
     {
-        this.simulationInputs = simulationInputs;
+        this.simulationInputs = inputs;
+        this.intentAcquire = intentAcquire;
+        this.gameplayOrchestrator = orchestrator;
     }
 
     public float timeScale = 1f;
@@ -22,7 +29,7 @@ public sealed class SimulationRunner
     {
         accumulator += deltaTime * timeScale;
 
-        simulationInputs.CaptureRenderInput(new CaptureInputCommand());
+        simulationInputs.CaptureRenderInput();
 
         while (accumulator >= TickDeltaTime)
         {
@@ -39,10 +46,14 @@ public sealed class SimulationRunner
         ulong currentTick = tick;
 
         // 1. 讀取此 Tick 已記錄的輸入
-        TickInputFrame inputFrame = simulationInputs.ConsumeTick(new ConsumeInputCommand(currentTick));
+        IInputSnapshot snapshot = simulationInputs.ConsumeSnapshot(currentTick);
 
-        // 2. 轉換成遊戲意圖 command
-        TickInputFrameCommands inputCommands = simulationInputs.ConsumeTickCommands();
+        // 2. Acquire Intents
+        intentAcquire.ProduceInputIntent(snapshot);
+        intentAcquire.CommitTick(currentTick);
+
+        // 3. Handle Intents
+        gameplayOrchestrator.HandleGameplayIntents(currentTick, intentAcquire);
 
         // 2. 執行遊戲邏輯、生成、銷毀、施力
         // 所有操作必須使用穩定順序

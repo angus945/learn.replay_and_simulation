@@ -1,4 +1,5 @@
 using PhysicsActor;
+using PhysicsActor.Contract;
 using UnityEngine;
 
 public class Enemy : MonoBehaviour, IPhysicalActor
