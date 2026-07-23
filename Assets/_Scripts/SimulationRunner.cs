@@ -1,7 +1,8 @@
+using System;
 using ECSManagement.API;
-using ExternalIntent.API;
-using ExternalIntent.Contract;
 using SimulationInput.API;
+using TickCommandSystem.API;
+using TickIntentsBuilder.API;
 using UnityEngine;
 
 internal sealed class SimulationRunner
@@ -10,14 +11,20 @@ internal sealed class SimulationRunner
     const float TickDeltaTime = 1f / TickRate;
 
     readonly ISimulationInputRuntime simulationInputs;
-    readonly IIntentProducer intentAcquire;
+    readonly ITickIntentsBuilder tickIntentsBuilder;
     readonly IEcsSystemRuntime systemRuntime;
+    readonly ITickCommandDispatcher commandSystem;
 
-    public SimulationRunner(ISimulationInputRuntime inputs, IIntentProducer intentAcquire, IEcsSystemRuntime systemRuntime)
+    public SimulationRunner(
+        ISimulationInputRuntime inputs,
+        ITickIntentsBuilder tickIntentsBuilder,
+        IEcsSystemRuntime systemRuntime,
+        ITickCommandDispatcher commandSystem)
     {
-        this.simulationInputs = inputs;
-        this.intentAcquire = intentAcquire;
-        this.systemRuntime = systemRuntime;
+        this.simulationInputs = inputs ?? throw new ArgumentNullException(nameof(inputs));
+        this.tickIntentsBuilder = tickIntentsBuilder ?? throw new ArgumentNullException(nameof(tickIntentsBuilder));
+        this.systemRuntime = systemRuntime ?? throw new ArgumentNullException(nameof(systemRuntime));
+        this.commandSystem = commandSystem ?? throw new ArgumentNullException(nameof(commandSystem));
     }
 
     public float timeScale = 1f;
@@ -45,31 +52,39 @@ internal sealed class SimulationRunner
     {
         ulong currentTick = tick;
 
-        // 1. 讀取此 Tick 已記錄的輸入
+        // 1. Acquire External Intents
         IInputSnapshot snapshot = simulationInputs.ConsumeSnapshot(currentTick);
+        tickIntentsBuilder.ProduceInputCommands(snapshot);
+        tickIntentsBuilder.CommitTick(currentTick);
 
-        // 2. Acquire Intents
-        intentAcquire.ProduceInputIntent(snapshot);
-        intentAcquire.CommitTick(currentTick);
+        // 2. External commands enter the same route as internal tick commands.
+        tickIntentsBuilder.EnqueueCommittedCommands(commandSystem);
+        commandSystem.DispatchCommands();
 
-        // 3. Handle Intents
-        systemRuntime.HandleIntents(currentTick, intentAcquire);
-
-        // 2. 執行遊戲邏輯、生成、銷毀、施力
-        // 所有操作必須使用穩定順序
+        // 3. Pre-Physics Gameplay
         systemRuntime.PrePhysicsTick(currentTick, TickDeltaTime);
 
-        // 3. 若有直接修改 Transform，明確同步 //TODO 把 Unity 部分外化
-        Physics.SyncTransforms();
+        // 4. Pre-Physics Gameplay Tick Command Dispatch
+        commandSystem.DispatchCommands();
 
-        // 4. 推進一次 Unity Physics //TODO 把 Unity 部分外化
+        // 5. Physics Step //TODO 把 Unity 部分外化
+        Physics.SyncTransforms();
         Physics.Simulate(TickDeltaTime);
 
-        // 5. 處理碰撞結果與遊戲狀態
+        // 6. Collect Physics Facts
+        // TODO 收集物理資訊，並轉換成 ECS 事件或命令。
+
+        // 7. Post-Physics Gameplay
         systemRuntime.PostPhysicsTick(currentTick, TickDeltaTime);
 
-        // 6. 計算 Hash 或儲存 Snapshot
-        // ReplayRecorder.RecordTick(tick);
+        // 8. Post-Physics Gameplay Tick Command Dispatch
+        commandSystem.DispatchCommands();
+
+        // TODO
+        // 9. End-Tick Structural Commit
+        // 10. Finalize Simulation State
+        // 11. Hash / Snapshot
+        // 12. Extract Presentation Events
 
         tick++;
     }

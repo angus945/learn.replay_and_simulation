@@ -1,4 +1,4 @@
-namespace ExternalIntent.Application
+namespace TickIntentsBuilder.Application
 {
     internal sealed class CommitTickUseCase
     {
@@ -11,7 +11,7 @@ namespace ExternalIntent.Application
 
         internal void Execute(ulong tick)
         {
-            stats.IntentBuffer.Commit(tick);
+            stats.CommandBuffer.Commit(tick);
         }
     }
 }

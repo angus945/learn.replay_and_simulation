@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using ECSManagement.API;
 using ECSManagement.Contract;
 using ECSManagement.Domain;
-using ExternalIntent.API;
-using ExternalIntent.Contract;
 
 namespace ECSManagement.Application
 {
@@ -12,7 +10,6 @@ namespace ECSManagement.Application
     {
         private readonly List<ISystem> systems = new();
         private readonly List<EntityFilter> filters = new();
-        private readonly SystemIntentRegistry intentRegistry = new();
         private readonly EntityRegistry entities;
         private readonly ComponentStores components;
         private readonly EntityFactory entityFactory;
@@ -62,19 +59,6 @@ namespace ECSManagement.Application
 
             system.Initialize(this);
             systems.Add(system);
-            system.RegisterIntentHandlers(intentRegistry);
-        }
-
-        public void HandleIntents(ulong tick, ICommittedIntentReader intents)
-        {
-            if (intents == null)
-                throw new ArgumentNullException(nameof(intents));
-
-            for (int i = 0; i < intents.IntentCount; i++)
-            {
-                IExternalIntent intent = intents.AcquireIntent(tick, i);
-                intentRegistry.HandleIntent(intent);
-            }
         }
 
         public void PrePhysicsTick(ulong tick, float deltaTime)

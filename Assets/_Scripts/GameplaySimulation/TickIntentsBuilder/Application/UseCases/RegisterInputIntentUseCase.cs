@@ -1,33 +1,36 @@
 using System;
-using ExternalIntent.Contract;
+using TickCommandSystem.Contract;
+using TickIntentsBuilder.Contract;
 
-namespace ExternalIntent.Application
+namespace TickIntentsBuilder.Application
 {
-    internal sealed class RegisterInputIntentUseCase
+    internal sealed class RegisterInputCommandUseCase
     {
         readonly TickIntentsBuilderStats stats;
 
-        internal RegisterInputIntentUseCase(TickIntentsBuilderStats stats)
+        internal RegisterInputCommandUseCase(TickIntentsBuilderStats stats)
         {
             this.stats = stats;
         }
 
-        internal void Execute<TIntent>(IInputIntentRule intentRule) where TIntent : struct, IExternalIntent
+        internal void Execute<TCommand>(
+            IInputCommandRule commandRule)
+            where TCommand : struct, ICommand
         {
-            if (intentRule == null)
-                throw new ArgumentNullException(nameof(intentRule));
+            if (commandRule == null)
+                throw new ArgumentNullException(nameof(commandRule));
 
-            Type intentType = typeof(TIntent);
-            if (stats.InputIntentRuleIndexByType.ContainsKey(intentType))
+            Type commandType = typeof(TCommand);
+            if (stats.InputCommandRuleIndexByType.ContainsKey(commandType))
             {
                 throw new InvalidOperationException(
-                    $"Input intent rule for {intentType.FullName} is already registered."
+                    $"Input command rule for {commandType.FullName} is already registered."
                 );
             }
 
-            int index = stats.InputIntentRules.Count;
-            stats.InputIntentRuleIndexByType.Add(intentType, index);
-            stats.InputIntentRules.Add(intentRule);
+            int index = stats.InputCommandRules.Count;
+            stats.InputCommandRuleIndexByType.Add(commandType, index);
+            stats.InputCommandRules.Add(commandRule);
         }
     }
 }

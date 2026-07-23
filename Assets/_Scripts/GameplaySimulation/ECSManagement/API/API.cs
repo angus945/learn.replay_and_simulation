@@ -1,11 +1,9 @@
 using ECSManagement.Contract;
-using ExternalIntent.API;
 
 namespace ECSManagement.API
 {
     public interface IEcsSystemRuntime
     {
-        void HandleIntents(ulong tick, ICommittedIntentReader intents);
         void PrePhysicsTick(ulong tick, float deltaTime);
         void PostPhysicsTick(ulong tick, float deltaTime);
     }

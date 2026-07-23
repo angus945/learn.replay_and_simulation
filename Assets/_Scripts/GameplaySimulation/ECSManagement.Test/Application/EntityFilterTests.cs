@@ -140,6 +140,27 @@ namespace ECSManagement.Test.Application
         }
 
         [Test]
+        public void Without_OnlyExcludedComponent_IncludesEntitiesWithoutExcludedComponent()
+        {
+            // Arrange
+            EcsWorld world = CreateWorld();
+            EntityHandle includedEntity = SpawnEmptyEntity(world);
+            EntityHandle excludedEntity = SpawnEmptyEntity(world);
+            world.AddComponent(excludedEntity, new ExcludedTestComponent());
+
+            // Act
+            IEntityFilter filter = world.CreateFilter()
+                .Without<ExcludedTestComponent>()
+                .Build();
+
+            // Assert
+            Assert.AreEqual(1, filter.EntityCount);
+            Assert.AreEqual(includedEntity, filter.GetEntity(0));
+            Assert.IsTrue(filter.Contains(includedEntity));
+            Assert.IsFalse(filter.Contains(excludedEntity));
+        }
+
+        [Test]
         public void DuplicateWithOrWithout_DoesNotChangeMatches()
         {
             // Arrange
@@ -237,6 +258,59 @@ namespace ECSManagement.Test.Application
                 CopyFilterEntities(filter));
         }
 
+        [Test]
+        public void BuiltFilter_AfterComponentMutations_ReturnsEntitiesInSpawnSequenceOrder()
+        {
+            // Arrange
+            EcsWorld world = CreateWorld();
+            EntityHandle entity1 = SpawnTestEntity(world, 1);
+            EntityHandle entity2 = SpawnTestEntity(world, 2);
+            EntityHandle entity3 = SpawnTestEntity(world, 3);
+            IEntityFilter filter = world.CreateFilter()
+                .With<TestComponent>()
+                .Without<ExcludedTestComponent>()
+                .Build();
+
+            // Act
+            world.AddComponent(entity1, new ExcludedTestComponent());
+            world.AddComponent(entity2, new ExcludedTestComponent());
+            world.RemoveComponent<ExcludedTestComponent>(entity2);
+            world.RemoveComponent<ExcludedTestComponent>(entity1);
+
+            // Assert
+            CollectionAssert.AreEqual(
+                new[] { entity1, entity2, entity3 },
+                CopyFilterEntities(filter));
+        }
+
+        [Test]
+        public void SameOperationSequence_OnDifferentWorlds_ProducesSameFilterSnapshot()
+        {
+            // Act
+            EntityHandle[] firstRun = RunDeterministicFilterScenario();
+            EntityHandle[] secondRun = RunDeterministicFilterScenario();
+
+            // Assert
+            CollectionAssert.AreEqual(firstRun, secondRun);
+        }
+
+        [Test]
+        public void DeterministicScenario_ReturnsMatchesInSpawnSequenceOrder()
+        {
+            // Act
+            EntityHandle[] entities = RunDeterministicFilterScenario();
+
+            // Assert
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    new EntityHandle(1, 1, 2),
+                    new EntityHandle(2, 1, 3),
+                    new EntityHandle(0, 2, 4),
+                },
+                entities);
+        }
+
         private static EcsWorld CreateWorld(int entityCapacity = 10)
         {
             EcsWorld world = new EcsWorld(entityCapacity);
@@ -272,6 +346,26 @@ namespace ECSManagement.Test.Application
             }
 
             return entities;
+        }
+
+        private static EntityHandle[] RunDeterministicFilterScenario()
+        {
+            EcsWorld world = CreateWorld(4);
+            EntityHandle entity1 = SpawnTestEntity(world, 1);
+            EntityHandle entity2 = SpawnTestEntity(world, 2);
+            EntityHandle entity3 = SpawnTestEntity(world, 3);
+            IEntityFilter filter = world.CreateFilter()
+                .With<TestComponent>()
+                .Without<ExcludedTestComponent>()
+                .Build();
+
+            world.AddComponent(entity2, new ExcludedTestComponent());
+            world.Destroy(entity1);
+            EntityHandle entity4 = SpawnTestEntity(world, 4);
+            world.RemoveComponent<ExcludedTestComponent>(entity2);
+            world.AddComponent(entity3, new SecondaryTestComponent(30));
+
+            return CopyFilterEntities(filter);
         }
     }
 }

@@ -1,19 +1,22 @@
-using ExternalIntent.Contract;
+using TickCommandSystem.API;
+using TickCommandSystem.Contract;
 
-namespace ExternalIntent.Application
+namespace TickIntentsBuilder.Application
 {
-    internal sealed class AcquireIntentUseCase
+    internal sealed class EnqueueCommittedCommandsUseCase
     {
         readonly TickIntentsBuilderStats stats;
 
-        internal AcquireIntentUseCase(TickIntentsBuilderStats stats)
+        internal EnqueueCommittedCommandsUseCase(TickIntentsBuilderStats stats)
         {
             this.stats = stats;
         }
 
-        internal IExternalIntent Execute(ulong tick, int index)
+        internal void Execute(
+            ITickCommandQueue commandQueue,
+            CommandType type)
         {
-            return stats.IntentBuffer.Acquire(tick, index);
+            stats.CommandBuffer.EnqueueCommitted(commandQueue, type);
         }
     }
 }

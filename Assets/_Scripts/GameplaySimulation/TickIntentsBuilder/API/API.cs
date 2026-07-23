@@ -1,22 +1,23 @@
-using ExternalIntent.Contract;
 using SimulationInput.API;
+using TickCommandSystem.API;
+using TickCommandSystem.Contract;
+using TickIntentsBuilder.Contract;
 
-namespace ExternalIntent.API
+namespace TickIntentsBuilder.API
 {
-    public interface IIntentProducer : ICommittedIntentReader
+    public interface ITickIntentsBuilder
     {
-        void ProduceInputIntent(IInputSnapshot snapshot);
+        void ProduceInputCommands(IInputSnapshot snapshot);
         void CommitTick(ulong tick);
+        void EnqueueCommittedCommands(
+            ITickCommandQueue commandQueue,
+            CommandType type = CommandType.Gameplay);
     }
 
-    public interface ICommittedIntentReader
+    public interface IInputCommandProducer : ITickIntentsBuilder
     {
-        int IntentCount { get; }
-        IExternalIntent AcquireIntent(ulong tick, int index);
-    }
-
-    public interface IIntentSink
-    {
-        void Submit(IExternalIntent intent);
+        void RegisterInputCommand<TCommand>(
+            IInputCommandRule commandRule)
+            where TCommand : struct, ICommand;
     }
 }

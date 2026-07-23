@@ -1,14 +1,10 @@
 using SimulationInput.API;
+using TickCommandSystem.Contract;
 
-namespace ExternalIntent.Contract
+namespace TickIntentsBuilder.Contract
 {
-    public interface IInputIntentRule
+    public interface IInputCommandRule
     {
-        bool TryProduce(IInputSnapshot snapshot, out IExternalIntent intent);
-    }
-
-    public interface IExternalIntent
-    {
-
+        bool TryProduce(IInputSnapshot snapshot, out ICommand command);
     }
 }

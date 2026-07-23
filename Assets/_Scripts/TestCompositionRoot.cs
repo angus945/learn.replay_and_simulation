@@ -1,6 +1,4 @@
 using ECSManagement.Application;
-using ExternalIntent.Application;
-using ExternalIntent.Contract;
 using SimulationInput.Application;
 using SimulationInput.API;
 using UnityEngine;
@@ -9,31 +7,36 @@ using SimulationInput.Unity.Infrastructure;
 using ECSManagement.API;
 using ECSManagement.Contract;
 using Logging.Contract;
-using System.Collections.Generic;
 using Logging.Unity.Infrastructure;
+using TickCommandSystem.API;
+using TickCommandSystem.Contract;
+using TickIntentsBuilder.Contract;
+using TickCommandRuntime = TickCommandSystem.Application.TickCommandSystem;
+using TickIntentsBuilderRuntime = TickIntentsBuilder.Application.TickIntentsBuilder;
 
 // Example of a simple player
 public struct MoveHorizontal : IAxisInputKey { }
 public struct MoveVertical : IAxisInputKey { }
 
-public readonly struct PlayerMoveIntent : IExternalIntent
+public readonly struct PlayerMoveCommand : ICommand
 {
     public readonly Float3 Direction;
 
-    public PlayerMoveIntent(Float3 direction)
+    public PlayerMoveCommand(Float3 direction)
     {
         Direction = direction;
     }
 }
-public class AcquirePlayerMoveIntent : IInputIntentRule
+
+public class AcquirePlayerMoveCommand : IInputCommandRule
 {
-    public bool TryProduce(IInputSnapshot snapshot, out IExternalIntent intent)
+    public bool TryProduce(IInputSnapshot snapshot, out ICommand command)
     {
         var horizontal = snapshot.GetAxisState<MoveHorizontal>();
         var vertical = snapshot.GetAxisState<MoveVertical>();
         var direction = new Float3(horizontal.Value, 0f, vertical.Value).Normalized();
 
-        intent = new PlayerMoveIntent(direction);
+        command = new PlayerMoveCommand(direction);
 
         return true;
     }
@@ -76,11 +79,11 @@ public class PlayerSystem : ISystem
     private IEcsWorld world;
     IEntityFilter filter;
 
-    PlayerMoveIntentHandler movement;
+    PlayerMoveCommandHandler movement;
 
     public PlayerSystem()
     {
-        movement = new PlayerMoveIntentHandler();
+        movement = new PlayerMoveCommandHandler();
     }
 
     public void Initialize(IEcsWorld world)
@@ -93,9 +96,9 @@ public class PlayerSystem : ISystem
             .Build();
     }
 
-    public void RegisterIntentHandlers(ISystemIntentHandlerRegistry registry)
+    public void RegisterCommandHandlers(ITickCommandDispatcher registry)
     {
-        registry.RegisterIntentHandler<PlayerMoveIntent>(movement);
+        registry.RegisterCommandHandler<PlayerMoveCommand>(movement);
     }
 
     public void PrePhysicsTick(ulong tick, float deltaTime)
@@ -125,13 +128,13 @@ public class PlayerSystem : ISystem
         }
     }
 
-    private sealed class PlayerMoveIntentHandler : ISystemIntentHandler<PlayerMoveIntent>
+    private sealed class PlayerMoveCommandHandler : ICommandHandler<PlayerMoveCommand>
     {
         public Float3 Direction { get; private set; }
 
-        public void HandleIntent(PlayerMoveIntent intent)
+        public void Handle(CommandData data, PlayerMoveCommand command)
         {
-            Direction = intent.Direction;
+            Direction = command.Direction;
         }
     }
 }
@@ -159,8 +162,8 @@ public class TestCompositionRoot : MonoBehaviour
         simulationInput.RegisterAxisStatePuller<MoveVertical>(new UnityAxisStatePuller("Vertical"));
         simulationInput.Initialize();
 
-        TickIntentsBuilder tickIntentsBuilder = new TickIntentsBuilder();
-        tickIntentsBuilder.RegisterInputIntent<PlayerMoveIntent>(new AcquirePlayerMoveIntent());
+        TickIntentsBuilderRuntime tickIntentsBuilder = new TickIntentsBuilderRuntime();
+        tickIntentsBuilder.RegisterInputCommand<PlayerMoveCommand>(new AcquirePlayerMoveCommand());
 
         // Entity component system setup
         EcsWorld world = new EcsWorld(100);
@@ -168,7 +171,10 @@ public class TestCompositionRoot : MonoBehaviour
         world.RegisterComponent<PhysicsState>();
         world.RegisterComponent<PlayerTag>();
 
-        world.RegisterSystem(new PlayerSystem());
+        TickCommandRuntime tickCommandSystem = new TickCommandRuntime();
+        PlayerSystem playerSystem = new PlayerSystem();
+        playerSystem.RegisterCommandHandlers(tickCommandSystem);
+        world.RegisterSystem(playerSystem);
 
         // Test spawning a player entity
         world.Spawn(new SpawnPlayerRecipe(),
@@ -177,7 +183,11 @@ public class TestCompositionRoot : MonoBehaviour
 
 
         // Assemble the SimulationRunner with the necessary components
-        runner = new SimulationRunner(simulationInput, tickIntentsBuilder, world);
+        runner = new SimulationRunner(
+            simulationInput,
+            tickIntentsBuilder,
+            world,
+            tickCommandSystem);
 
     }
     void Update()

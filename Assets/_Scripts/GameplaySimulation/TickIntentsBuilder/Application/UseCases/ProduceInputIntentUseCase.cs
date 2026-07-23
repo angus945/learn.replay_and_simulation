@@ -1,14 +1,15 @@
 using System;
-using ExternalIntent.Contract;
 using SimulationInput.API;
+using TickCommandSystem.Contract;
+using TickIntentsBuilder.Contract;
 
-namespace ExternalIntent.Application
+namespace TickIntentsBuilder.Application
 {
-    internal sealed class ProduceInputIntentUseCase
+    internal sealed class ProduceInputCommandsUseCase
     {
         readonly TickIntentsBuilderStats stats;
 
-        internal ProduceInputIntentUseCase(TickIntentsBuilderStats stats)
+        internal ProduceInputCommandsUseCase(TickIntentsBuilderStats stats)
         {
             this.stats = stats;
         }
@@ -18,14 +19,14 @@ namespace ExternalIntent.Application
             if (snapshot == null)
                 throw new ArgumentNullException(nameof(snapshot));
 
-            stats.IntentBuffer.BeginProduce();
+            stats.CommandBuffer.BeginProduce();
 
-            for (int i = 0; i < stats.InputIntentRules.Count; i++)
+            for (int i = 0; i < stats.InputCommandRules.Count; i++)
             {
-                IInputIntentRule rule = stats.InputIntentRules[i];
-                if (rule.TryProduce(snapshot, out IExternalIntent intent))
+                IInputCommandRule rule = stats.InputCommandRules[i];
+                if (rule.TryProduce(snapshot, out ICommand command))
                 {
-                    stats.IntentBuffer.Submit(intent);
+                    stats.CommandBuffer.Submit(command);
                 }
             }
         }

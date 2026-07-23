@@ -1,37 +1,39 @@
-using ExternalIntent.API;
-using ExternalIntent.Contract;
 using SimulationInput.API;
+using TickCommandSystem.API;
+using TickCommandSystem.Contract;
+using TickIntentsBuilder.API;
+using TickIntentsBuilder.Contract;
 
-namespace ExternalIntent.Application
+namespace TickIntentsBuilder.Application
 {
-    public sealed class TickIntentsBuilder : IIntentProducer
+    public sealed class TickIntentsBuilder : IInputCommandProducer
     {
         readonly TickIntentsBuilderStats stats;
-        readonly RegisterInputIntentUseCase registerInputIntentUseCase;
-        readonly ProduceInputIntentUseCase produceInputIntentUseCase;
+        readonly RegisterInputCommandUseCase registerInputCommandUseCase;
+        readonly ProduceInputCommandsUseCase produceInputCommandsUseCase;
         readonly CommitTickUseCase commitTickUseCase;
-        readonly AcquireIntentUseCase acquireIntentUseCase;
+        readonly EnqueueCommittedCommandsUseCase enqueueCommittedCommandsUseCase;
 
         public TickIntentsBuilder()
         {
             stats = new TickIntentsBuilderStats();
 
-            registerInputIntentUseCase = new RegisterInputIntentUseCase(stats);
-            produceInputIntentUseCase = new ProduceInputIntentUseCase(stats);
+            registerInputCommandUseCase = new RegisterInputCommandUseCase(stats);
+            produceInputCommandsUseCase = new ProduceInputCommandsUseCase(stats);
             commitTickUseCase = new CommitTickUseCase(stats);
-            acquireIntentUseCase = new AcquireIntentUseCase(stats);
+            enqueueCommittedCommandsUseCase = new EnqueueCommittedCommandsUseCase(stats);
         }
 
-        public int IntentCount => stats.IntentBuffer.CommittedIntentCount;
-
-        public void RegisterInputIntent<TIntent>(IInputIntentRule intentRule) where TIntent : struct, IExternalIntent
+        public void RegisterInputCommand<TCommand>(
+            IInputCommandRule commandRule)
+            where TCommand : struct, ICommand
         {
-            registerInputIntentUseCase.Execute<TIntent>(intentRule);
+            registerInputCommandUseCase.Execute<TCommand>(commandRule);
         }
 
-        public void ProduceInputIntent(IInputSnapshot snapshot)
+        public void ProduceInputCommands(IInputSnapshot snapshot)
         {
-            produceInputIntentUseCase.Execute(snapshot);
+            produceInputCommandsUseCase.Execute(snapshot);
         }
 
         public void CommitTick(ulong tick)
@@ -39,9 +41,11 @@ namespace ExternalIntent.Application
             commitTickUseCase.Execute(tick);
         }
 
-        public IExternalIntent AcquireIntent(ulong tick, int index)
+        public void EnqueueCommittedCommands(
+            ITickCommandQueue commandQueue,
+            CommandType type = CommandType.Gameplay)
         {
-            return acquireIntentUseCase.Execute(tick, index);
+            enqueueCommittedCommandsUseCase.Execute(commandQueue, type);
         }
     }
 }
