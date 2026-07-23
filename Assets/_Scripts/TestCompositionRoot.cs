@@ -1,7 +1,6 @@
 using ECSManagement.Application;
 using ExternalIntent.Application;
 using ExternalIntent.Contract;
-using PhysicsActor.Unity.Infrastructure;
 using SimulationInput.Application;
 using SimulationInput.API;
 using UnityEngine;
@@ -9,7 +8,9 @@ using SimulationInput.Contract;
 using SimulationInput.Unity.Infrastructure;
 using ECSManagement.API;
 using ECSManagement.Contract;
+using Logging.Contract;
 using System.Collections.Generic;
+using Logging.Unity.Infrastructure;
 
 // Example of a simple player
 public struct MoveHorizontal : IAxisInputKey { }
@@ -47,6 +48,8 @@ public struct PhysicsState : IComponent
 {
     public Float3 Velocity;
 }
+public struct PlayerTag : IComponent { }
+
 public struct SpawnPlayerArguments : IEntityArguments
 {
     public readonly Float3 Position;
@@ -64,75 +67,71 @@ public sealed class SpawnPlayerRecipe : IEntityRecipe<SpawnPlayerArguments>
     {
         context.AddComponent(entity, new TransformState { Position = arguments.Position });
         context.AddComponent(entity, new PhysicsState { Velocity = arguments.Velocity });
+        context.AddComponent(entity, new PlayerTag());
     }
-}
-
-namespace ECSManagement
-{
-    public sealed class EcsFilter
-    {
-        // Dictionary<EntityHandle,
-        // List<int> matchingIndices;
-    }
-
 }
 
 public class PlayerSystem : ISystem
 {
-    private readonly EntityHandle player;
     private IEcsWorld world;
+    IEntityFilter filter;
 
-    public PlayerSystem(EntityHandle player)
+    PlayerMoveIntentHandler movement;
+
+    public PlayerSystem()
     {
-        this.player = player;
+        movement = new PlayerMoveIntentHandler();
     }
 
     public void Initialize(IEcsWorld world)
     {
         this.world = world;
+        filter = world.CreateFilter()
+            .With<PlayerTag>()
+            .With<TransformState>()
+            .With<PhysicsState>()
+            .Build();
     }
 
     public void RegisterIntentHandlers(ISystemIntentHandlerRegistry registry)
     {
-        registry.RegisterIntentHandler<PlayerMoveIntent>(new PlayerMoveIntentHandler(world, player));
+        registry.RegisterIntentHandler<PlayerMoveIntent>(movement);
     }
 
     public void PrePhysicsTick(ulong tick, float deltaTime)
     {
-        // if (!world.TryGetComponent<TransformState>(player, out TransformState transformState))
-        //     return;
+        for (int i = 0; i < filter.EntityCount; i++)
+        {
+            EntityHandle entity = filter.GetEntity(i);
 
-        // if (!world.TryGetComponent<PhysicsState>(player, out PhysicsState physicsState))
-        //     return;
+            if (!world.TryGetComponent<TransformState>(entity, out TransformState transformState))
+                continue;
 
-        // transformState.Position = transformState.Position + physicsState.Velocity * deltaTime;
-        // world.SetComponent(player, transformState);
+            transformState.Position = transformState.Position + movement.Direction * deltaTime;
+            world.SetComponent(entity, transformState);
+        }
     }
 
     public void PostPhysicsTick(ulong tick, float deltaTime)
     {
+        for (int i = 0; i < filter.EntityCount; i++)
+        {
+            EntityHandle entity = filter.GetEntity(i);
+
+            if (!world.TryGetComponent<TransformState>(entity, out TransformState transformState))
+                continue;
+
+            Debug.Log($"Player Position: {transformState.Position}");
+        }
     }
 
     private sealed class PlayerMoveIntentHandler : ISystemIntentHandler<PlayerMoveIntent>
     {
-        private readonly IEcsWorld world;
-        private readonly EntityHandle player;
-
-        public PlayerMoveIntentHandler(IEcsWorld world, EntityHandle player)
-        {
-            this.world = world;
-            this.player = player;
-        }
+        public Float3 Direction { get; private set; }
 
         public void HandleIntent(PlayerMoveIntent intent)
         {
-            // if (world.TryGetComponent<PhysicsState>(player, out PhysicsState physicsState))
-            // {
-            //     physicsState.Velocity = intent.Direction;
-            //     world.SetComponent(player, physicsState);
-            // }
-
-            // Debug.Log($"Handle PlayerMoveIntent: Direction={intent.Direction}");
+            Direction = intent.Direction;
         }
     }
 }
@@ -140,7 +139,7 @@ public class PlayerSystem : ISystem
 // Composition Root
 public class TestCompositionRoot : MonoBehaviour
 {
-    [SerializeField] private Enemy enemyPrefab;
+    [SerializeField] LogLevel inputLogLevel = LogLevel.Debug;
 
     SimulationRunner runner;
     private void Awake()
@@ -149,35 +148,36 @@ public class TestCompositionRoot : MonoBehaviour
     }
     void Start()
     {
-        UnityActorFactory<Enemy> enemyFactory = new UnityActorFactory<Enemy>(enemyPrefab, transform);
+        // UnityActorFactory<Enemy> enemyFactory = new UnityActorFactory<Enemy>(enemyPrefab, transform);
 
         // PhysicsActorService physicsActor = new PhysicsActorService();
         // physicsActor.RegisterActorPool<Enemy>(0, 10, enemyFactory);
         // physicsActor.InitializeActorPools();
 
-
-        SimulationInputs simulationInput = new SimulationInputs();
+        SimulationInputs simulationInput = new SimulationInputs(new UnityLogger(inputLogLevel, this));
         simulationInput.RegisterAxisStatePuller<MoveHorizontal>(new UnityAxisStatePuller("Horizontal"));
         simulationInput.RegisterAxisStatePuller<MoveVertical>(new UnityAxisStatePuller("Vertical"));
         simulationInput.Initialize();
 
-        IntentAcquirer intentAcquirer = new IntentAcquirer();
-        intentAcquirer.RegisterInputIntent<PlayerMoveIntent>(new AcquirePlayerMoveIntent());
+        TickIntentsBuilder tickIntentsBuilder = new TickIntentsBuilder();
+        tickIntentsBuilder.RegisterInputIntent<PlayerMoveIntent>(new AcquirePlayerMoveIntent());
 
         // Entity component system setup
         EcsWorld world = new EcsWorld(100);
         world.RegisterComponent<TransformState>();
         world.RegisterComponent<PhysicsState>();
+        world.RegisterComponent<PlayerTag>();
+
+        world.RegisterSystem(new PlayerSystem());
 
         // Test spawning a player entity
-        EntityHandle playerHandle = world.Spawn(new SpawnPlayerRecipe(),
+        world.Spawn(new SpawnPlayerRecipe(),
             new SpawnPlayerArguments(new Float3(0f, 0f, 0f),
             new Float3(1f, 0f, 0f)));
 
-        world.RegisterSystem(new PlayerSystem(playerHandle));
 
         // Assemble the SimulationRunner with the necessary components
-        runner = new SimulationRunner(simulationInput, intentAcquirer, world);
+        runner = new SimulationRunner(simulationInput, tickIntentsBuilder, world);
 
     }
     void Update()

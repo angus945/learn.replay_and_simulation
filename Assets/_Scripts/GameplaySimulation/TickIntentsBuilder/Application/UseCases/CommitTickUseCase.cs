@@ -2,9 +2,9 @@ namespace ExternalIntent.Application
 {
     internal sealed class CommitTickUseCase
     {
-        readonly IntentAcquirerStats stats;
+        readonly TickIntentsBuilderStats stats;
 
-        internal CommitTickUseCase(IntentAcquirerStats stats)
+        internal CommitTickUseCase(TickIntentsBuilderStats stats)
         {
             this.stats = stats;
         }

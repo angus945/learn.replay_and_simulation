@@ -4,17 +4,17 @@ using SimulationInput.API;
 
 namespace ExternalIntent.Application
 {
-    public sealed class IntentAcquirer : IIntentProducer
+    public sealed class TickIntentsBuilder : IIntentProducer
     {
-        readonly IntentAcquirerStats stats;
+        readonly TickIntentsBuilderStats stats;
         readonly RegisterInputIntentUseCase registerInputIntentUseCase;
         readonly ProduceInputIntentUseCase produceInputIntentUseCase;
         readonly CommitTickUseCase commitTickUseCase;
         readonly AcquireIntentUseCase acquireIntentUseCase;
 
-        public IntentAcquirer()
+        public TickIntentsBuilder()
         {
-            stats = new IntentAcquirerStats();
+            stats = new TickIntentsBuilderStats();
 
             registerInputIntentUseCase = new RegisterInputIntentUseCase(stats);
             produceInputIntentUseCase = new ProduceInputIntentUseCase(stats);
@@ -24,8 +24,7 @@ namespace ExternalIntent.Application
 
         public int IntentCount => stats.IntentBuffer.CommittedIntentCount;
 
-        public void RegisterInputIntent<TIntent>(IInputIntentRule intentRule)
-            where TIntent : struct, IExternalIntent
+        public void RegisterInputIntent<TIntent>(IInputIntentRule intentRule) where TIntent : struct, IExternalIntent
         {
             registerInputIntentUseCase.Execute<TIntent>(intentRule);
         }

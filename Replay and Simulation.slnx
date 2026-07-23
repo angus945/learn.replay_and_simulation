@@ -1,5 +1,6 @@
 ﻿<Solution>
   <Project Path="GameplaySimulation.csproj" />
+  <Project Path="SimulationInput.Test.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="ECSManagement.Test.csproj" />
 </Solution>

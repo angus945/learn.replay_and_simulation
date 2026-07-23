@@ -5,7 +5,7 @@ using ExternalIntent.Contract;
 
 namespace ExternalIntent.Application
 {
-    internal sealed class IntentAcquirerStats
+    internal sealed class TickIntentsBuilderStats
     {
         internal readonly Dictionary<Type, int> InputIntentRuleIndexByType = new();
         internal readonly List<IInputIntentRule> InputIntentRules = new();

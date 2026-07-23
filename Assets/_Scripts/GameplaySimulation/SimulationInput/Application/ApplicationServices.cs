@@ -1,3 +1,6 @@
+using Logging.API;
+using Logging.Contract;
+using Logging.Infrastructure;
 using SimulationInput;
 using SimulationInput.API;
 using SimulationInput.Contract;
@@ -29,15 +32,22 @@ namespace SimulationInput.Application
     public sealed class SimulationInputs : ISimulationInputRuntime
     {
         private readonly ApplicationStats stats;
+        private readonly ILogger logger;
 
         private readonly RegisterButtonStatePullerUseCase registerButtonStatePullerUseCase;
         private readonly RegisterAxisStatePullerUseCase registerAxisStatePullerUseCase;
         private readonly CaptureRenderInputUseCase captureRenderInputUseCase;
         private readonly ConsumeTickInputUseCase consumeTickInputUseCase;
 
-        public SimulationInputs()
+        public SimulationInputs() : this(NullLogger.Instance)
         {
-            stats = new ApplicationStats();
+
+        }
+
+        public SimulationInputs(ILogger logger)
+        {
+            this.logger = logger ?? NullLogger.Instance;
+            stats = new ApplicationStats(this.logger);
 
             registerButtonStatePullerUseCase = new RegisterButtonStatePullerUseCase(stats);
             registerAxisStatePullerUseCase = new RegisterAxisStatePullerUseCase(stats);
@@ -74,13 +84,21 @@ namespace SimulationInput.Application
         /// <summary>
         /// 每個新的 Simulation Tick 呼叫一次。
         /// </summary>
-        public void ConsumeTick(ulong tick)
-        {
-            consumeTickInputUseCase.Execute(tick);
-        }
-
         public IInputSnapshot ConsumeSnapshot(ulong tick)
         {
+            consumeTickInputUseCase.Execute(tick);
+
+            if (logger.IsEnabled(LogLevel.Trace))
+            {
+                string lastTick = stats.hasCommittedTick
+                    ? stats.lastCommittedTick.ToString()
+                    : "none";
+
+                logger.Trace(
+                    $"Snapshot requested. Tick: {tick}, last committed tick: {lastTick}.",
+                    ApplicationStats.LogCategory);
+            }
+
             return stats.snapshot;
         }
 

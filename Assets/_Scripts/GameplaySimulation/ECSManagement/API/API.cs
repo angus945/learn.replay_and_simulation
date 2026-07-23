@@ -12,7 +12,7 @@ namespace ECSManagement.API
 
     public interface IEcsWorld
     {
-        IFilterBuilder GetFilter();
+        IFilterBuilder CreateFilter();
 
         // void RegisterComponent<T>() where T : IComponent;
         // EntityHandle Spawn<TArguments>(IEntityRecipe<TArguments> recipe, in TArguments arguments);
@@ -22,8 +22,8 @@ namespace ECSManagement.API
         // void AddComponent<T>(EntityHandle entity, T component) where T : IComponent;
         // bool HasComponent<T>(EntityHandle entity) where T : IComponent;
         // T GetComponent<T>(EntityHandle entity) where T : IComponent;
-        // bool TryGetComponent<T>(EntityHandle entity, out T component) where T : IComponent;
-        // void SetComponent<T>(EntityHandle entity, T component) where T : IComponent;
+        bool TryGetComponent<T>(EntityHandle entity, out T component) where T : IComponent;
+        void SetComponent<T>(EntityHandle entity, T component) where T : IComponent;
         // void RemoveComponent<T>(EntityHandle entity) where T : IComponent;
         // IEnumerable<ComponentEntry<T>> ReadComponents<T>() where T : IComponent;
     }

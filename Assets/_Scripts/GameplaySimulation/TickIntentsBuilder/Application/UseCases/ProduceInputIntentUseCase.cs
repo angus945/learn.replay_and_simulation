@@ -6,9 +6,9 @@ namespace ExternalIntent.Application
 {
     internal sealed class ProduceInputIntentUseCase
     {
-        readonly IntentAcquirerStats stats;
+        readonly TickIntentsBuilderStats stats;
 
-        internal ProduceInputIntentUseCase(IntentAcquirerStats stats)
+        internal ProduceInputIntentUseCase(TickIntentsBuilderStats stats)
         {
             this.stats = stats;
         }

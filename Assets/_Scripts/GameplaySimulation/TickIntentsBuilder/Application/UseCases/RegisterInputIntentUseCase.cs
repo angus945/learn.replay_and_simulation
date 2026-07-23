@@ -5,9 +5,9 @@ namespace ExternalIntent.Application
 {
     internal sealed class RegisterInputIntentUseCase
     {
-        readonly IntentAcquirerStats stats;
+        readonly TickIntentsBuilderStats stats;
 
-        internal RegisterInputIntentUseCase(IntentAcquirerStats stats)
+        internal RegisterInputIntentUseCase(TickIntentsBuilderStats stats)
         {
             this.stats = stats;
         }

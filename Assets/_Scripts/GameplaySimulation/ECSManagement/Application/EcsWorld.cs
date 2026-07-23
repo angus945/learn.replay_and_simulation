@@ -29,7 +29,7 @@ namespace ECSManagement.Application
             components.RegisterStore<T>();
         }
 
-        public IFilterBuilder GetFilter()
+        public IFilterBuilder CreateFilter()
         {
             return new EntityFilter(entities, components, RegisterBuiltFilter);
         }

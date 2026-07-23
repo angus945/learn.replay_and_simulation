@@ -14,7 +14,7 @@ namespace ECSManagement.Test.Application
         public void EntityCount_BeforeBuild_Throws()
         {
             // Arrange
-            EntityFilter filter = (EntityFilter)CreateWorld().GetFilter();
+            EntityFilter filter = (EntityFilter)CreateWorld().CreateFilter();
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => _ = filter.EntityCount);
@@ -24,7 +24,7 @@ namespace ECSManagement.Test.Application
         public void GetEntity_BeforeBuild_Throws()
         {
             // Arrange
-            EntityFilter filter = (EntityFilter)CreateWorld().GetFilter();
+            EntityFilter filter = (EntityFilter)CreateWorld().CreateFilter();
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(() => filter.GetEntity(0));
@@ -34,7 +34,7 @@ namespace ECSManagement.Test.Application
         public void Contains_BeforeBuild_Throws()
         {
             // Arrange
-            EntityFilter filter = (EntityFilter)CreateWorld().GetFilter();
+            EntityFilter filter = (EntityFilter)CreateWorld().CreateFilter();
 
             // Act / Assert
             Assert.Throws<InvalidOperationException>(
@@ -45,7 +45,7 @@ namespace ECSManagement.Test.Application
         public void Build_CalledTwice_Throws()
         {
             // Arrange
-            EntityFilter filter = (EntityFilter)CreateWorld().GetFilter();
+            EntityFilter filter = (EntityFilter)CreateWorld().CreateFilter();
             filter.Build();
 
             // Act / Assert
@@ -56,7 +56,7 @@ namespace ECSManagement.Test.Application
         public void WithOrWithout_AfterBuild_Throws()
         {
             // Arrange
-            EntityFilter filter = (EntityFilter)CreateWorld().GetFilter();
+            EntityFilter filter = (EntityFilter)CreateWorld().CreateFilter();
             filter.Build();
 
             // Act / Assert
@@ -68,7 +68,7 @@ namespace ECSManagement.Test.Application
         public void GetEntity_IndexOutOfRange_Throws()
         {
             // Arrange
-            IEntityFilter filter = CreateWorld().GetFilter()
+            IEntityFilter filter = CreateWorld().CreateFilter()
                 .With<TestComponent>()
                 .Build();
 
@@ -86,7 +86,7 @@ namespace ECSManagement.Test.Application
             EntityHandle nonMatchingEntity = SpawnEmptyEntity(world);
 
             // Act
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<TestComponent>()
                 .Build();
 
@@ -107,7 +107,7 @@ namespace ECSManagement.Test.Application
             world.AddComponent(fullMatch, new SecondaryTestComponent(20));
 
             // Act
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<TestComponent>()
                 .With<SecondaryTestComponent>()
                 .Build();
@@ -128,7 +128,7 @@ namespace ECSManagement.Test.Application
             world.AddComponent(excludedEntity, new ExcludedTestComponent());
 
             // Act
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<TestComponent>()
                 .Without<ExcludedTestComponent>()
                 .Build();
@@ -147,7 +147,7 @@ namespace ECSManagement.Test.Application
             EntityHandle matchingEntity = SpawnTestEntity(world, 1);
 
             // Act
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<TestComponent>()
                 .With<TestComponent>()
                 .Without<ExcludedTestComponent>()
@@ -164,7 +164,7 @@ namespace ECSManagement.Test.Application
         {
             // Arrange
             EcsWorld world = CreateWorld();
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<TestComponent>()
                 .Build();
 
@@ -182,7 +182,7 @@ namespace ECSManagement.Test.Application
             // Arrange
             EcsWorld world = CreateWorld();
             EntityHandle entity = SpawnTestEntity(world, 1);
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<SecondaryTestComponent>()
                 .Build();
 
@@ -203,7 +203,7 @@ namespace ECSManagement.Test.Application
             // Arrange
             EcsWorld world = CreateWorld();
             EntityHandle entity = SpawnTestEntity(world, 42);
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<TestComponent>()
                 .Build();
 
@@ -223,7 +223,7 @@ namespace ECSManagement.Test.Application
             EntityHandle entity1 = SpawnTestEntity(world, 1);
             EntityHandle entity2 = SpawnTestEntity(world, 2);
             EntityHandle entity3 = SpawnTestEntity(world, 3);
-            IEntityFilter filter = world.GetFilter()
+            IEntityFilter filter = world.CreateFilter()
                 .With<TestComponent>()
                 .Build();
 

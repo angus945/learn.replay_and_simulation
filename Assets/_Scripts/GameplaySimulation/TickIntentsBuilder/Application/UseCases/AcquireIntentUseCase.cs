@@ -4,9 +4,9 @@ namespace ExternalIntent.Application
 {
     internal sealed class AcquireIntentUseCase
     {
-        readonly IntentAcquirerStats stats;
+        readonly TickIntentsBuilderStats stats;
 
-        internal AcquireIntentUseCase(IntentAcquirerStats stats)
+        internal AcquireIntentUseCase(TickIntentsBuilderStats stats)
         {
             this.stats = stats;
         }
