@@ -6,10 +6,7 @@ namespace TickCommandSystem.Contract
         public readonly bool IsExternal;
         public readonly CommandType Type;
 
-        public CommandData(
-            ulong tick,
-            bool isExternal,
-            CommandType type)
+        public CommandData(ulong tick, bool isExternal, CommandType type)
         {
             Tick = tick;
             IsExternal = isExternal;

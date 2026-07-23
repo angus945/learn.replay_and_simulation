@@ -14,10 +14,15 @@ namespace ECSManagement.Test.Application
             EcsWorld world = new EcsWorld(2);
             world.RegisterComponent<TestComponent>();
 
-            EntityHandle entity = world.Spawn(
+            world.SpawnRequest(
                 new TestEntityRecipe(),
                 new TestSpawnArguments(42));
 
+            Assert.That(world.EntityCountBySpawnSequence, Is.EqualTo(0));
+
+            world.CommitStructuralChanges();
+
+            EntityHandle entity = world.GetEntityBySpawnSequenceIndex(0);
             Assert.That(world.HasComponent<TestComponent>(entity), Is.True);
             Assert.That(world.GetComponent<TestComponent>(entity).Value, Is.EqualTo(42));
         }

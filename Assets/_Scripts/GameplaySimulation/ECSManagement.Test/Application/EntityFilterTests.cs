@@ -78,6 +78,30 @@ namespace ECSManagement.Test.Application
         }
 
         [Test]
+        public void SpawnRequest_BeforeStructuralCommit_DoesNotParticipateInRuntimeQueries()
+        {
+            // Arrange
+            EcsWorld world = CreateWorld();
+            IEntityFilter filter = world.CreateFilter()
+                .With<TestComponent>()
+                .Build();
+
+            // Act
+            RequestTestEntity(world, 42);
+
+            // Assert
+            Assert.AreEqual(0, world.EntityCountBySpawnSequence);
+            Assert.AreEqual(0, filter.EntityCount);
+
+            world.CommitStructuralChanges();
+
+            EntityHandle entity = world.GetEntityBySpawnSequenceIndex(0);
+            Assert.IsTrue(world.HasComponent<TestComponent>(entity));
+            Assert.AreEqual(1, filter.EntityCount);
+            Assert.AreEqual(entity, filter.GetEntity(0));
+        }
+
+        [Test]
         public void With_RequiredComponent_IncludesOnlyMatchingEntities()
         {
             // Arrange
@@ -190,9 +214,14 @@ namespace ECSManagement.Test.Application
                 .Build();
 
             // Act
-            EntityHandle entity = SpawnTestEntity(world, 42);
+            RequestTestEntity(world, 42);
 
             // Assert
+            Assert.AreEqual(0, filter.EntityCount);
+
+            world.CommitStructuralChanges();
+
+            EntityHandle entity = world.GetEntityBySpawnSequenceIndex(0);
             Assert.AreEqual(1, filter.EntityCount);
             Assert.AreEqual(entity, filter.GetEntity(0));
         }
@@ -237,6 +266,33 @@ namespace ECSManagement.Test.Application
         }
 
         [Test]
+        public void DestroyAndSpawnRequest_SameStructuralCommit_ReusesDestroyedSlotOnNextTick()
+        {
+            // Arrange
+            EcsWorld world = CreateWorld(1);
+            EntityHandle destroyedEntity = SpawnTestEntity(world, 42);
+
+            // Act
+            world.Destroy(destroyedEntity);
+            RequestTestEntity(world, 99);
+
+            // Assert
+            Assert.AreEqual(0, world.EntityCountBySpawnSequence);
+
+            world.CommitStructuralChanges();
+
+            EntityHandle nextEntity = world.GetEntityBySpawnSequenceIndex(0);
+            Assert.AreEqual(destroyedEntity.Id, nextEntity.Id);
+            Assert.AreNotEqual(destroyedEntity.Generation, nextEntity.Generation);
+            Assert.AreNotEqual(
+                destroyedEntity.SpawnSequence,
+                nextEntity.SpawnSequence);
+            Assert.AreEqual(
+                99,
+                world.GetComponent<TestComponent>(nextEntity).Value);
+        }
+
+        [Test]
         public void BuiltFilter_AfterSlotReuse_ReturnsEntitiesInSpawnSequenceOrder()
         {
             // Arrange
@@ -250,6 +306,7 @@ namespace ECSManagement.Test.Application
 
             // Act
             world.Destroy(entity1);
+            world.CommitStructuralChanges();
             EntityHandle entity4 = SpawnTestEntity(world, 4);
 
             // Assert
@@ -325,16 +382,29 @@ namespace ECSManagement.Test.Application
             EcsWorld world,
             int componentValue)
         {
-            return world.Spawn(
+            RequestTestEntity(world, componentValue);
+            world.CommitStructuralChanges();
+            return world.GetEntityBySpawnSequenceIndex(
+                world.EntityCountBySpawnSequence - 1);
+        }
+
+        private static void RequestTestEntity(
+            EcsWorld world,
+            int componentValue)
+        {
+            world.SpawnRequest(
                 new TestEntityRecipe(),
                 new TestSpawnArguments(componentValue));
         }
 
         private static EntityHandle SpawnEmptyEntity(EcsWorld world)
         {
-            return world.Spawn(
+            world.SpawnRequest(
                 new EmptyEntityRecipe(),
                 new EmptySpawnArguments());
+            world.CommitStructuralChanges();
+            return world.GetEntityBySpawnSequenceIndex(
+                world.EntityCountBySpawnSequence - 1);
         }
 
         private static EntityHandle[] CopyFilterEntities(IEntityFilter filter)
@@ -361,6 +431,7 @@ namespace ECSManagement.Test.Application
 
             world.AddComponent(entity2, new ExcludedTestComponent());
             world.Destroy(entity1);
+            world.CommitStructuralChanges();
             EntityHandle entity4 = SpawnTestEntity(world, 4);
             world.RemoveComponent<ExcludedTestComponent>(entity2);
             world.AddComponent(entity3, new SecondaryTestComponent(30));

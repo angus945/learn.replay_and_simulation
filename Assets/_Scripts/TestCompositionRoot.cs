@@ -139,6 +139,13 @@ public class PlayerSystem : ISystem
     }
 }
 
+// Tick Physics System
+
+public interface IPhysicsRuntime
+{
+    void Simulate(float deltaTime);
+}
+
 // Composition Root
 public class TestCompositionRoot : MonoBehaviour
 {
@@ -177,9 +184,10 @@ public class TestCompositionRoot : MonoBehaviour
         world.RegisterSystem(playerSystem);
 
         // Test spawning a player entity
-        world.Spawn(new SpawnPlayerRecipe(),
+        world.SpawnRequest(new SpawnPlayerRecipe(),
             new SpawnPlayerArguments(new Float3(0f, 0f, 0f),
             new Float3(1f, 0f, 0f)));
+        world.CommitStructuralChanges();
 
 
         // Assemble the SimulationRunner with the necessary components

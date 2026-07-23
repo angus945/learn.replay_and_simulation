@@ -6,15 +6,16 @@ namespace ECSManagement.API
     {
         void PrePhysicsTick(ulong tick, float deltaTime);
         void PostPhysicsTick(ulong tick, float deltaTime);
+        void CommitStructuralChanges();
     }
 
     public interface IEcsWorld
     {
         IFilterBuilder CreateFilter();
+        void SpawnRequest<TArguments>(IEntityRecipe<TArguments> recipe, in TArguments arguments);
+        void Destroy(EntityHandle entity);
 
         // void RegisterComponent<T>() where T : IComponent;
-        // EntityHandle Spawn<TArguments>(IEntityRecipe<TArguments> recipe, in TArguments arguments);
-        // void Destroy(EntityHandle entity);
         // void RegisterSystem(IEcsSystem system);
 
         // void AddComponent<T>(EntityHandle entity, T component) where T : IComponent;

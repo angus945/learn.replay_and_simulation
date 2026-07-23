@@ -384,7 +384,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f56477310eb399b41ae854120b52266e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestCompositionRoot
-  inputLogLevel: 6
+  inputLogLevel: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

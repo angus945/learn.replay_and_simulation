@@ -48,40 +48,42 @@ internal sealed class SimulationRunner
         UpdatePresentation();
     }
 
+    //TODO instantiate unity objects
+    //TODO collect physics facts
+    //TODO record and replay
     private void ExecuteTick()
     {
         ulong currentTick = tick;
 
-        // 1. Acquire External Intents
+        // Acquire External Intents
         IInputSnapshot snapshot = simulationInputs.ConsumeSnapshot(currentTick);
         tickIntentsBuilder.ProduceInputCommands(snapshot);
         tickIntentsBuilder.CommitTick(currentTick);
 
-        // 2. External commands enter the same route as internal tick commands.
+        // External commands enter the same route as internal tick commands.
         tickIntentsBuilder.EnqueueCommittedCommands(commandSystem);
         commandSystem.DispatchCommands();
 
-        // 3. Pre-Physics Gameplay
+        // Pre-Physics Gameplay
         systemRuntime.PrePhysicsTick(currentTick, TickDeltaTime);
-
-        // 4. Pre-Physics Gameplay Tick Command Dispatch
         commandSystem.DispatchCommands();
 
-        // 5. Physics Step //TODO 把 Unity 部分外化
+        // Physics Step //TODO 把 Unity 部分外化
         Physics.SyncTransforms();
         Physics.Simulate(TickDeltaTime);
 
-        // 6. Collect Physics Facts
+        // Collect Physics Facts
         // TODO 收集物理資訊，並轉換成 ECS 事件或命令。
 
-        // 7. Post-Physics Gameplay
+        // Post-Physics Gameplay
         systemRuntime.PostPhysicsTick(currentTick, TickDeltaTime);
-
-        // 8. Post-Physics Gameplay Tick Command Dispatch
         commandSystem.DispatchCommands();
 
-        // TODO
-        // 9. End-Tick Structural Commit
+        // End-Tick Structural Commit.
+        // Spawn requests made during tick T become alive after this point,
+        // so they first participate in gameplay systems on tick T+1.
+        systemRuntime.CommitStructuralChanges();
+
         // 10. Finalize Simulation State
         // 11. Hash / Snapshot
         // 12. Extract Presentation Events
