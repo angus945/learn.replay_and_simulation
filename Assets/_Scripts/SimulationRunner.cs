@@ -1,4 +1,4 @@
-using GamePlay.API;
+using ECSManagement.API;
 using ExternalIntent.API;
 using ExternalIntent.Contract;
 using SimulationInput.API;
@@ -11,13 +11,13 @@ internal sealed class SimulationRunner
 
     readonly ISimulationInputRuntime simulationInputs;
     readonly IIntentProducer intentAcquire;
-    readonly IGameplayOrchestrator gameplayOrchestrator;
+    readonly IEcsSystemRuntime systemRuntime;
 
-    public SimulationRunner(ISimulationInputRuntime inputs, IIntentProducer intentAcquire, IGameplayOrchestrator orchestrator)
+    public SimulationRunner(ISimulationInputRuntime inputs, IIntentProducer intentAcquire, IEcsSystemRuntime systemRuntime)
     {
         this.simulationInputs = inputs;
         this.intentAcquire = intentAcquire;
-        this.gameplayOrchestrator = orchestrator;
+        this.systemRuntime = systemRuntime;
     }
 
     public float timeScale = 1f;
@@ -53,11 +53,11 @@ internal sealed class SimulationRunner
         intentAcquire.CommitTick(currentTick);
 
         // 3. Handle Intents
-        gameplayOrchestrator.HandleGameplayIntents(currentTick, intentAcquire);
+        systemRuntime.HandleIntents(currentTick, intentAcquire);
 
         // 2. 執行遊戲邏輯、生成、銷毀、施力
         // 所有操作必須使用穩定順序
-        // SimulationWorld.PrePhysicsTick(tick, input);
+        systemRuntime.PrePhysicsTick(currentTick, TickDeltaTime);
 
         // 3. 若有直接修改 Transform，明確同步 //TODO 把 Unity 部分外化
         Physics.SyncTransforms();
@@ -66,7 +66,7 @@ internal sealed class SimulationRunner
         Physics.Simulate(TickDeltaTime);
 
         // 5. 處理碰撞結果與遊戲狀態
-        // SimulationWorld.PostPhysicsTick(tick);
+        systemRuntime.PostPhysicsTick(currentTick, TickDeltaTime);
 
         // 6. 計算 Hash 或儲存 Snapshot
         // ReplayRecorder.RecordTick(tick);
