@@ -1,30 +1,67 @@
-using PhysicsActor;
-using PhysicsActor.Contract;
-using UnityEngine;
+// using SimulationCore.World.Contract;
+// using SimulationCore.Unity.Actor.Contract;
+// using UnityEngine;
 
-public class Enemy : MonoBehaviour, IPhysicalActor
-{
-    public int health = 100;
+// public class Enemy : MonoBehaviour, IUnityEntityActor
+// {
+//     [SerializeField] private Rigidbody body;
 
-    public int ActorId => throw new System.NotImplementedException();
+//     private int resourceId = -1;
+//     private EntityHandle entity;
+//     private IUnityFactSink factSink;
+//     private bool bound;
 
-    public void ActivateActor()
-    {
-        gameObject.SetActive(true);
-    }
+//     public int ResourceId => resourceId;
+//     public EntityHandle Entity => entity;
+//     public IUnityFactSink FactSink => factSink;
+//     public bool IsBound => bound;
+//     public Rigidbody Rigidbody
+//     {
+//         get
+//         {
+//             if (!body)
+//                 body = GetComponent<Rigidbody>();
 
-    public void DeactivateActor()
-    {
-        gameObject.SetActive(false);
-    }
+//             return body;
+//         }
+//     }
 
-    public void InitializeActor(int actorId)
-    {
+//     private void Awake()
+//     {
+//         if (!body)
+//             body = GetComponent<Rigidbody>();
+//     }
 
-    }
+//     public void Initial(int resourceId)
+//     {
+//         this.resourceId = resourceId;
+//     }
 
-    public void PrepareSpawn()
-    {
+//     public void Bind(EntityHandle entity, IUnityFactSink factSink)
+//     {
+//         this.entity = entity;
+//         this.factSink = factSink;
+//         bound = true;
+//     }
 
-    }
-}
+//     public void PrepareActivate()
+//     {
+//     }
+
+//     public void Activate()
+//     {
+//         gameObject.SetActive(true);
+//     }
+
+//     public void Deactivate()
+//     {
+//         gameObject.SetActive(false);
+//     }
+
+//     public void Unbind()
+//     {
+//         entity = default;
+//         factSink = null;
+//         bound = false;
+//     }
+// }

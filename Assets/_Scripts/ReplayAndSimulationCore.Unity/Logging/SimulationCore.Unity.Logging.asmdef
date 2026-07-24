@@ -1,0 +1,16 @@
+{
+    "name": "SimulationCore.Unity.Logging",
+    "rootNamespace": "",
+    "references": [
+        "GUID:d38260b3db67e274aaf436b6514c2c96"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,7 +1,9 @@
 ﻿<Solution>
-  <Project Path="GameplaySimulation.csproj" />
-  <Project Path="TickCommandSystem.Test.csproj" />
-  <Project Path="SimulationInput.Test.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="ECSManagement.Test.csproj" />
+  <Project Path="SimulationCore.Logging.csproj" />
+  <Project Path="SimulationCore.ExternalCommands.csproj" />
+  <Project Path="SimulationCore.CommandSystem.csproj" />
+  <Project Path="SimulationCore.csproj" />
+  <Project Path="SimulationCore.Unity.ExternalCommands.csproj" />
+  <Project Path="SimulationCore.Unity.Logging.csproj" />
 </Solution>
