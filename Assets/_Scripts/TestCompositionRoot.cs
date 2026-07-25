@@ -390,7 +390,7 @@ public class TestCompositionRoot : MonoBehaviour
         ISimulationCommandSystem commandSystem = commandServices;
         ISimulationExternalCommands externalCommands = registerableCommands;
         ISimulationWorld simulationWorld = world;
-        ISimulationActor simulationActor = new NullSimulationActor();
+        ISimulationActor simulationActor = simulationActors;
         ISimulationPhysics simulationPhysics = new NullSimulationPhysics();
         ISimulationPresentation simulationPresentation = new NullSimulationPresentation();
         runner = new SimulationRunner(

@@ -1,0 +1,22 @@
+{
+    "name": "SimulationCore.ExternalCommands.Test",
+    "rootNamespace": "",
+    "references": [
+        "GUID:8fb8f25f043511c4dabf674401876f58",
+        "GUID:4ca999cbee1592f4bb939bb7444df9e5"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

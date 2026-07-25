@@ -98,23 +98,31 @@ namespace SimulationCore.World.Domain
             return e;
         }
 
-        internal void MarkForDestroy(EntityHandle entity)
+        internal void MarkForDestroy(int slotId, ulong sequenceId)
         {
-            if (!IsAlive(entity.SlotId, entity.SequenceId))
+            if (!IsAlive(slotId, sequenceId))
                 throw new InvalidOperationException("Entity is not alive.");
 
-            entities[entity.SlotId].State = EntityState.Destroyed;
-            freeEntityIds.Add(entity.SlotId);
-            aliveEntityIdsBySpawnSequence.Remove(entity.SequenceId);
-            aliveSequenceIds.Remove(entity.SequenceId);
+            entities[slotId].State = EntityState.Destroyed;
+            freeEntityIds.Add(slotId);
+            aliveEntityIdsBySpawnSequence.Remove(sequenceId);
+            aliveSequenceIds.Remove(sequenceId);
         }
-        internal void CommitDestroy(EntityHandle entity)
+        internal void CommitDestroy(int slotId, ulong sequenceId)
         {
-            if (!IsAlive(entity.SlotId, entity.SequenceId))
-                throw new InvalidOperationException("Entity is not alive.");
+            if (!IsPendingDestroy(slotId, sequenceId))
+                throw new InvalidOperationException("Entity is not pending destroy.");
 
-            entities[entity.SlotId].State = EntityState.Free;
-            entities[entity.SlotId].SequenceId = 0;
+            entities[slotId].State = EntityState.Free;
+            entities[slotId].SequenceId = 0;
+        }
+        bool IsPendingDestroy(int slotId, ulong sequenceId)
+        {
+            if (slotId < 0 || slotId >= entities.Length)
+                throw new ArgumentOutOfRangeException(nameof(slotId));
+
+            Entity e = entities[slotId];
+            return e.State == EntityState.Destroyed && e.SequenceId == sequenceId;
         }
     }
 }

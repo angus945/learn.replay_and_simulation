@@ -8,77 +8,61 @@ using SimulationCore.World.Domain;
 
 namespace SimulationCore.World.Application
 {
-    sealed class EntitySpawner
+    public sealed class SystemTicker
     {
-        private EntityFactory entityFactory;
+        Dictionary<Type, (int, int)> systemToIndex;
+        List<ISystemPrePhysicsTick> prePhysicsTickSystems;
+        List<ISystemPostPhysicsTick> postPhysicsTickSystems;
+        public int PrePhysicsTickSystemCount => prePhysicsTickSystems.Count;
+        public int PostPhysicsTickSystemCount => postPhysicsTickSystems.Count;
 
-        private readonly List<ISpawnRequest> pendingSpawnRequests = new();
+        public SystemTicker()
+        {
+            systemToIndex = new Dictionary<Type, (int, int)>();
+            prePhysicsTickSystems = new List<ISystemPrePhysicsTick>();
+            postPhysicsTickSystems = new List<ISystemPostPhysicsTick>();
+        }
+        public void RegisterSystem(ISystem system)
+        {
+            if (system == null)
+                throw new ArgumentNullException(nameof(system));
 
-        public EntitySpawner(EntityFactory entityFactory)
-        {
-            this.entityFactory = entityFactory ?? throw new ArgumentNullException(nameof(entityFactory));
-        }
-        internal void SpawnRequest<TArgs>(IEntityRecipe<TArgs> spawnPlayerRecipe, TArgs spawnPlayerArguments) where TArgs : IEntityArguments
-        {
-            pendingSpawnRequests.Add(new PendingSpawnRequest<TArgs>(spawnPlayerRecipe, spawnPlayerArguments));
-        }
-        public void CommitSpawnRequests()
-        {
-            for (int i = 0; i < pendingSpawnRequests.Count; i++)
+            if (systemToIndex.ContainsKey(system.GetType()))
             {
-                pendingSpawnRequests[i].Commit(entityFactory);
-            }
-            pendingSpawnRequests.Clear();
-        }
-
-        private interface ISpawnRequest
-        {
-            EntityHandle Commit(EntityFactory factory);
-        }
-        private sealed class PendingSpawnRequest<TArguments> : ISpawnRequest
-        {
-            private readonly IEntityRecipe<TArguments> recipe;
-            private readonly TArguments arguments;
-
-            public PendingSpawnRequest(IEntityRecipe<TArguments> recipe, in TArguments arguments)
-            {
-                this.recipe = recipe ?? throw new ArgumentNullException(nameof(recipe));
-                this.arguments = arguments;
+                throw new InvalidOperationException($"{system.GetType().Name} is already registered.");
             }
 
-            public EntityHandle Commit(EntityFactory factory)
+            int preIndex = -1;
+            int postIndex = -1;
+
+            if (system is ISystemPrePhysicsTick)
             {
-                return factory.Spawn(recipe, in arguments);
+                preIndex = prePhysicsTickSystems.Count;
+                prePhysicsTickSystems.Add((ISystemPrePhysicsTick)system);
+            }
+
+            if (system is ISystemPostPhysicsTick)
+            {
+                postIndex = postPhysicsTickSystems.Count;
+                postPhysicsTickSystems.Add((ISystemPostPhysicsTick)system);
+            }
+
+            systemToIndex[system.GetType()] = (preIndex, postIndex);
+        }
+
+        public void PrePhysicsTick(ulong tick, float deltaTime)
+        {
+            for (int i = 0; i < prePhysicsTickSystems.Count; i++)
+            {
+                prePhysicsTickSystems[i].PrePhysicsTick(tick, deltaTime);
             }
         }
-    }
-    sealed class EntityDestroyer
-    {
-        Entities entities;
-        ComponentStores components;
-
-        readonly List<EntityHandle> pendingDestroyRequests = new();
-
-        public EntityDestroyer(Entities entities, ComponentStores components)
+        public void PostPhysicsTick(ulong tick, float deltaTime)
         {
-            this.entities = entities;
-            this.components = components;
-        }
-
-        public void DestroyRequest(EntityHandle entity)
-        {
-            pendingDestroyRequests.Add(entity);
-            entities.MarkForDestroy(entity);
-        }
-        public void CommitDestroyRequests()
-        {
-            for (int i = 0; i < pendingDestroyRequests.Count; i++)
+            for (int i = 0; i < postPhysicsTickSystems.Count; i++)
             {
-                EntityHandle entity = pendingDestroyRequests[i];
-                components.RemoveAllComponents(entity.SlotId);
-                entities.CommitDestroy(entity);
+                postPhysicsTickSystems[i].PostPhysicsTick(tick, deltaTime);
             }
-            pendingDestroyRequests.Clear();
         }
     }
 
@@ -93,6 +77,7 @@ namespace SimulationCore.World.Application
         EntityFilters filters;
         EntitySpawner spawner;
         EntityDestroyer destroyer;
+        SystemTicker systemTicker;
 
         public EcsWorld(int entityCapacity, ICommandHandleRegistryPort registryPort)
         {
@@ -101,9 +86,12 @@ namespace SimulationCore.World.Application
             entities = new Entities(entityCapacity);
             components = new ComponentStores();
             systems = new Systems();
+
             filters = new EntityFilters(entities, components);
             spawner = new EntitySpawner(new EntityFactory(entities, components));
             destroyer = new EntityDestroyer(entities, components);
+
+            systemTicker = new SystemTicker();
         }
 
         public void RegisterComponent<TComponent>() where TComponent : IComponent
@@ -121,6 +109,7 @@ namespace SimulationCore.World.Application
             }
 
             systems.Add(system);
+            systemTicker.RegisterSystem(system);
         }
         public void InitializeSystems()
         {
@@ -168,12 +157,12 @@ namespace SimulationCore.World.Application
 
         void ISimulationWorld.PrePhysicsTick(ulong tick, float delta)
         {
-            // throw new NotImplementedException();
+            systemTicker.PrePhysicsTick(tick, delta);
         }
 
         void ISimulationWorld.PostPhysicsTick(ulong tick, float delta)
         {
-            // throw new NotImplementedException();
+            systemTicker.PostPhysicsTick(tick, delta);
         }
         void ISimulationWorld.CommitStructuralChanges()
         {

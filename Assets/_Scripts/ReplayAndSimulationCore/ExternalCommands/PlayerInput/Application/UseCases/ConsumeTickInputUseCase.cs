@@ -21,6 +21,9 @@ namespace SimulationCore.ExternalCommands.PlayerInput.Application
 
         internal void Execute(ulong tick)
         {
+            if (!inputStats.isInitialized)
+                throw new InvalidOperationException("InputStats has not been initialized. Call Initialize() before producing input commands.");
+
             UpdateInputStats(tick);
             ProduceInputCommand(tick);
         }
@@ -41,9 +44,6 @@ namespace SimulationCore.ExternalCommands.PlayerInput.Application
         }
         void ProduceInputCommand(ulong tick)
         {
-            if (inputStats.snapshot == null)
-                throw new System.ArgumentNullException(nameof(inputStats.snapshot));
-
             for (int i = 0; i < rulePort.RuleCount; i++)
             {
                 IInputCommandRule rule = rulePort.GetCommandRule(i);
