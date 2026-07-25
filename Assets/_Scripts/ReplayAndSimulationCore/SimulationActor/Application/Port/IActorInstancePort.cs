@@ -1,10 +1,19 @@
+using SimulationCore.SimulationActor.Application.Dto;
 using SimulationCore.SimulationActor.Contract;
-using UnityEngine;
+using SimulationCore.World.Contract;
 
 namespace SimulationCore.SimulationActor.Application.Port
 {
-    public interface IActorInstancePort
+    public interface IActorBindingPort
     {
-        T[] CreateActorInstances<T>(int poolId, int capacity) where T : IActor;
+        void CreateActorInstances<T>(int archetypeId, int capacity) where T : IActor;
+        ActorHandle ActiveAndBindActor(EntityHandle entity, int archetypeId, int slotId);
+
+        int ActiveActorCount { get; }
+        ActorBinding GetBinding(int slotId);
+
+        bool HasBinding(EntityHandle entity);
+        void Unbind(ActorBinding binding);
+
     }
 }

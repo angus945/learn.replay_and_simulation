@@ -25,6 +25,8 @@ using SimulationCore.World.API;
 using SimulationCore.SimulationActor;
 using SimulationCore.SimulationActor.Application.Port;
 using SimulationCore.SimulationActor.Infrastructure;
+using SimulationCore.SimulationActor.Contract;
+using SimulationCore.SimulationActor.Application;
 
 // Example of a simple player
 #region PlayerInputs
@@ -73,12 +75,11 @@ public struct SpawnPlayerArguments : IEntityArguments
 }
 public sealed class SpawnPlayerRecipe : IEntityRecipe<SpawnPlayerArguments>
 {
-    public void Build(IEntityBuildContext context, EntityHandle entity, in SpawnPlayerArguments arguments)
+    public void Build(IEntityBuildContext context, in SpawnPlayerArguments arguments)
     {
-        // context.AddComponent(entity, new TransformState { Position = arguments.Position });
-        // context.AddComponent(entity, new PhysicsState { Velocity = arguments.Velocity });
-        // context.AddComponent(entity, new SceneActorDefinition { ArchetypeId = 0 });
-        context.AddComponent(entity, new PlayerTag());
+        context.AddComponent(new PlayerTag());
+        context.AddComponent(new ActorArchetypeComponent(0));
+        context.AddComponent(new ActorTransformState(arguments.Position, FloatQuaternion.Identity));
     }
 }
 
@@ -94,7 +95,7 @@ public class PlayerSystem : ISystem
         movement = new PlayerMoveCommandHandler();
     }
 
-    public void Initialize(IEcsWorld world, ICommandHandleRegisterPort commandSubscriber)
+    public void Initialize(IEcsWorld world, ICommandHandleRegistryPort commandRegistry)
     {
         this.world = world;
         // filter = world.CreateFilter()
@@ -103,7 +104,7 @@ public class PlayerSystem : ISystem
         //     .With<PhysicsState>()
         //     .Build();
 
-        commandSubscriber.Register<PlayerMoveCommand>(movement);
+        commandRegistry.Register<PlayerMoveCommand>(movement);
     }
 
     public void PrePhysicsTick(ulong tick, float deltaTime)
@@ -356,31 +357,40 @@ public class TestCompositionRoot : MonoBehaviour
         // SimulationExternalCommands
         RegisterableExternalCommand registerableCommands = new RegisterableExternalCommand();
         ICommandEnqueuePort commandPort = new CommandEnqueuePort(commandContext, logger);
-        IRuleRegistrationPort registrationPort = new RuleRegistration();
         IButtonRegistrationPort buttonPort = new ButtonRegistration();
         IAxisRegistrationPort axisPort = new AxisRegistration();
+        IRuleRegistrationPort registrationPort = new RuleRegistration();
         playerInput = new PlayerInputCommands(commandPort, buttonPort, axisPort, registrationPort);
         playerInput.RegisterAxisStatePuller<MoveHorizontal>(new UnityAxisStatePuller("Horizontal"));
         playerInput.RegisterAxisStatePuller<MoveVertical>(new UnityAxisStatePuller("Vertical"));
         playerInput.RegisterInputCommand<PlayerMoveCommand>(new AcquirePlayerMoveCommand());
-        playerInput.Initialize();
         registerableCommands.RegisterExternalCommandProvider(playerInput);
         // TODO: Register UI, Debug, and other external commands here
 
         // SimulationWorld
-        ICommandHandleRegisterPort commandSubscriberPort = new CommandSubscriberPort(commandContext);
+        ICommandHandleRegistryPort commandSubscriberPort = new CommandSubscriberPort(commandContext);
         EcsWorld world = new EcsWorld(100, commandSubscriberPort);
         world.RegisterComponent<PlayerTag>();
         world.RegisterSystem(new PlayerSystem());
 
-        UnityActorInstancePort unityInstancePort = new UnityActorInstancePort();
+        // SimulationActors
+        UnityActorInstancePort unityInstancePort = new UnityActorInstancePort(transform);
         unityInstancePort.RegisterPrefab<Player>(0, playerPrefab);
-        SimulationActors simulationActors = new SimulationActors(unityInstancePort);
+        EntityPort entityPort = new EntityPort(world);
+        SimulationActors simulationActors = new SimulationActors(entityPort, unityInstancePort);
+        simulationActors.RegisterActorPool<Player>(0, 10);
+        world.RegisterComponent<ActorArchetypeComponent>();
+        world.RegisterComponent<ActorTransformState>();
+
+        // Initialize Systems
+        playerInput.Initialize();
+        world.InitializeSystems();
+
 
         ISimulationCommandSystem commandSystem = commandServices;
         ISimulationExternalCommands externalCommands = registerableCommands;
         ISimulationWorld simulationWorld = world;
-        ISimulationActor simulationActor = simulationActors;
+        ISimulationActor simulationActor = new NullSimulationActor();
         ISimulationPhysics simulationPhysics = new NullSimulationPhysics();
         ISimulationPresentation simulationPresentation = new NullSimulationPresentation();
         runner = new SimulationRunner(
@@ -393,14 +403,9 @@ public class TestCompositionRoot : MonoBehaviour
             1 / 60f,
             logger);
 
-
-        // // Entity component system setup
-
-
-
         // // Test spawning a player entity
-        // world.SpawnRequest(new SpawnPlayerRecipe(), new SpawnPlayerArguments(new Float3(0f, 0f, 0f), new Float3(1f, 0f, 0f)));
-        // world.CommitStructuralChanges();
+        IEcsWorld ecsWorld = world;
+        ecsWorld.SpawnRequest(new SpawnPlayerRecipe(), new SpawnPlayerArguments(new Float3(0f, 0f, 0f), new Float3(1f, 0f, 0f)));
 
         // UnityPhysicsRuntime physicsRuntime = new UnityPhysicsRuntime();
 

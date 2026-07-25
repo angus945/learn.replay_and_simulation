@@ -2,28 +2,25 @@ namespace SimulationCore.World.Contract
 {
     public readonly struct EntityHandle
     {
-        public readonly int Id;
-        public readonly uint Generation;
-        public readonly ulong SpawnSequence;
+        public readonly int SlotId;
+        public readonly ulong SequenceId;
 
-        public EntityHandle(int id, uint generation, ulong spawnSequence)
+        public EntityHandle(int id, ulong spawnSequence)
         {
-            Id = id;
-            Generation = generation;
-            SpawnSequence = spawnSequence;
+            SlotId = id;
+            SequenceId = spawnSequence;
         }
 
         public override string ToString()
         {
-            return $"{Id}:{Generation}:{SpawnSequence}";
+            return $"{SlotId}:{SequenceId}";
         }
 
         public override bool Equals(object obj)
         {
             return obj is EntityHandle handle &&
-                   Id == handle.Id &&
-                   Generation == handle.Generation &&
-                   SpawnSequence == handle.SpawnSequence;
+                   SlotId == handle.SlotId &&
+                   SequenceId == handle.SequenceId;
         }
 
         public override int GetHashCode()
@@ -31,13 +28,11 @@ namespace SimulationCore.World.Contract
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + Id;
-                hash = hash * 31 + Generation.GetHashCode();
-                hash = hash * 31 + SpawnSequence.GetHashCode();
+                hash = hash * 31 + SlotId;
+                hash = hash * 31 + SequenceId.GetHashCode();
                 return hash;
             }
         }
-
         public static bool operator ==(EntityHandle left, EntityHandle right)
         {
             return left.Equals(right);

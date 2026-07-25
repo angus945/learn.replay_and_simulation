@@ -11,12 +11,13 @@ namespace SimulationCore.Contracts
     public interface ISimulationWorld
     {
         void PrePhysicsTick(ulong tick, float delta);
+        void PostPhysicsTick(ulong tick, float delta);
         void CommitStructuralChanges();
     }
 
     public interface ISimulationActor
     {
-        // void ReconcileBeforePhysics();
+        void ReconcileBeforePhysics();
         // void ApplyPrePhysicsState();
         void ReconcileAfterStructuralCommit();
     }

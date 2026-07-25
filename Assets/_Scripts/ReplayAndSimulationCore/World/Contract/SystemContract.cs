@@ -6,7 +6,7 @@ namespace SimulationCore.World.Contract
 {
     public interface ISystem
     {
-        void Initialize(IEcsWorld world, ICommandHandleRegisterPort commandSubscriber);
+        void Initialize(IEcsWorld world, ICommandHandleRegistryPort commandSubscriber);
     }
     public interface ISystemPrePhysicsTick
     {

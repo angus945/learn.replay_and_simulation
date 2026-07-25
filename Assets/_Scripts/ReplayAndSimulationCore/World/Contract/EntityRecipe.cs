@@ -6,11 +6,11 @@ namespace SimulationCore.World.Contract
 
     public interface IEntityBuildContext
     {
-        void AddComponent<T>(EntityHandle entity, T component) where T : IComponent;
+        void AddComponent<T>(T component) where T : IComponent;
     }
 
     public interface IEntityRecipe<TArguments>
     {
-        void Build(IEntityBuildContext context, EntityHandle entity, in TArguments arguments);
+        void Build(IEntityBuildContext context, in TArguments arguments);
     }
 }

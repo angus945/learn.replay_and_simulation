@@ -6,30 +6,26 @@ namespace SimulationCore.SimulationActor.Domain
 {
     internal sealed class ActorPools
     {
-        private readonly Dictionary<int, IActorPool> pools = new();
+        private readonly Dictionary<int, ActorPool> pools = new();
         private readonly Dictionary<int, Type> poolTypes = new();
 
-        public void AddPool<T>(IActorPool pool) where T : IActor
+        public void AddPool<T>(int poolId, int capacity) where T : class, IActor
         {
-            if (pool == null)
-                throw new ArgumentNullException(nameof(pool));
+            if (pools.ContainsKey(poolId))
+                throw new InvalidOperationException($"Pool {poolId} is already registered.");
 
-            if (pools.ContainsKey(pool.PoolId))
-                throw new InvalidOperationException($"Pool {pool.PoolId} is already registered.");
+            ActorPool pool = new ActorPool(poolId, capacity);
 
             pools.Add(pool.PoolId, pool);
             poolTypes.Add(pool.PoolId, typeof(T));
         }
 
-        public T GetPool<T>(int poolId) where T : IActorPool
+        public ActorAcquireResult Acquire(int poolId)
         {
-            if (!pools.TryGetValue(poolId, out IActorPool pool))
-            {
-                throw new InvalidOperationException(
-                    $"Pool {poolId} is not registered.");
-            }
+            if (!pools.TryGetValue(poolId, out ActorPool pool))
+                throw new InvalidOperationException($"Pool {poolId} is not registered.");
 
-            return (T)pool;
+            return pool.Acquire();
         }
 
         public int[] GetSortedPoolIds()
@@ -39,6 +35,14 @@ namespace SimulationCore.SimulationActor.Domain
             Array.Sort(poolIds);
 
             return poolIds;
+        }
+
+        public void Release(int archetypeId, int slotId)
+        {
+            if (!pools.TryGetValue(archetypeId, out ActorPool pool))
+                throw new InvalidOperationException($"Pool {archetypeId} is not registered.");
+
+            pool.Release(slotId);
         }
     }
 }

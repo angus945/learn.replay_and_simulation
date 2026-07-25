@@ -63,7 +63,7 @@ namespace SimulationCore
             commandSystem.DispatchCommands();
 
             // 3. Pre-Physics Actor Reconciliation
-            // actor.ReconcileBeforePhysics();
+            actor.ReconcileBeforePhysics();
             physics.ApplyPrePhysicsState();
 
             // 4. Physics Simulation

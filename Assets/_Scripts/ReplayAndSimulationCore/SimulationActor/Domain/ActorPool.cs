@@ -4,46 +4,55 @@ using SimulationCore.SimulationActor.Contract;
 
 namespace SimulationCore.SimulationActor.Domain
 {
-    public interface IActorPool
+    public struct ActorAcquireResult
     {
-        int PoolId { get; }
-        Type ActorType { get; }
-        int Capacity { get; }
+        public bool HasActor { get; }
+        public int SlotId { get; }
+        public uint Generation { get; }
 
-        void Release(int slotId);
+        public ActorAcquireResult(bool hasActor, int slotId, uint generation)
+        {
+            HasActor = hasActor;
+            SlotId = slotId;
+            Generation = generation;
+        }
     }
-    public sealed class ActorPool<T> : IActorPool where T : class, IActor
+    public sealed class ActorPool
     {
-        private readonly T[] actors;
         private readonly ActorSlotState[] states;
         private readonly uint[] generations;
         private readonly SortedSet<int> freeActorIds;
 
         public int PoolId { get; }
-        public Type ActorType => typeof(T);
-        public int Capacity => actors.Length;
+        public int Capacity => states.Length;
 
-        public ActorPool(int poolId, T[] actors)
+        public ActorPool(int poolId, int capacity)
         {
+            if (capacity < 0)
+                throw new ArgumentOutOfRangeException(nameof(capacity));
+
             PoolId = poolId;
 
-            this.actors = actors;
-
-            states = new ActorSlotState[actors.Length];
-            generations = new uint[actors.Length];
+            states = new ActorSlotState[capacity];
+            generations = new uint[capacity];
             freeActorIds = new SortedSet<int>();
+
+            for (int i = 0; i < capacity; i++)
+            {
+                freeActorIds.Add(i);
+            }
         }
 
-        public T Active()
+        public ActorAcquireResult Acquire()
         {
             if (freeActorIds.Count == 0)
             {
-                throw new InvalidOperationException("No free actors available.");
+                return new ActorAcquireResult(false, -1, 0);
             }
 
-            return ActiveAt(freeActorIds.Min);
+            return AcquireAt(freeActorIds.Min);
         }
-        public T ActiveAt(int slotId)
+        public ActorAcquireResult AcquireAt(int slotId)
         {
             if (states[slotId] != ActorSlotState.Free)
             {
@@ -56,9 +65,10 @@ namespace SimulationCore.SimulationActor.Domain
             generations[slotId]++;
             states[slotId] = ActorSlotState.Active;
 
-            T actor = actors[slotId];
-
-            return actor;
+            return new ActorAcquireResult(
+                hasActor: true,
+                slotId: slotId,
+                generation: generations[slotId]);
         }
 
         public void Release(int slotId)
@@ -71,5 +81,8 @@ namespace SimulationCore.SimulationActor.Domain
             states[slotId] = ActorSlotState.Free;
             freeActorIds.Add(slotId);
         }
+
+
+
     }
 }

@@ -6,134 +6,114 @@ using SimulationCore.World.Domain;
 
 namespace SimulationCore.World.Application
 {
-    public sealed class EntityFilter : IFilterBuilder, IEntityFilter
+    public class EntityFilters
     {
-        private readonly EntityRegistry entities;
-        private readonly ComponentStores components;
-        private readonly Action<EntityFilter> registerBuiltFilter;
-        private readonly List<Type> requiredComponentTypes = new();
-        private readonly List<Type> excludedComponentTypes = new();
-        private readonly List<EntityHandle> matchingEntities;
+        Entities entities;
+        ComponentStores components;
 
-        private bool isBuilt;
+        public int Count => filters.Count;
+        private readonly List<EntityFilter> filters = new();
 
-        internal EntityFilter(EntityRegistry entities, ComponentStores components, Action<EntityFilter> registerBuiltFilter)
+        public EntityFilters(Entities entities, ComponentStores components)
         {
-            this.entities = entities ??
-                throw new ArgumentNullException(nameof(entities));
-            this.components = components ??
-                throw new ArgumentNullException(nameof(components));
-            this.registerBuiltFilter = registerBuiltFilter ??
-                throw new ArgumentNullException(nameof(registerBuiltFilter));
-            matchingEntities = new List<EntityHandle>(this.entities.Capacity);
+            this.entities = entities;
+            this.components = components;
+        }
+        public IFilterBuilder CreateFilter()
+        {
+            return new EntityFilterBuilder(entities, components, RegisterBuiltFilter);
+        }
+        private void RegisterBuiltFilter(EntityFilter filter)
+        {
+            if (filter == null)
+                throw new ArgumentNullException(nameof(filter));
+
+            if (filters.Contains(filter))
+            {
+                throw new InvalidOperationException("Filter is already registered.");
+            }
+
+            filters.Add(filter);
         }
 
-        public int EntityCount
+        internal void RefreshFilters()
         {
-            get
+            for (int i = 0; i < filters.Count; i++)
             {
-                EnsureBuilt();
-                return matchingEntities.Count;
+                filters[i].RebuildMatches();
             }
         }
+    }
+    public sealed class EntityFilter : IEntityFilter
+    {
+        private readonly Entities entities;
+        private readonly ComponentStores components;
+        private readonly IReadOnlyList<Type> requiredComponentTypes;
+        private readonly IReadOnlyList<Type> excludedComponentTypes;
+        private readonly List<Entity> matchingEntities;
 
-        public IFilterBuilder With<T>() where T : IComponent
+        public EntityFilter(Entities entities, ComponentStores components, IReadOnlyList<Type> requiredComponentTypes, IReadOnlyList<Type> excludedComponentTypes)
         {
-            EnsureNotBuilt();
-            AddUnique(requiredComponentTypes, typeof(T));
-            return this;
+            this.entities = entities ?? throw new ArgumentNullException(nameof(entities));
+            this.components = components ?? throw new ArgumentNullException(nameof(components));
+
+            this.requiredComponentTypes = requiredComponentTypes;
+            this.excludedComponentTypes = excludedComponentTypes;
+
+            matchingEntities = new List<Entity>();
         }
 
-        public IFilterBuilder Without<T>() where T : IComponent
+        public int EntityCount => matchingEntities.Count;
+        public bool Contains(EntityHandle entityHandle)
         {
-            EnsureNotBuilt();
-            AddUnique(excludedComponentTypes, typeof(T));
-            return this;
-        }
+            if (!entities.IsAlive(entityHandle.SlotId, entityHandle.SequenceId))
+                return false;
 
-        public IEntityFilter Build()
-        {
-            EnsureNotBuilt();
-            RebuildMatches();
-            isBuilt = true;
-            registerBuiltFilter(this);
-            return this;
+            Entity entity = entities.GetEntity(entityHandle.SlotId, entityHandle.SequenceId);
+            return Matches(entity);
         }
 
         public EntityHandle GetEntity(int index)
         {
-            EnsureBuilt();
-
             if ((uint)index >= (uint)matchingEntities.Count)
                 throw new ArgumentOutOfRangeException(nameof(index));
 
-            return matchingEntities[index];
+            Entity entity = matchingEntities[index];
+            return new EntityHandle(entity.SlotId, entity.SequenceId);
         }
 
-        public bool Contains(EntityHandle entity)
-        {
-            EnsureBuilt();
-
-            for (int i = 0; i < matchingEntities.Count; i++)
-            {
-                if (matchingEntities[i] == entity)
-                    return true;
-            }
-
-            return false;
-        }
-
-        internal void Refresh()
-        {
-            EnsureBuilt();
-            RebuildMatches();
-        }
-
-        private void RebuildMatches()
+        public void RebuildMatches()
         {
             matchingEntities.Clear();
 
             for (int i = 0; i < entities.AliveEntityCount; i++)
             {
-                EntityHandle entity = entities.GetAliveEntityBySpawnSequenceIndex(i);
+                Entity entity = entities.GetAliveEntityBySpawnSequence(i);
                 if (Matches(entity))
                     matchingEntities.Add(entity);
             }
         }
-
-        private bool Matches(EntityHandle entity)
+        bool Matches(Entity entity)
         {
             for (int i = 0; i < requiredComponentTypes.Count; i++)
             {
-                if (!components.Contains(entity, requiredComponentTypes[i]))
+                Type requiredType = requiredComponentTypes[i];
+                if (!components.Contains(entity.SlotId, requiredType))
+                {
                     return false;
+                }
             }
 
             for (int i = 0; i < excludedComponentTypes.Count; i++)
             {
-                if (components.Contains(entity, excludedComponentTypes[i]))
+                Type excludedType = excludedComponentTypes[i];
+                if (components.Contains(entity.SlotId, excludedType))
+                {
                     return false;
+                }
             }
 
             return true;
-        }
-
-        private void EnsureBuilt()
-        {
-            if (!isBuilt)
-                throw new InvalidOperationException("Entity filter has not been built.");
-        }
-
-        private void EnsureNotBuilt()
-        {
-            if (isBuilt)
-                throw new InvalidOperationException("Entity filter has already been built.");
-        }
-
-        private static void AddUnique(List<Type> componentTypes, Type componentType)
-        {
-            if (!componentTypes.Contains(componentType))
-                componentTypes.Add(componentType);
         }
     }
 }

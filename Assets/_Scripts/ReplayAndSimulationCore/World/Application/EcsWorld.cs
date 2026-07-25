@@ -1,97 +1,116 @@
 using System;
 using System.Collections.Generic;
-using SimulationCore.CommandSystem.API;
 using SimulationCore.Contracts;
 using SimulationCore.World.API;
 using SimulationCore.World.Application;
 using SimulationCore.World.Contract;
 using SimulationCore.World.Domain;
 
-namespace SimulationCore.World.Infrastructure
-{
-    public sealed class CommandSubscriberPort : ICommandHandleRegisterPort
-    {
-        private readonly ICommandContext commandContext;
-
-        public CommandSubscriberPort(ICommandContext commandContext)
-        {
-            this.commandContext = commandContext ?? throw new ArgumentNullException(nameof(commandContext));
-        }
-        public void Register<TCommand>(ICommandHandler<TCommand> handler) where TCommand : ICommand
-        {
-            commandContext.RegisterCommandHandler(handler);
-        }
-    }
-}
 namespace SimulationCore.World.Application
 {
-    public interface ICommandHandleRegisterPort
+    sealed class EntitySpawner
     {
-        void Register<TCommand>(ICommandHandler<TCommand> handler) where TCommand : ICommand;
-    }
-    public interface ISystemPort
-    {
+        private EntityFactory entityFactory;
 
-    }
-    public interface IComponentsPort
-    {
+        private readonly List<ISpawnRequest> pendingSpawnRequests = new();
 
-    }
-    public interface IEntityPort
-    {
+        public EntitySpawner(EntityFactory entityFactory)
+        {
+            this.entityFactory = entityFactory ?? throw new ArgumentNullException(nameof(entityFactory));
+        }
+        internal void SpawnRequest<TArgs>(IEntityRecipe<TArgs> spawnPlayerRecipe, TArgs spawnPlayerArguments) where TArgs : IEntityArguments
+        {
+            pendingSpawnRequests.Add(new PendingSpawnRequest<TArgs>(spawnPlayerRecipe, spawnPlayerArguments));
+        }
+        public void CommitSpawnRequests()
+        {
+            for (int i = 0; i < pendingSpawnRequests.Count; i++)
+            {
+                pendingSpawnRequests[i].Commit(entityFactory);
+            }
+            pendingSpawnRequests.Clear();
+        }
 
+        private interface ISpawnRequest
+        {
+            EntityHandle Commit(EntityFactory factory);
+        }
+        private sealed class PendingSpawnRequest<TArguments> : ISpawnRequest
+        {
+            private readonly IEntityRecipe<TArguments> recipe;
+            private readonly TArguments arguments;
+
+            public PendingSpawnRequest(IEntityRecipe<TArguments> recipe, in TArguments arguments)
+            {
+                this.recipe = recipe ?? throw new ArgumentNullException(nameof(recipe));
+                this.arguments = arguments;
+            }
+
+            public EntityHandle Commit(EntityFactory factory)
+            {
+                return factory.Spawn(recipe, in arguments);
+            }
+        }
     }
-}
-namespace SimulationCore.World.Application
-{
+    sealed class EntityDestroyer
+    {
+        Entities entities;
+        ComponentStores components;
+
+        readonly List<EntityHandle> pendingDestroyRequests = new();
+
+        public EntityDestroyer(Entities entities, ComponentStores components)
+        {
+            this.entities = entities;
+            this.components = components;
+        }
+
+        public void DestroyRequest(EntityHandle entity)
+        {
+            pendingDestroyRequests.Add(entity);
+            entities.MarkForDestroy(entity);
+        }
+        public void CommitDestroyRequests()
+        {
+            for (int i = 0; i < pendingDestroyRequests.Count; i++)
+            {
+                EntityHandle entity = pendingDestroyRequests[i];
+                components.RemoveAllComponents(entity.SlotId);
+                entities.CommitDestroy(entity);
+            }
+            pendingDestroyRequests.Clear();
+        }
+    }
+
     public sealed class EcsWorld : IEcsWorld, ISimulationWorld
     {
-        ICommandHandleRegisterPort commandSubscriber;
+        ICommandHandleRegistryPort registryPort;
 
-        private readonly List<ISystem> systems = new();
-        private readonly List<EntityFilter> filters = new();
-        // private readonly List<ISpawnRequest> pendingSpawnRequests = new();
-        private readonly List<EntityHandle> pendingDestroyRequests = new();
-        private readonly EntityRegistry entities;
-        private readonly ComponentStores components;
-        private readonly EntityFactory entityFactory;
+        Entities entities;
+        ComponentStores components;
+        Systems systems;
 
-        public EcsWorld(int entityCapacity, ICommandHandleRegisterPort commandSubscriber)
+        EntityFilters filters;
+        EntitySpawner spawner;
+        EntityDestroyer destroyer;
+
+        public EcsWorld(int entityCapacity, ICommandHandleRegistryPort registryPort)
         {
-            commandSubscriber = commandSubscriber ?? throw new ArgumentNullException(nameof(commandSubscriber));
+            this.registryPort = registryPort ?? throw new ArgumentNullException(nameof(registryPort));
 
-            entities = new EntityRegistry(entityCapacity);
-            components = new ComponentStores(entities);
-            entityFactory = new EntityFactory(entities, components);
+            entities = new Entities(entityCapacity);
+            components = new ComponentStores();
+            systems = new Systems();
+            filters = new EntityFilters(entities, components);
+            spawner = new EntitySpawner(new EntityFactory(entities, components));
+            destroyer = new EntityDestroyer(entities, components);
         }
 
-        public void CommitStructuralChanges()
+        public void RegisterComponent<TComponent>() where TComponent : IComponent
         {
-            throw new NotImplementedException();
+            components.RegisterStore<TComponent>();
         }
-
-        public IFilterBuilder CreateFilter()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Destroy(EntityHandle entity)
-        {
-            throw new NotImplementedException();
-        }
-
-
-        public void PrePhysicsTick(ulong tick, float delta)
-        {
-            throw new NotImplementedException();
-        }
-
-
-        public void RegisterComponent<T>() where T : IComponent
-        {
-            components.RegisterStore<T>();
-        }
-        public void RegisterSystem(ISystem system)
+        public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
         {
             if (system == null)
                 throw new ArgumentNullException(nameof(system));
@@ -101,197 +120,66 @@ namespace SimulationCore.World.Application
                 throw new InvalidOperationException($"{system.GetType().Name} is already registered.");
             }
 
-            system.Initialize(this, commandSubscriber);
             systems.Add(system);
         }
-
-        public void SetComponent<T>(EntityHandle entity, T component) where T : IComponent
+        public void InitializeSystems()
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < systems.Count; i++)
+            {
+                systems.GetSystem(i).Initialize(this, registryPort);
+            }
         }
 
-        public void SpawnRequest<TArguments>(IEntityRecipe<TArguments> recipe, in TArguments arguments)
+        IFilterBuilder IEcsWorld.CreateFilter()
         {
-            throw new NotImplementedException();
+            return filters.CreateFilter();
         }
 
-        public bool TryGetComponent<T>(EntityHandle entity, out T component) where T : IComponent
+        void IEcsWorld.SpawnRequest<TArgs>(IEntityRecipe<TArgs> recipe, TArgs arguments)
         {
-            throw new NotImplementedException();
+            spawner.SpawnRequest(recipe, arguments);
+        }
+
+        void IEcsWorld.DestroyRequest(EntityHandle entity)
+        {
+            destroyer.DestroyRequest(entity);
+        }
+
+        bool IEcsWorld.TryGetComponent<T>(EntityHandle entity, out T component)
+        {
+            if (!entities.IsAlive(entity.SlotId, entity.SequenceId))
+            {
+                component = default;
+                return false;
+            }
+
+            return components.TryGetComponent(entity.SlotId, out component);
+        }
+        void IEcsWorld.SetComponent<T>(EntityHandle entity, T component)
+        {
+            if (!entities.IsAlive(entity.SlotId, entity.SequenceId))
+            {
+                throw new InvalidOperationException($"Entity {entity} is not alive.");
+            }
+
+            components.SetComponent(entity.SlotId, component);
         }
 
 
-        // public IFilterBuilder CreateFilter()
-        // {
-        //     return new EntityFilter(entities, components, RegisterBuiltFilter);
-        // }
+        void ISimulationWorld.PrePhysicsTick(ulong tick, float delta)
+        {
+            // throw new NotImplementedException();
+        }
 
-        // public void SpawnRequest<TArguments>(IEntityRecipe<TArguments> recipe, in TArguments arguments)
-        // {
-        //     pendingSpawnRequests.Add(new PendingSpawnRequest<TArguments>(recipe, in arguments));
-        // }
-
-        // public void Destroy(EntityHandle entity)
-        // {
-        //     entities.MarkDestroy(entity);
-        //     pendingDestroyRequests.Add(entity);
-        //     RefreshFilters();
-        // }
-
-
-        // public void PrePhysicsTick(ulong tick, float deltaTime)
-        // {
-        //     for (int i = 0; i < systems.Count; i++)
-        //     {
-        //         systems[i].PrePhysicsTick(tick, deltaTime);
-        //     }
-        // }
-
-        // public void PostPhysicsTick(ulong tick, float deltaTime)
-        // {
-        //     for (int i = 0; i < systems.Count; i++)
-        //     {
-        //         systems[i].PostPhysicsTick(tick, deltaTime);
-        //     }
-        // }
-
-        // public void CommitStructuralChanges()
-        // {
-        //     if (pendingDestroyRequests.Count == 0 && pendingSpawnRequests.Count == 0)
-        //     {
-        //         return;
-        //     }
-
-        //     for (int i = 0; i < pendingDestroyRequests.Count; i++)
-        //     {
-        //         EntityHandle entity = pendingDestroyRequests[i];
-        //         components.RemoveAllComponents(entity);
-        //         entities.CommitDestroy(entity);
-        //     }
-
-        //     pendingDestroyRequests.Clear();
-
-        //     for (int i = 0; i < pendingSpawnRequests.Count; i++)
-        //     {
-        //         EntityHandle entity = pendingSpawnRequests[i].Commit(entityFactory);
-        //     }
-
-        //     pendingSpawnRequests.Clear();
-        //     RefreshFilters();
-        // }
-
-        // public void AddComponent<T>(EntityHandle entity, T component) where T : IComponent
-        // {
-        //     EnsureAlive(entity);
-        //     components.AddComponent(entity, component);
-        //     RefreshFilters();
-        // }
-
-        // public bool HasComponent<T>(EntityHandle entity) where T : IComponent
-        // {
-        //     if (!entities.IsAlive(entity))
-        //         return false;
-
-        //     return components.Contains<T>(entity);
-        // }
-
-        // public T GetComponent<T>(EntityHandle entity) where T : IComponent
-        // {
-        //     EnsureAlive(entity);
-        //     return components.Get<T>(entity);
-        // }
-
-        // public bool TryGetComponent<T>(EntityHandle entity, out T component)
-        //     where T : IComponent
-        // {
-        //     if (!entities.IsAlive(entity))
-        //     {
-        //         component = default;
-        //         return false;
-        //     }
-
-        //     return components.TryGet(entity, out component);
-        // }
-
-        // public void SetComponent<T>(EntityHandle entity, T component) where T : IComponent
-        // {
-        //     EnsureAlive(entity);
-        //     components.Set(entity, component);
-        // }
-
-        // public void RemoveComponent<T>(EntityHandle entity) where T : IComponent
-        // {
-        //     EnsureAlive(entity);
-        //     components.Remove<T>(entity);
-        //     RefreshFilters();
-        // }
-
-        // public IEnumerable<ComponentEntry<T>> ReadComponents<T>()
-        //     where T : IComponent
-        // {
-        //     return components.ReadAll<T>();
-        // }
-
-        // public bool TryGetEntityBySpawnSequence(
-        //     ulong spawnSequence,
-        //     out EntityHandle entity)
-        // {
-        //     return entities.TryGetAliveEntityBySpawnSequence(
-        //         spawnSequence,
-        //         out entity);
-        // }
-
-        // public int EntityCountBySpawnSequence => entities.AliveEntityCount;
-
-        // public EntityHandle GetEntityBySpawnSequenceIndex(int index)
-        // {
-        //     return entities.GetAliveEntityBySpawnSequenceIndex(index);
-        // }
-
-        // private void RegisterBuiltFilter(EntityFilter filter)
-        // {
-        //     if (!filters.Contains(filter))
-        //         filters.Add(filter);
-        // }
-
-        // private void RefreshFilters()
-        // {
-        //     for (int i = 0; i < filters.Count; i++)
-        //     {
-        //         filters[i].Refresh();
-        //     }
-        // }
-
-        // private void EnsureAlive(EntityHandle entity)
-        // {
-        //     if (!entities.IsAlive(entity))
-        //         throw new InvalidOperationException("Entity is not alive.");
-        // }
-
-        // private interface ISpawnRequest
-        // {
-        //     EntityHandle Commit(EntityFactory factory);
-        // }
-
-        // private sealed class PendingSpawnRequest<TArguments> : ISpawnRequest
-        // {
-        //     private readonly IEntityRecipe<TArguments> recipe;
-        //     private readonly TArguments arguments;
-
-        //     public PendingSpawnRequest(
-        //         IEntityRecipe<TArguments> recipe,
-        //         in TArguments arguments)
-        //     {
-        //         this.recipe = recipe ??
-        //             throw new ArgumentNullException(nameof(recipe));
-        //         this.arguments = arguments;
-        //     }
-
-        //     public EntityHandle Commit(EntityFactory factory)
-        //     {
-        //         return factory.Spawn(recipe, in arguments);
-        //     }
-        // }
-
+        void ISimulationWorld.PostPhysicsTick(ulong tick, float delta)
+        {
+            // throw new NotImplementedException();
+        }
+        void ISimulationWorld.CommitStructuralChanges()
+        {
+            destroyer.CommitDestroyRequests();
+            spawner.CommitSpawnRequests();
+            filters.RefreshFilters();
+        }
     }
 }

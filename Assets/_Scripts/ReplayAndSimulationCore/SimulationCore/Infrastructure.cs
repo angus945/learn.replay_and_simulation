@@ -23,6 +23,11 @@ namespace SimulationCore.Infrastructure
             // No-op
         }
 
+        public void PostPhysicsTick(ulong tick, float delta)
+        {
+            // No-op
+        }
+
         public void CommitStructuralChanges()
         {
             // No-op

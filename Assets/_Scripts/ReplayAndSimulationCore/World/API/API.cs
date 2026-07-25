@@ -3,15 +3,17 @@ using SimulationCore.World.Contract;
 
 namespace SimulationCore.World.API
 {
+
     public interface IEcsWorld
     {
         IFilterBuilder CreateFilter();
-        void SpawnRequest<TArguments>(IEntityRecipe<TArguments> recipe, in TArguments arguments);
-        void Destroy(EntityHandle entity);
+        void SpawnRequest<TArgs>(IEntityRecipe<TArgs> recipe, TArgs arguments) where TArgs : IEntityArguments;
+        void DestroyRequest(EntityHandle entity);
 
         bool TryGetComponent<T>(EntityHandle entity, out T component) where T : IComponent;
         void SetComponent<T>(EntityHandle entity, T component) where T : IComponent;
     }
+
     public interface IFilterBuilder
     {
         IFilterBuilder With<T>() where T : IComponent;
