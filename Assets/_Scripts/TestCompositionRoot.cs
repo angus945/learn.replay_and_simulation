@@ -174,7 +174,7 @@ public class TestCompositionRoot : MonoBehaviour
 
         // SimulationExternalCommands
         RegisterableExternalCommand registerableCommands = new RegisterableExternalCommand();
-        ICommandEnqueuePort commandPort = new CommandEnqueuePort(commandContext, logger);
+        ICommandPort commandPort = new CommandEnqueuePort(commandContext, logger);
         IButtonRegistrationPort buttonPort = new ButtonRegistration();
         IAxisRegistrationPort axisPort = new AxisRegistration();
         IRuleRegistrationPort registrationPort = new RuleRegistration();

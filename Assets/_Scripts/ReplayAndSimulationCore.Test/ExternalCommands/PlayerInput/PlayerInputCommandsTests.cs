@@ -90,7 +90,7 @@ namespace ReplayAndSimulationCore.Test.ExternalCommands.PlayerInput
             Assert.AreEqual(1, commandPort.Records.Count);
             Assert.AreEqual(42ul, commandPort.Records[0].Metadata.Tick);
             Assert.IsTrue(commandPort.Records[0].Metadata.IsExternal);
-            Assert.AreEqual(CommandType.Input, commandPort.Records[0].Metadata.Type);
+            Assert.AreEqual(CommandSource.Input, commandPort.Records[0].Metadata.Source);
 
             PlayerMovementCommand command =
                 (PlayerMovementCommand)commandPort.Records[0].Command;
@@ -223,13 +223,18 @@ namespace ReplayAndSimulationCore.Test.ExternalCommands.PlayerInput
             return commandPort.ToSignatures();
         }
 
-        private sealed class RecordingCommandPort : ICommandEnqueuePort
+        private sealed class RecordingCommandPort : ICommandPort
         {
             public readonly List<RecordedCommand> Records = new List<RecordedCommand>();
 
-            public void EnqueueCommands(CommandMetadata commandData, ICommand commandQueue)
+            public void EnqueueCommand<T>(CommandMetadata commandData, T command) where T : ICommand
             {
-                Records.Add(new RecordedCommand(commandData, commandQueue));
+                Records.Add(new RecordedCommand(commandData, command));
+            }
+
+            public void EnqueueEvent<T>(CommandMetadata eventData, T @event) where T : IEvent
+            {
+                Records.Add(new RecordedCommand(eventData, @event));
             }
 
             public string[] ToSignatures()
@@ -263,7 +268,7 @@ namespace ReplayAndSimulationCore.Test.ExternalCommands.PlayerInput
                         "|",
                         Metadata.Tick.ToString(CultureInfo.InvariantCulture),
                         Metadata.IsExternal.ToString(),
-                        Metadata.Type.ToString(),
+                        Metadata.Source.ToString(),
                         movement.IsPressed.ToString(),
                         movement.IsDown.ToString(),
                         movement.IsReleased.ToString(),
@@ -274,7 +279,7 @@ namespace ReplayAndSimulationCore.Test.ExternalCommands.PlayerInput
                     "|",
                     Metadata.Tick.ToString(CultureInfo.InvariantCulture),
                     Metadata.IsExternal.ToString(),
-                    Metadata.Type.ToString(),
+                    Metadata.Source.ToString(),
                     Command.GetType().FullName);
             }
         }

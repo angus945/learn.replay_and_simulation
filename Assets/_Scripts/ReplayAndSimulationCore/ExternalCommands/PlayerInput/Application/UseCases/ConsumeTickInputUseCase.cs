@@ -9,10 +9,10 @@ namespace SimulationCore.ExternalCommands.PlayerInput.Application
     internal sealed class ProduceInputCommandUseCase
     {
         readonly InputStats inputStats;
-        readonly ICommandEnqueuePort commandPort;
+        readonly ICommandPort commandPort;
         readonly IRuleRegistrationPort rulePort;
 
-        internal ProduceInputCommandUseCase(InputStats stats, ICommandEnqueuePort commandPort, IRuleRegistrationPort rulePort)
+        internal ProduceInputCommandUseCase(InputStats stats, ICommandPort commandPort, IRuleRegistrationPort rulePort)
         {
             this.inputStats = stats;
             this.commandPort = commandPort;
@@ -49,7 +49,7 @@ namespace SimulationCore.ExternalCommands.PlayerInput.Application
                 IInputCommandRule rule = rulePort.GetCommandRule(i);
                 if (rule.TryProduce(inputStats.snapshot, out ICommand command))
                 {
-                    commandPort.EnqueueCommands(new CommandMetadata(tick, true, CommandType.Input), command);
+                    commandPort.EnqueueCommand(CommandMetadata.External(tick, CommandSource.Input), command);
                 }
             }
         }

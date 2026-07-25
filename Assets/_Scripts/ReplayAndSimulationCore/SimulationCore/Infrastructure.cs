@@ -66,6 +66,11 @@ namespace SimulationCore.Infrastructure
         {
             // No-op
         }
+
+        public void PublishPhysicsEvents()
+        {
+            throw new System.NotImplementedException();
+        }
     }
     public class NullSimulationPresentation : ISimulationPresentation
     {

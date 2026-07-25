@@ -33,19 +33,24 @@ namespace SimulationCore.CommandSystem.Application
             handlerRegistry.RegisterEventHandler(handler);
         }
 
-        public void EnqueueCommand(CommandMetadata data, ICommand commandInstance)
+        public void EnqueueCommand<T>(CommandMetadata data, T commandInstance) where T : ICommand
         {
             if (commandInstance == null)
                 throw new ArgumentNullException(nameof(commandInstance));
 
-            commandBuffer.Add(data, commandInstance);
+            if (typeof(T) == typeof(IEvent))
+            {
+                throw new InvalidOperationException($"Cannot enqueue an event as a command. Use EnqueueEvent instead.");
+            }
+
+            commandBuffer.Add(CommandMetadata.WithType(data, CommandType.Command), commandInstance);
         }
-        public void EnqueueEvent(CommandMetadata data, IEvent eventInstance)
+        public void EnqueueEvent<T>(CommandMetadata data, T eventInstance) where T : IEvent
         {
             if (eventInstance == null)
                 throw new ArgumentNullException(nameof(eventInstance));
 
-            eventBuffer.Add(data, eventInstance);
+            eventBuffer.Add(CommandMetadata.WithType(data, CommandType.Event), eventInstance);
         }
 
         public void DispatchAll()

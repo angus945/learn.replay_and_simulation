@@ -2,8 +2,9 @@ using SimulationCore.Contracts;
 
 namespace SimulationCore.ExternalCommands.Port
 {
-    public interface ICommandEnqueuePort
+    public interface ICommandPort
     {
-        void EnqueueCommands(CommandMetadata commandData, ICommand commandQueue);
+        void EnqueueCommand<T>(CommandMetadata commandData, T command) where T : ICommand;
+        void EnqueueEvent<T>(CommandMetadata eventData, T @event) where T : IEvent;
     }
 }

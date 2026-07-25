@@ -139,7 +139,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Domain
 
         private static CommandMetadata Metadata(ulong tick)
         {
-            return CommandMetadata.Internal(tick, CommandType.Gameplay);
+            return CommandMetadata.Internal(tick, CommandSource.Gameplay);
         }
 
         private static List<string> Labels(IReadOnlyList<ICommand> commands)

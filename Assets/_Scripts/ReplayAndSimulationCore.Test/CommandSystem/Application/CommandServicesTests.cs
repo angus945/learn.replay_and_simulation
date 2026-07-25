@@ -39,7 +39,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             CommandServices services = new();
 
             Assert.Throws<ArgumentNullException>(
-                () => services.EnqueueCommand(Metadata(), null));
+                () => services.EnqueueCommand<ICommand>(Metadata(), null));
         }
 
         [Test]
@@ -231,7 +231,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
 
         private static CommandMetadata Metadata()
         {
-            return CommandMetadata.Internal(42, CommandType.Gameplay);
+            return CommandMetadata.Internal(42, CommandSource.Gameplay);
         }
 
         private sealed class RecordingHandler<TCommand> : ICommandHandler<TCommand>

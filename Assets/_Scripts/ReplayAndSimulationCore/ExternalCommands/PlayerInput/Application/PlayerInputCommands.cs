@@ -16,7 +16,7 @@ namespace SimulationCore.ExternalCommands.PlayerInput.Application
         readonly CaptureRenderInputUseCase captureRenderInputUseCase;
         readonly ProduceInputCommandUseCase produceInputCommandUseCase;
 
-        public PlayerInputCommands(ICommandEnqueuePort commandPort, IButtonRegistrationPort buttonPort, IAxisRegistrationPort axisPort, IRuleRegistrationPort rulePort)
+        public PlayerInputCommands(ICommandPort commandPort, IButtonRegistrationPort buttonPort, IAxisRegistrationPort axisPort, IRuleRegistrationPort rulePort)
         {
             inputStats = new InputStats();
 

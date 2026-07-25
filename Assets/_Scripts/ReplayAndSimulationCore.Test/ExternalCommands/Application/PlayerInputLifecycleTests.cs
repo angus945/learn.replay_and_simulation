@@ -48,10 +48,16 @@ namespace ReplayAndSimulationCore.Test.ExternalCommands.Application
                 new RuleRegistration());
         }
 
-        private sealed class NullCommandPort : ICommandEnqueuePort
+        private sealed class NullCommandPort : ICommandPort
         {
-            public void EnqueueCommands(CommandMetadata commandData, ICommand commandQueue)
+            public void EnqueueCommand<T>(CommandMetadata commandData, T command) where T : ICommand
             {
+
+            }
+
+            public void EnqueueEvent<T>(CommandMetadata eventData, T @event) where T : IEvent
+            {
+
             }
         }
 
