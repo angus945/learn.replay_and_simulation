@@ -25,13 +25,9 @@ namespace SimulationCore.CommandSystem.Domain
     {
         private readonly Stack<CommandEnvelope> pool = new();
 
-        internal CommandEnvelope Get(
-            CommandMetadata data,
-            ICommand commandInstance)
+        internal CommandEnvelope Get(CommandMetadata data, ICommand commandInstance)
         {
-            CommandEnvelope command = pool.Count > 0
-                ? pool.Pop()
-                : new CommandEnvelope();
+            CommandEnvelope command = pool.Count > 0 ? pool.Pop() : new CommandEnvelope();
 
             command.Set(data, commandInstance);
             return command;
@@ -50,7 +46,6 @@ namespace SimulationCore.CommandSystem.Domain
         private List<CommandEnvelope> current = new();
         private List<CommandEnvelope> pending = new();
 
-        internal IReadOnlyList<CommandEnvelope> Current => current;
         internal bool HasPending => pending.Count > 0;
 
         internal void Add(CommandMetadata data, ICommand commandInstance)
@@ -58,10 +53,11 @@ namespace SimulationCore.CommandSystem.Domain
             pending.Add(commandPool.Get(data, commandInstance));
         }
 
-        internal void BeginNextWave()
+        public IReadOnlyList<CommandEnvelope> Begin()
         {
             ReleaseCurrent();
             (current, pending) = (pending, current);
+            return current;
         }
 
         internal void ClearAll()

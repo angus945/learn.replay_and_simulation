@@ -56,11 +56,11 @@ namespace SimulationCore
 
             // 1. Acquire External Commands
             externalCommand.AcquireCommands(tick, TickDeltaTime);
-            commandSystem.DispatchCommands();
+            commandSystem.DispatchAll();
 
             // 2. Pre-Physics Tick
             world.PrePhysicsTick(tick, TickDeltaTime);
-            commandSystem.DispatchCommands();
+            commandSystem.DispatchAll();
 
             // 3. Pre-Physics Actor Reconciliation
             actor.ReconcileBeforePhysics();
@@ -69,11 +69,12 @@ namespace SimulationCore
             // 4. Physics Simulation
             physics.Simulate(TickDeltaTime);
             physics.CapturePostPhysicsState();
-            commandSystem.DispatchCommands();
+            physics.PublishPhysicsEvents();
+            commandSystem.DispatchAll();
 
             // 5. Post-Physics Tick
             world.PrePhysicsTick(tick, TickDeltaTime);
-            commandSystem.DispatchCommands();
+            commandSystem.DispatchAll();
 
             // 6. Commit Structural Changes
             world.CommitStructuralChanges();

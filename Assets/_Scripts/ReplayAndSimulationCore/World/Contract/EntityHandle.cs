@@ -2,6 +2,8 @@ namespace SimulationCore.World.Contract
 {
     public readonly struct EntityHandle
     {
+        public static readonly EntityHandle NotEntity = new EntityHandle(-1, 0);
+
         public readonly int SlotId;
         public readonly ulong SequenceId;
 

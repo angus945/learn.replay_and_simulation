@@ -12,6 +12,7 @@ namespace SimulationCore.CommandSystem.Application
 
         private readonly CommandHandlerRegistry handlerRegistry = new();
         private readonly CommandBuffer commandBuffer = new();
+        private readonly CommandBuffer eventBuffer = new();
 
         public CommandServices(int maxCommandWaves = DefaultMaxCommandWaves)
         {
@@ -25,7 +26,11 @@ namespace SimulationCore.CommandSystem.Application
 
         public void RegisterCommandHandler<TCommand>(ICommandHandler<TCommand> handler) where TCommand : ICommand
         {
-            handlerRegistry.RegisterHandler(handler);
+            handlerRegistry.RegisterCommandHandler(handler);
+        }
+        public void RegisterEventHandler<TEvent>(IEventHandler<TEvent> handler) where TEvent : IEvent
+        {
+            handlerRegistry.RegisterEventHandler(handler);
         }
 
         public void EnqueueCommand(CommandMetadata data, ICommand commandInstance)
@@ -35,8 +40,15 @@ namespace SimulationCore.CommandSystem.Application
 
             commandBuffer.Add(data, commandInstance);
         }
+        public void EnqueueEvent(CommandMetadata data, IEvent eventInstance)
+        {
+            if (eventInstance == null)
+                throw new ArgumentNullException(nameof(eventInstance));
 
-        public void DispatchCommands()
+            eventBuffer.Add(data, eventInstance);
+        }
+
+        public void DispatchAll()
         {
             int waveCount = 0;
 
@@ -50,15 +62,20 @@ namespace SimulationCore.CommandSystem.Application
                             $"Max command dispatch waves reached. Max waves: {MaxCommandWaves}.");
                     }
 
-                    commandBuffer.BeginNextWave();
+                    IReadOnlyList<CommandEnvelope> events = eventBuffer.Begin();
+                    for (int i = 0; i < events.Count; i++)
+                    {
+                        CommandEnvelope @event = events[i];
+                        CommandMetadata eventMeta = CommandMetadata.WithWave(@event.Data, waveCount);
+                        handlerRegistry.DispatchEvent(eventMeta, (IEvent)@event.CommandInstance);
+                    }
 
-                    IReadOnlyList<CommandEnvelope> commands = commandBuffer.Current;
+                    IReadOnlyList<CommandEnvelope> commands = commandBuffer.Begin();
                     for (int i = 0; i < commands.Count; i++)
                     {
                         CommandEnvelope command = commands[i];
-                        handlerRegistry.Dispatch(
-                            command.Data,
-                            command.CommandInstance);
+                        CommandMetadata commandMeta = CommandMetadata.WithWave(command.Data, waveCount);
+                        handlerRegistry.DispatchCommand(commandMeta, command.CommandInstance);
                     }
 
                     waveCount++;

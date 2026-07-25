@@ -4,7 +4,7 @@ namespace SimulationCore.Infrastructure
 {
     public class NullSimulationCommandSystem : ISimulationCommandSystem
     {
-        public void DispatchCommands()
+        public void DispatchAll()
         {
             // No-op
         }

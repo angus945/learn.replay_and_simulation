@@ -49,7 +49,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             int calls = 0;
             services.RegisterCommandHandler(new RecordingHandler<TraceCommand>(_ => calls++));
 
-            services.DispatchCommands();
+            services.DispatchAll();
 
             Assert.AreEqual(0, calls);
         }
@@ -64,7 +64,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
 
             services.EnqueueCommand(Metadata(), new TraceCommand("first"));
             services.EnqueueCommand(Metadata(), new TraceCommand("second"));
-            services.DispatchCommands();
+            services.DispatchAll();
 
             CollectionAssert.AreEqual(new[] { "first", "second" }, trace);
         }
@@ -75,11 +75,11 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             CommandServices services = new();
             services.EnqueueCommand(Metadata(), new UnhandledCommand());
 
-            Assert.Throws<InvalidOperationException>(() => services.DispatchCommands());
+            Assert.Throws<InvalidOperationException>(() => services.DispatchAll());
 
             int calls = 0;
             services.RegisterCommandHandler(new RecordingHandler<UnhandledCommand>(_ => calls++));
-            services.DispatchCommands();
+            services.DispatchAll();
 
             Assert.AreEqual(0, calls);
         }
@@ -105,8 +105,8 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             services.EnqueueCommand(Metadata(), new TraceCommand("first"));
             services.EnqueueCommand(Metadata(), new TraceCommand("second"));
 
-            Assert.Throws<InvalidOperationException>(() => services.DispatchCommands());
-            services.DispatchCommands();
+            Assert.Throws<InvalidOperationException>(() => services.DispatchAll());
+            services.DispatchAll();
 
             CollectionAssert.AreEqual(new[] { "first" }, trace);
         }
@@ -131,7 +131,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
 
             services.EnqueueCommand(Metadata(), new TraceCommand("first"));
             services.EnqueueCommand(Metadata(), new TraceCommand("second"));
-            services.DispatchCommands();
+            services.DispatchAll();
 
             CollectionAssert.AreEqual(
                 new[]
@@ -186,12 +186,12 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             services.EnqueueCommand(Metadata(), new RecursiveCommand(0));
 
             InvalidOperationException exception =
-                Assert.Throws<InvalidOperationException>(() => services.DispatchCommands());
+                Assert.Throws<InvalidOperationException>(() => services.DispatchAll());
 
             StringAssert.Contains("Max command dispatch waves reached", exception.Message);
             Assert.AreEqual(2, calls);
 
-            services.DispatchCommands();
+            services.DispatchAll();
 
             Assert.AreEqual(2, calls);
         }
@@ -224,7 +224,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             services.EnqueueCommand(Metadata(), new TraceCommand("first"));
             services.EnqueueCommand(Metadata(), new TraceCommand("second"));
             services.EnqueueCommand(Metadata(), new TraceCommand("third"));
-            services.DispatchCommands();
+            services.DispatchAll();
 
             return trace;
         }

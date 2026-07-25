@@ -38,14 +38,14 @@ namespace ReplayAndSimulationCore.Test.SimulationActor.Application
         }
 
         [Test]
-        public void RegisterActorPool_CreatesActorInstances()
+        public void RegisterActorPool_InstantiatesActors()
         {
             SimulationActorHarness harness = SimulationActorHarness.Create();
 
             harness.RegisterActorPool("TestActor", archetypeId: 7, capacity: 3);
 
             CollectionAssert.AreEqual(
-                new[] { "create:TestActor:7:3" },
+                new[] { "instantiate:TestActor:7:3" },
                 harness.BindingPort.Trace);
         }
 
@@ -65,7 +65,7 @@ namespace ReplayAndSimulationCore.Test.SimulationActor.Application
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "create:TestActor:7:2",
+                    "instantiate:TestActor:7:2",
                     "bind:10:1:7:0",
                     "bind:20:2:7:1"
                 },
@@ -348,14 +348,14 @@ namespace ReplayAndSimulationCore.Test.SimulationActor.Application
             {
                 switch (method.Name)
                 {
-                    case "CreateActorInstances":
-                        Trace.Add($"create:{method.GetGenericArguments()[0].Name}:{args[0]}:{args[1]}");
+                    case "InstantiateActors":
+                        Trace.Add($"instantiate:{method.GetGenericArguments()[0].Name}:{args[0]}:{args[1]}");
                         return null;
                     case "ActiveAndBindActor":
                         return ActiveAndBindActor(args[0], (int)args[1], (int)args[2]);
                     case "get_ActiveActorCount":
                         return activeBindings.Count;
-                    case "GetBinding":
+                    case "GetActiveBinding":
                         return GetBinding((int)args[0]);
                     case "HasBinding":
                         return HasBinding(args[0]);

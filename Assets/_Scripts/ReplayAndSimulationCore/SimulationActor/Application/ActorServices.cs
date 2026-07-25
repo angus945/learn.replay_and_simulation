@@ -25,7 +25,7 @@ namespace SimulationCore.SimulationActor.Application
         }
         public void RegisterActorPool<T>(int archetypeId, int capacity) where T : class, IActor
         {
-            bindingPort.CreateActorInstances<T>(archetypeId, capacity);
+            bindingPort.InstantiateActors<T>(archetypeId, capacity);
             actorPools.AddPool<T>(archetypeId, capacity);
         }
         public void ReconcileBeforePhysics()
@@ -53,7 +53,7 @@ namespace SimulationCore.SimulationActor.Application
 
             for (int i = 0; i < bindingPort.ActiveActorCount; i++)
             {
-                ActorBinding binding = bindingPort.GetBinding(i);
+                ActorBinding binding = bindingPort.GetActiveBinding(i);
 
                 if (!requiredEntities.Contains(binding.Entity))
                 {

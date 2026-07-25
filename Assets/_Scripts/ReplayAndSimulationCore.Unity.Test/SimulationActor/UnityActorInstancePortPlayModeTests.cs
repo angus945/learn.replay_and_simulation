@@ -29,25 +29,28 @@ namespace ReplayAndSimulationCore.Unity.Test.SimulationActor
         }
 
         [UnityTest]
-        public IEnumerator CreateActorInstances_WhenPrefabIsRegistered_InstantiatesInactiveActorsUnderPoolRoot()
+        public IEnumerator InstantiateActors_WhenPrefabIsRegistered_InstantiatesInactiveActorsUnderPoolRoot()
         {
-            UnityActorInstancePort port = CreatePort("CreateActorInstances", out Transform poolsRoot);
-            UnityActorInstancePortTestActor prefab = CreatePrefab("CreateActorInstances_Prefab");
+            UnityActorInstancePort port = CreatePort("InstantiateActors", out Transform poolsRoot);
+            UnityActorInstancePortTestActor prefab = CreatePrefab("InstantiateActors_Prefab");
 
             port.RegisterPrefab(7, prefab);
-            port.CreateActorInstances<UnityActorInstancePortTestActor>(7, 3);
+            port.InstantiateActors<UnityActorInstancePortTestActor>(7, 3);
 
             yield return null;
 
-            Transform poolRoot = poolsRoot.Find("ActorPool_7");
-            Assert.IsNotNull(poolRoot);
+            Transform poolRoot = GetPoolRoot(poolsRoot, archetypeId: 7, prefab);
+            IReadOnlyList<GameObject> instances = port.GetActorGameObjects(7);
+
+            Assert.AreEqual(3, instances.Count);
             Assert.AreEqual(3, poolRoot.childCount);
             Assert.AreEqual(0, port.ActiveActorCount);
 
-            for (int i = 0; i < poolRoot.childCount; i++)
+            for (int i = 0; i < instances.Count; i++)
             {
-                GameObject instance = poolRoot.GetChild(i).gameObject;
+                GameObject instance = instances[i];
 
+                Assert.AreSame(poolRoot, instance.transform.parent);
                 Assert.IsFalse(instance.activeSelf);
                 Assert.IsNotNull(instance.GetComponent<UnityActorInstancePortTestActor>());
             }
@@ -61,13 +64,14 @@ namespace ReplayAndSimulationCore.Unity.Test.SimulationActor
             EntityHandle entity = new EntityHandle(42, 9);
 
             port.RegisterPrefab(7, prefab);
-            port.CreateActorInstances<UnityActorInstancePortTestActor>(7, 2);
+            port.InstantiateActors<UnityActorInstancePortTestActor>(7, 2);
             ActorHandle actor = port.ActiveAndBindActor(entity, archetypeId: 7, slotId: 1);
 
             yield return null;
 
-            Transform poolRoot = poolsRoot.Find("ActorPool_7");
-            ActorBinding binding = port.GetBinding(1);
+            Transform poolRoot = GetPoolRoot(poolsRoot, archetypeId: 7, prefab);
+            IReadOnlyList<GameObject> instances = port.GetActorGameObjects(7);
+            ActorBinding binding = port.GetActiveBinding(0);
 
             Assert.AreEqual(7, actor.ArchetypeId);
             Assert.AreEqual(1, actor.SlotId);
@@ -76,8 +80,9 @@ namespace ReplayAndSimulationCore.Unity.Test.SimulationActor
             Assert.AreEqual(entity, binding.Entity);
             Assert.AreEqual(actor.ArchetypeId, binding.Actor.ArchetypeId);
             Assert.AreEqual(actor.SlotId, binding.Actor.SlotId);
-            Assert.IsFalse(poolRoot.GetChild(0).gameObject.activeSelf);
-            Assert.IsTrue(poolRoot.GetChild(1).gameObject.activeSelf);
+            Assert.AreSame(poolRoot, instances[1].transform.parent);
+            Assert.IsFalse(instances[0].activeSelf);
+            Assert.IsTrue(instances[1].activeSelf);
         }
 
         [UnityTest]
@@ -88,16 +93,18 @@ namespace ReplayAndSimulationCore.Unity.Test.SimulationActor
             EntityHandle entity = new EntityHandle(42, 9);
 
             port.RegisterPrefab(7, prefab);
-            port.CreateActorInstances<UnityActorInstancePortTestActor>(7, 2);
+            port.InstantiateActors<UnityActorInstancePortTestActor>(7, 2);
             port.ActiveAndBindActor(entity, archetypeId: 7, slotId: 1);
-            ActorBinding binding = port.GetBinding(1);
+            ActorBinding binding = port.GetActiveBinding(0);
             port.Unbind(binding);
 
             yield return null;
 
+            IReadOnlyList<GameObject> instances = port.GetActorGameObjects(7);
+
             Assert.AreEqual(0, port.ActiveActorCount);
             Assert.IsFalse(port.HasBinding(entity));
-            Assert.IsFalse(poolsRoot.Find("ActorPool_7").GetChild(1).gameObject.activeSelf);
+            Assert.IsFalse(instances[1].activeSelf);
         }
 
         [UnityTest]
@@ -125,18 +132,18 @@ namespace ReplayAndSimulationCore.Unity.Test.SimulationActor
             List<string> snapshots = new();
 
             port.RegisterPrefab(7, prefab);
-            port.CreateActorInstances<UnityActorInstancePortTestActor>(7, 3);
+            port.InstantiateActors<UnityActorInstancePortTestActor>(7, 3);
             snapshots.Add(Snapshot(port, poolsRoot, "create"));
 
             port.ActiveAndBindActor(first, archetypeId: 7, slotId: 0);
             port.ActiveAndBindActor(second, archetypeId: 7, slotId: 2);
             snapshots.Add(Snapshot(port, poolsRoot, "bind-first-second"));
 
-            port.Unbind(port.GetBinding(0));
+            port.Unbind(GetBindingForSlot(port, slotId: 0));
             port.ActiveAndBindActor(third, archetypeId: 7, slotId: 0);
             snapshots.Add(Snapshot(port, poolsRoot, "replace-first"));
 
-            port.Unbind(port.GetBinding(2));
+            port.Unbind(GetBindingForSlot(port, slotId: 2));
             port.ActiveAndBindActor(fourth, archetypeId: 7, slotId: 1);
             snapshots.Add(Snapshot(port, poolsRoot, "replace-second"));
 
@@ -146,11 +153,11 @@ namespace ReplayAndSimulationCore.Unity.Test.SimulationActor
         private static string Snapshot(UnityActorInstancePort port, Transform poolsRoot, string label)
         {
             List<string> parts = new() { label, $"active:{port.ActiveActorCount}" };
-            Transform poolRoot = poolsRoot.Find("ActorPool_7");
+            IReadOnlyList<GameObject> instances = port.GetActorGameObjects(7);
 
-            for (int i = 0; i < poolRoot.childCount; i++)
+            for (int i = 0; i < instances.Count; i++)
             {
-                parts.Add($"slot:{i}:active:{poolRoot.GetChild(i).gameObject.activeSelf}");
+                parts.Add($"slot:{i}:active:{instances[i].activeSelf}");
                 parts.Add(GetBindingSnapshot(port, i));
             }
 
@@ -159,15 +166,39 @@ namespace ReplayAndSimulationCore.Unity.Test.SimulationActor
 
         private static string GetBindingSnapshot(UnityActorInstancePort port, int slotId)
         {
-            try
+            for (int i = 0; i < port.ActiveActorCount; i++)
             {
-                ActorBinding binding = port.GetBinding(slotId);
-                return $"binding:{slotId}:{binding.Entity}:{binding.Actor.ArchetypeId}:{binding.Actor.SlotId}";
+                ActorBinding binding = port.GetActiveBinding(i);
+                if (binding.Actor.SlotId == slotId)
+                {
+                    return $"binding:{slotId}:{binding.Entity}:{binding.Actor.ArchetypeId}:{binding.Actor.SlotId}";
+                }
             }
-            catch (System.InvalidOperationException)
+
+            return $"binding:{slotId}:none";
+        }
+
+        private static ActorBinding GetBindingForSlot(UnityActorInstancePort port, int slotId)
+        {
+            for (int i = 0; i < port.ActiveActorCount; i++)
             {
-                return $"binding:{slotId}:none";
+                ActorBinding binding = port.GetActiveBinding(i);
+                if (binding.Actor.SlotId == slotId)
+                {
+                    return binding;
+                }
             }
+
+            Assert.Fail($"Binding for slot {slotId} was not found.");
+            return default;
+        }
+
+        private static Transform GetPoolRoot(Transform poolsRoot, int archetypeId, Object prefab)
+        {
+            Transform poolRoot = poolsRoot.Find($"{archetypeId}_{prefab.name}");
+
+            Assert.IsNotNull(poolRoot);
+            return poolRoot;
         }
 
         private UnityActorInstancePort CreatePort(string name, out Transform poolsRoot)

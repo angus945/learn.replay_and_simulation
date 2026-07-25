@@ -2,7 +2,7 @@ namespace SimulationCore.Contracts
 {
     public interface ISimulationCommandSystem
     {
-        void DispatchCommands();
+        void DispatchAll();
     }
     public interface ISimulationExternalCommands
     {
@@ -18,7 +18,6 @@ namespace SimulationCore.Contracts
     public interface ISimulationActor
     {
         void ReconcileBeforePhysics();
-        // void ApplyPrePhysicsState();
         void ReconcileAfterStructuralCommit();
     }
     public interface ISimulationPhysics
@@ -26,6 +25,7 @@ namespace SimulationCore.Contracts
         void ApplyPrePhysicsState();
         void Simulate(float deltaTime);
         void CapturePostPhysicsState();
+        void PublishPhysicsEvents();
     }
 
     public interface ISimulationPresentation

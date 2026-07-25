@@ -27,6 +27,11 @@ using SimulationCore.SimulationActor.Application.Port;
 using SimulationCore.SimulationActor.Infrastructure;
 using SimulationCore.SimulationActor.Contract;
 using SimulationCore.SimulationActor.Application;
+using SimulationCore.SimulationPhysics.Application;
+using SimulationCore.Unity.PhysicsRuntime.Infrastructure;
+using SimulationCore.SimulationPhysics.Contract;
+using System.Collections.Generic;
+using System;
 
 // Example of a simple player
 #region PlayerInputs
@@ -145,197 +150,9 @@ public class PlayerSystem : ISystem
     }
 }
 
-// // Actor Bridge 
-// // namespace SimulationCore.World.API
-// // {
-// //     public interface IEntityActorBridge
-// //     {
-// //         void ReconcileBeforePhysics(ulong tick, float deltaTime);
-// //         void ReconcileAfterStructuralCommit(ulong tick, float deltaTime);
-// //     }
-// // }
-// // namespace Presentation.API
-// // {
-// //     interface ISimulationPresentation
-// //     {
-// //         void UpdatePresentation(ulong tick);
-// //     }
-// // }
+// Tick Physics System
 
-// // namespace SimulationCore.World.Unity
-// // {
-// //     public struct SimulationTransform : IComponent
-// //     {
-// //         public Float3 Position;
-// //         public FloatQuaternion Rotation;
-// //     }
 
-// //     public struct SceneActorDefinition : IComponent
-// //     {
-// //         public int ArchetypeId;
-// //     }
-
-// //     public struct PhysicsBodyDefinition : IComponent
-// //     {
-// //         public int ProfileId;
-// //         public PhysicsAuthority Authority;
-// //     }
-
-// //     public enum PhysicsAuthority : byte
-// //     {
-// //         SimulationKinematic,
-// //         UnityDynamic,
-// //         TriggerOnly
-// //     }
-
-// //     public class UnityActorBridge : IEntityActorBridge, ISimulationPresentation
-// //     {
-// //         IEcsWorld world;
-// //         UnityActorPoolService actorPoolService;
-// //         Dictionary<EntityHandle, ActorLease<IUnityEntityActor>> entityActorMap = new Dictionary<EntityHandle, ActorLease<IUnityEntityActor>>();
-
-// //         private readonly IEntityFilter filter;
-
-// //         public UnityActorBridge(IEcsWorld world, UnityActorPoolService actorPoolService)
-// //         {
-// //             filter = world.CreateFilter()
-// //                 .With<PlayerTag>()
-// //                 .With<TransformState>()
-// //                 .With<PhysicsState>()
-// //                 .Build();
-
-// //             this.world = world;
-// //             this.actorPoolService = actorPoolService;
-// //         }
-
-// //         public void ReconcileBeforePhysics(ulong tick, float deltaTime)
-// //         {
-// //             List<EntityHandle> toDestroy = new List<EntityHandle>();
-// //             foreach (EntityHandle entity in entityActorMap.Keys)
-// //             {
-// //                 if (filter.Contains(entity))
-// //                 {
-
-// //                 }
-// //                 else
-// //                 {
-// //                     toDestroy.Add(entity);
-// //                 }
-// //             }
-
-// //             foreach (EntityHandle entity in toDestroy)
-// //             {
-// //                 entityActorMap[entity].Actor.GameObject.SetActive(false);
-// //             }
-// //         }
-// //         public void ReconcileAfterStructuralCommit(ulong tick, float deltaTime)
-// //         {
-// //             List<EntityHandle> toDestroy = new List<EntityHandle>();
-// //             foreach (EntityHandle entity in entityActorMap.Keys)
-// //             {
-// //                 if (!filter.Contains(entity))
-// //                 {
-// //                     toDestroy.Add(entity);
-// //                 }
-// //             }
-// //             foreach (EntityHandle entity in toDestroy)
-// //             {
-// //                 actorPoolService.ReleaseActor(new ReleaseActorCommand(entityActorMap[entity].Handle));
-// //                 entityActorMap.Remove(entity);
-// //             }
-
-// //             List<EntityHandle> toSpawn = new List<EntityHandle>();
-// //             for (int i = 0; i < filter.EntityCount; i++)
-// //             {
-// //                 EntityHandle entity = filter.GetEntity(i);
-// //                 if (!entityActorMap.ContainsKey(entity))
-// //                 {
-// //                     toSpawn.Add(entity);
-// //                 }
-// //             }
-// //             foreach (EntityHandle entity in toSpawn)
-// //             {
-// //                 if (world.TryGetComponent<SceneActorDefinition>(entity, out SceneActorDefinition actorDef))
-// //                 {
-// //                     int archetypeId = actorDef.ArchetypeId;
-// //                     ActorLease<IUnityEntityActor> lease = actorPoolService.AcquireActor(new AcquireActorCommand(archetypeId));
-// //                     UnityActor unityActor = lease.UnityActor;
-// //                     unityActor.BindEntity(entity, lease.Handle);
-
-// //                     entityActorMap.Add(entity, lease);
-// //                 }
-// //                 else
-// //                 {
-// //                     Debug.LogWarning($"Entity {entity} does not have a SceneActorDefinition component.");
-// //                     continue;
-// //                 }
-// //             }
-
-// //             actorPoolService.ActivatePendingActors(new ActivatePendingActorsCommand());
-// //         }
-
-// //         public void UpdatePresentation(ulong tick)
-// //         {
-// //             foreach (var kvp in entityActorMap)
-// //             {
-// //                 EntityHandle entity = kvp.Key;
-// //                 ActorLease<IUnityEntityActor> lease = kvp.Value;
-
-// //                 if (world.TryGetComponent<TransformState>(entity, out TransformState transformState))
-// //                 {
-// //                     Vector3 unityPosition = new Vector3(transformState.Position.X, transformState.Position.Y, transformState.Position.Z);
-// //                     lease.Actor.Transform.position = unityPosition;
-// //                 }
-// //             }
-// //         }
-
-// //     }
-// // }
-
-// // Tick Physics System
-// namespace TickPhysicsSystem
-// {
-
-//     public interface IPhysicsRuntime
-//     {
-//         void Simulate(float deltaTime);
-//     }
-//     public class UnityPhysicsRuntime : IPhysicsRuntime
-//     {
-//         public void Simulate(float deltaTime)
-//         {
-//             Physics.SyncTransforms();
-//             Physics.Simulate(deltaTime);
-//             // Physics.ContactEvent
-//         }
-//     }
-// }
-// namespace TickPhysicsSystem.Unity
-// {
-//     public interface IUnityFactSink
-//     {
-//         void RecordCollision(CollisionFact collisionFact);
-//     }
-//     public enum ContactPhase : byte
-//     {
-//         Enter,
-//         Stay,
-//         Exit
-//     }
-//     public readonly struct CollisionFact
-//     {
-//         public readonly EntityHandle EntityA;
-//         public readonly EntityHandle EntityB;
-//         public readonly ContactPhase Phase;
-
-//         public CollisionFact(EntityHandle entityA, EntityHandle entityB, ContactPhase phase)
-//         {
-//             EntityA = entityA;
-//             EntityB = entityB;
-//             Phase = phase;
-//         }
-//     }
-// }
 
 // Composition Root
 public class TestCompositionRoot : MonoBehaviour
@@ -345,9 +162,10 @@ public class TestCompositionRoot : MonoBehaviour
 
     PlayerInputCommands playerInput;
     SimulationRunner runner;
-    private void Awake()
+
+    void Awake()
     {
-        Physics.simulationMode = SimulationMode.Script;
+
     }
     void Start()
     {
@@ -376,11 +194,19 @@ public class TestCompositionRoot : MonoBehaviour
         // SimulationActors
         UnityActorInstancePort unityInstancePort = new UnityActorInstancePort(transform);
         unityInstancePort.RegisterPrefab<Player>(0, playerPrefab);
+
+        // Physics Simulation / Decorator
+        CollisionEventSink collisionEventSink = new CollisionEventSink();
+        SimulationPhysics physics = new SimulationPhysics(new UnityPhysicsRuntime(), collisionEventSink);
+        PhysicsActorInstancePortDecorator physicsActorDecorator = new PhysicsActorInstancePortDecorator(unityInstancePort, collisionEventSink);
+
+        // SimulationActors
         EntityPort entityPort = new EntityPort(world);
-        SimulationActors simulationActors = new SimulationActors(entityPort, unityInstancePort);
+        SimulationActors simulationActors = new SimulationActors(entityPort, physicsActorDecorator);
         simulationActors.RegisterActorPool<Player>(0, 10);
         world.RegisterComponent<ActorArchetypeComponent>();
         world.RegisterComponent<ActorTransformState>();
+
 
         // Initialize Systems
         playerInput.Initialize();
@@ -391,7 +217,7 @@ public class TestCompositionRoot : MonoBehaviour
         ISimulationExternalCommands externalCommands = registerableCommands;
         ISimulationWorld simulationWorld = world;
         ISimulationActor simulationActor = simulationActors;
-        ISimulationPhysics simulationPhysics = new NullSimulationPhysics();
+        ISimulationPhysics simulationPhysics = physics;
         ISimulationPresentation simulationPresentation = new NullSimulationPresentation();
         runner = new SimulationRunner(
             commandSystem,
@@ -403,17 +229,9 @@ public class TestCompositionRoot : MonoBehaviour
             1 / 60f,
             logger);
 
-        // // Test spawning a player entity
+        // Test spawning a player entity
         IEcsWorld ecsWorld = world;
         ecsWorld.SpawnRequest(new SpawnPlayerRecipe(), new SpawnPlayerArguments(new Float3(0f, 0f, 0f), new Float3(1f, 0f, 0f)));
-
-        // UnityPhysicsRuntime physicsRuntime = new UnityPhysicsRuntime();
-
-        // UnityActorPoolService actorPoolService = new UnityActorPoolService();
-        // actorPoolService.RegisterActorPool<Player>(0, 10, new UnityActorFactory<Player>(playerPrefab, transform));
-        // actorPoolService.InitializeActorPools();
-
-        // UnityActorBridge actorBridge = new UnityActorBridge(world, actorPoolService);
     }
     void Update()
     {
