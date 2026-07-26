@@ -8,11 +8,11 @@ namespace SimulationCore.World.Contract
     {
         void Initialize(IEcsWorld world, ICommandHandleRegistryPort commandSubscriber);
     }
-    public interface ISystemPrePhysicsTick
+    public interface IPrePhysicsTick
     {
         void PrePhysicsTick(ulong tick, float deltaTime);
     }
-    public interface ISystemPostPhysicsTick
+    public interface IPostPhysicsTick
     {
         void PostPhysicsTick(ulong tick, float deltaTime);
     }

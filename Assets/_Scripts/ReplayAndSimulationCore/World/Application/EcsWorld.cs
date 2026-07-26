@@ -11,16 +11,16 @@ namespace SimulationCore.World.Application
     public sealed class SystemTicker
     {
         Dictionary<Type, (int, int)> systemToIndex;
-        List<ISystemPrePhysicsTick> prePhysicsTickSystems;
-        List<ISystemPostPhysicsTick> postPhysicsTickSystems;
+        List<IPrePhysicsTick> prePhysicsTickSystems;
+        List<IPostPhysicsTick> postPhysicsTickSystems;
         public int PrePhysicsTickSystemCount => prePhysicsTickSystems.Count;
         public int PostPhysicsTickSystemCount => postPhysicsTickSystems.Count;
 
         public SystemTicker()
         {
             systemToIndex = new Dictionary<Type, (int, int)>();
-            prePhysicsTickSystems = new List<ISystemPrePhysicsTick>();
-            postPhysicsTickSystems = new List<ISystemPostPhysicsTick>();
+            prePhysicsTickSystems = new List<IPrePhysicsTick>();
+            postPhysicsTickSystems = new List<IPostPhysicsTick>();
         }
         public void RegisterSystem(ISystem system)
         {
@@ -35,16 +35,16 @@ namespace SimulationCore.World.Application
             int preIndex = -1;
             int postIndex = -1;
 
-            if (system is ISystemPrePhysicsTick)
+            if (system is IPrePhysicsTick)
             {
                 preIndex = prePhysicsTickSystems.Count;
-                prePhysicsTickSystems.Add((ISystemPrePhysicsTick)system);
+                prePhysicsTickSystems.Add((IPrePhysicsTick)system);
             }
 
-            if (system is ISystemPostPhysicsTick)
+            if (system is IPostPhysicsTick)
             {
                 postIndex = postPhysicsTickSystems.Count;
-                postPhysicsTickSystems.Add((ISystemPostPhysicsTick)system);
+                postPhysicsTickSystems.Add((IPostPhysicsTick)system);
             }
 
             systemToIndex[system.GetType()] = (preIndex, postIndex);

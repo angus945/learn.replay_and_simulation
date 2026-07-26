@@ -17,10 +17,10 @@ namespace SimulationCore.Unity.PhysicsRuntime.Infrastructure
     {
         UnityActorInstancePort inner;
 
-        ICollisionEventSink collisionEventSink;
+        IPhysicsEventSink collisionEventSink;
         SortedDictionary<int, bool> archetypeWithEvent = new SortedDictionary<int, bool>();
 
-        public PhysicsActorInstancePortDecorator(UnityActorInstancePort inner, ICollisionEventSink collisionEventSink)
+        public PhysicsActorInstancePortDecorator(UnityActorInstancePort inner, IPhysicsEventSink collisionEventSink)
         {
             this.inner = inner;
             this.collisionEventSink = collisionEventSink;

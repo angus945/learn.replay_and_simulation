@@ -6,7 +6,7 @@ namespace SimulationCore.SimulationPhysics.Application
     {
         void Simulate(float deltaTime);
     }
-    public interface ICollisionEventSink
+    public interface IPhysicsEventSink
     {
         void RecordCollision(CollisionFact collisionFact);
     }

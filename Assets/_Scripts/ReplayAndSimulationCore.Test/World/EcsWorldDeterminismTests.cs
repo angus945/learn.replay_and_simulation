@@ -146,7 +146,7 @@ namespace ReplayAndSimulationCore.Test.World
         {
         }
 
-        private abstract class RecordingTickSystem : ISystem, ISystemPrePhysicsTick, ISystemPostPhysicsTick
+        private abstract class RecordingTickSystem : ISystem, IPrePhysicsTick, IPostPhysicsTick
         {
             private readonly string label;
             private readonly List<string> trace;

@@ -1,7 +1,5 @@
 using UnityEngine;
-using SimulationCore.Logging.Contract;
 using SimulationCore.Logging.Unity.Infrastructure;
-using ILogger = SimulationCore.Logging.API.ILogger;
 
 using SimulationCore;
 using SimulationCore.Contracts;
@@ -22,16 +20,13 @@ using SimulationCore.World.Contract;
 using SimulationCore.World.Infrastructure;
 using SimulationCore.World.API;
 
-using SimulationCore.SimulationActor;
-using SimulationCore.SimulationActor.Application.Port;
 using SimulationCore.SimulationActor.Infrastructure;
 using SimulationCore.SimulationActor.Contract;
 using SimulationCore.SimulationActor.Application;
 using SimulationCore.SimulationPhysics.Application;
 using SimulationCore.Unity.PhysicsRuntime.Infrastructure;
-using SimulationCore.SimulationPhysics.Contract;
-using System.Collections.Generic;
-using System;
+using SimulationCore.SimulationPhysics.Infrastructure;
+using SimulationCore.SimulationActor.Presentation;
 
 // Example of a simple player
 #region PlayerInputs
@@ -70,12 +65,10 @@ public struct PlayerTag : IComponent { }
 public struct SpawnPlayerArguments : IEntityArguments
 {
     public readonly Float3 Position;
-    public readonly Float3 Velocity;
 
-    public SpawnPlayerArguments(Float3 position, Float3 velocity)
+    public SpawnPlayerArguments(Float3 position)
     {
         Position = position;
-        Velocity = velocity;
     }
 }
 public sealed class SpawnPlayerRecipe : IEntityRecipe<SpawnPlayerArguments>
@@ -88,10 +81,10 @@ public sealed class SpawnPlayerRecipe : IEntityRecipe<SpawnPlayerArguments>
     }
 }
 
-public class PlayerSystem : ISystem
+public class PlayerSystem : ISystem, IPrePhysicsTick
 {
     private IEcsWorld world;
-    // IEntityFilter filter;
+    IEntityFilter filter;
 
     PlayerMoveCommandHandler movement;
 
@@ -103,40 +96,28 @@ public class PlayerSystem : ISystem
     public void Initialize(IEcsWorld world, ICommandHandleRegistryPort commandRegistry)
     {
         this.world = world;
-        // filter = world.CreateFilter()
-        //     .With<PlayerTag>()
-        //     .With<TransformState>()
-        //     .With<PhysicsState>()
-        //     .Build();
+        filter = world.CreateFilter()
+            .With<PlayerTag>()
+            .With<ActorArchetypeComponent>()
+            .With<ActorTransformState>()
+            .Build();
 
         commandRegistry.Register<PlayerMoveCommand>(movement);
     }
 
     public void PrePhysicsTick(ulong tick, float deltaTime)
     {
-        // for (int i = 0; i < filter.EntityCount; i++)
-        // {
-        //     EntityHandle entity = filter.GetEntity(i);
+        for (int i = 0; i < filter.EntityCount; i++)
+        {
+            EntityHandle entity = filter.GetEntity(i);
 
-        //     if (!world.TryGetComponent<TransformState>(entity, out TransformState transformState))
-        //         continue;
+            if (!world.TryGetComponent<ActorTransformState>(entity, out ActorTransformState transformState))
+                continue;
 
-        //     transformState.Position = transformState.Position + movement.Direction * deltaTime;
-        //     world.SetComponent(entity, transformState);
-        // }
-    }
-
-    public void PostPhysicsTick(ulong tick, float deltaTime)
-    {
-        // for (int i = 0; i < filter.EntityCount; i++)
-        // {
-        //     EntityHandle entity = filter.GetEntity(i);
-
-        //     if (!world.TryGetComponent<TransformState>(entity, out TransformState transformState))
-        //         continue;
-
-        //     Debug.Log($"Player Position: {transformState.Position}");
-        // }
+            Float3 position = transformState.Position + movement.Direction * deltaTime;
+            ActorTransformState newTransformState = new ActorTransformState(position, transformState.Rotation);
+            world.SetComponent(entity, newTransformState);
+        }
     }
 
     private sealed class PlayerMoveCommandHandler : ICommandHandler<PlayerMoveCommand>
@@ -149,10 +130,6 @@ public class PlayerSystem : ISystem
         }
     }
 }
-
-// Tick Physics System
-
-
 
 // Composition Root
 public class TestCompositionRoot : MonoBehaviour
@@ -196,7 +173,7 @@ public class TestCompositionRoot : MonoBehaviour
         unityInstancePort.RegisterPrefab<Player>(0, playerPrefab);
 
         // Physics Simulation / Decorator
-        CollisionEventSink collisionEventSink = new CollisionEventSink();
+        PhysicsEventSink collisionEventSink = new PhysicsEventSink(commandContext);
         SimulationPhysics physics = new SimulationPhysics(new UnityPhysicsRuntime(), collisionEventSink);
         PhysicsActorInstancePortDecorator physicsActorDecorator = new PhysicsActorInstancePortDecorator(unityInstancePort, collisionEventSink);
 
@@ -212,13 +189,15 @@ public class TestCompositionRoot : MonoBehaviour
         playerInput.Initialize();
         world.InitializeSystems();
 
+        // Presentation
+        UnitySimulationPresentation presentation = new UnitySimulationPresentation(world, physicsActorDecorator, unityInstancePort);
 
         ISimulationCommandSystem commandSystem = commandServices;
         ISimulationExternalCommands externalCommands = registerableCommands;
         ISimulationWorld simulationWorld = world;
         ISimulationActor simulationActor = simulationActors;
         ISimulationPhysics simulationPhysics = physics;
-        ISimulationPresentation simulationPresentation = new NullSimulationPresentation();
+        ISimulationPresentation simulationPresentation = presentation;
         runner = new SimulationRunner(
             commandSystem,
             externalCommands,
@@ -231,13 +210,15 @@ public class TestCompositionRoot : MonoBehaviour
 
         // Test spawning a player entity
         IEcsWorld ecsWorld = world;
-        ecsWorld.SpawnRequest(new SpawnPlayerRecipe(), new SpawnPlayerArguments(new Float3(0f, 0f, 0f), new Float3(1f, 0f, 0f)));
+        ecsWorld.SpawnRequest(new SpawnPlayerRecipe(), new SpawnPlayerArguments(new Float3(0f, 0f, 0f)));
     }
     void Update()
     {
         playerInput.CaptureRenderInput();
 
         runner.AdvanceTime(Time.unscaledDeltaTime);
+
+        runner.UpdatePresentation();
     }
 
 }

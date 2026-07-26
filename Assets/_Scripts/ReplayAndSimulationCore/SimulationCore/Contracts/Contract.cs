@@ -25,12 +25,12 @@ namespace SimulationCore.Contracts
         void ApplyPrePhysicsState();
         void Simulate(float deltaTime);
         void CapturePostPhysicsState();
-        void PublishPhysicsEvents();
+        void PublishPhysicsEvents(ulong tick);
     }
 
     public interface ISimulationPresentation
     {
         void CaptureTickState(ulong tick);
-        void Render();
+        void Render(float interpolationAlpha);
     }
 }

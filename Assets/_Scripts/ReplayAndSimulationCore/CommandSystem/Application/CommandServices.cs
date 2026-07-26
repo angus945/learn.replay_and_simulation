@@ -4,6 +4,8 @@ using SimulationCore.Contracts;
 using SimulationCore.CommandSystem.API;
 using SimulationCore.CommandSystem.Domain;
 
+
+
 namespace SimulationCore.CommandSystem.Application
 {
     public sealed class CommandServices : ISimulationCommandSystem, ICommandContext
@@ -13,6 +15,7 @@ namespace SimulationCore.CommandSystem.Application
         private readonly CommandHandlerRegistry handlerRegistry = new();
         private readonly CommandBuffer commandBuffer = new();
         private readonly CommandBuffer eventBuffer = new();
+        bool registeringLocked = false;
 
         public CommandServices(int maxCommandWaves = DefaultMaxCommandWaves)
         {
@@ -20,16 +23,26 @@ namespace SimulationCore.CommandSystem.Application
                 throw new ArgumentOutOfRangeException(nameof(maxCommandWaves));
 
             MaxCommandWaves = maxCommandWaves;
+            registeringLocked = false;
         }
 
         public int MaxCommandWaves { get; }
 
         public void RegisterCommandHandler<TCommand>(ICommandHandler<TCommand> handler) where TCommand : ICommand
         {
+            if (registeringLocked)
+                throw new InvalidOperationException("Cannot register command handlers after dispatching has started.");
+
+            if (typeof(IEvent).IsAssignableFrom(typeof(TCommand)))
+                throw new InvalidOperationException("Cannot register an event handler as a command handler. Use RegisterEventHandler instead.");
+
             handlerRegistry.RegisterCommandHandler(handler);
         }
         public void RegisterEventHandler<TEvent>(IEventHandler<TEvent> handler) where TEvent : IEvent
         {
+            if (registeringLocked)
+                throw new InvalidOperationException("Cannot register event handlers after dispatching has started.");
+
             handlerRegistry.RegisterEventHandler(handler);
         }
 
@@ -38,11 +51,10 @@ namespace SimulationCore.CommandSystem.Application
             if (commandInstance == null)
                 throw new ArgumentNullException(nameof(commandInstance));
 
-            if (typeof(T) == typeof(IEvent))
-            {
-                throw new InvalidOperationException($"Cannot enqueue an event as a command. Use EnqueueEvent instead.");
-            }
+            if (typeof(IEvent).IsAssignableFrom(typeof(T)))
+                throw new InvalidOperationException("Cannot enqueue an event as a command. Use EnqueueEvent instead.");
 
+            registeringLocked = true;
             commandBuffer.Add(CommandMetadata.WithType(data, CommandType.Command), commandInstance);
         }
         public void EnqueueEvent<T>(CommandMetadata data, T eventInstance) where T : IEvent
@@ -50,6 +62,7 @@ namespace SimulationCore.CommandSystem.Application
             if (eventInstance == null)
                 throw new ArgumentNullException(nameof(eventInstance));
 
+            registeringLocked = true;
             eventBuffer.Add(CommandMetadata.WithType(data, CommandType.Event), eventInstance);
         }
 

@@ -27,17 +27,17 @@ namespace SimulationCore.SimulationActor.Infrastructure
 
             return sortedBindings.Values[index];
         }
-        internal bool HasBinding(EntityHandle entity)
+        public bool HasBinding(EntityHandle entity)
         {
             return entityBindings.ContainsKey(entity);
         }
 
-        internal bool Contains(ActorBinding binding)
+        public bool Contains(ActorBinding binding)
         {
             return entityBindings.TryGetValue(binding.Entity, out ActorBinding existingBinding) && existingBinding.Equals(binding);
         }
 
-        internal void Unbind(ActorBinding binding)
+        public void Unbind(ActorBinding binding)
         {
             entityBindings.Remove(binding.Entity);
             sortedBindings.Remove(binding.Entity.SequenceId);

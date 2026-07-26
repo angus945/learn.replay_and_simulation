@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using SimulationCore.SimulationActor.Application;
 using SimulationCore.SimulationActor.Application.Dto;
 using SimulationCore.SimulationActor.Application.Port;
 using SimulationCore.SimulationActor.Contract;
@@ -10,11 +9,42 @@ using UnityEngine;
 
 namespace SimulationCore.SimulationActor.Infrastructure
 {
+    public sealed class UnityTransformBindings
+    {
+        private readonly Dictionary<ActorHandle, Transform> transformBindings = new Dictionary<ActorHandle, Transform>();
 
+        public void Bind(ActorHandle actor, Transform transform)
+        {
+            if (transform == null)
+                throw new ArgumentNullException(nameof(transform));
+
+            if (transformBindings.ContainsKey(actor))
+                throw new InvalidOperationException($"Transform for actor {actor} is already bound.");
+
+            transformBindings[actor] = transform;
+        }
+
+        public void Unbind(ActorHandle actor)
+        {
+            if (!transformBindings.ContainsKey(actor))
+                throw new InvalidOperationException($"Transform for actor {actor} is not bound.");
+
+            transformBindings.Remove(actor);
+        }
+
+        public Transform GetPresentationTransform(ActorHandle actor)
+        {
+            if (!transformBindings.TryGetValue(actor, out Transform transform))
+                throw new InvalidOperationException($"Transform for actor {actor} is not bound.");
+
+            return transform;
+        }
+    }
     public sealed class UnityActorInstancePort : IActorBindingPort
     {
         ActorPools actorPools;
         ActorBindings actorBindings;
+        UnityTransformBindings transformBindings;
 
         public int ActiveActorCount => actorBindings.Count;
 
@@ -22,6 +52,7 @@ namespace SimulationCore.SimulationActor.Infrastructure
         {
             actorPools = new ActorPools(poolsRoot);
             actorBindings = new ActorBindings();
+            transformBindings = new UnityTransformBindings();
         }
         public void RegisterPrefab<T>(int archetypeId, T prefab) where T : MonoBehaviour, IActor
         {
@@ -100,6 +131,7 @@ namespace SimulationCore.SimulationActor.Infrastructure
             // Create a binding and store it
             ActorHandle handle = new ActorHandle(archetypeId, slotId);
             ActorBinding binding = actorBindings.Bind(entity, handle);
+            transformBindings.Bind(handle, gameObject.transform);
 
             // Activate the actor instance
             gameObject.SetActive(true);
@@ -131,11 +163,18 @@ namespace SimulationCore.SimulationActor.Infrastructure
             gameObject.SetActive(false);
             bindingTag.Unbind();
             actorBindings.Unbind(binding);
+            transformBindings.Unbind(binding.Actor);
         }
 
         public IReadOnlyList<GameObject> GetActorGameObjects(int archetypeId)
         {
             return actorPools.GetActorGameObjects(archetypeId);
         }
+
+        public Transform GetPresentationTransform(ActorHandle actor)
+        {
+            return transformBindings.GetPresentationTransform(actor);
+        }
+
     }
 }

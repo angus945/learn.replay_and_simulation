@@ -1,9 +1,10 @@
 using SimulationCore.Contracts;
 using SimulationCore.Logging.API;
+using SimulationCore.Logging.Infrastructure;
 
 namespace SimulationCore
 {
-    public class SimulationRunner
+    public class SimulationRunner : API.ISimulationRunner
     {
         ISimulationCommandSystem commandSystem;
         ISimulationExternalCommands externalCommand;
@@ -29,7 +30,7 @@ namespace SimulationCore
             this.presentation = presentation;
 
             this.TickDeltaTime = tickDelta;
-            this.logger = logger;
+            this.logger = logger ?? NullLogger.Instance;
         }
 
         public readonly float TickDeltaTime;
@@ -38,6 +39,24 @@ namespace SimulationCore
 
         ulong tick;
         double accumulator;
+        public float PresentationAlpha
+        {
+            get
+            {
+                if (TickDeltaTime <= 0f)
+                    return 1f;
+
+                double value = accumulator / TickDeltaTime;
+
+                if (value <= 0d)
+                    return 0f;
+
+                if (value >= 1d)
+                    return 1f;
+
+                return (float)value;
+            }
+        }
 
         public void AdvanceTime(float advanceTime)
         {
@@ -69,11 +88,11 @@ namespace SimulationCore
             // 4. Physics Simulation
             physics.Simulate(TickDeltaTime);
             physics.CapturePostPhysicsState();
-            physics.PublishPhysicsEvents();
+            physics.PublishPhysicsEvents(tick);
             commandSystem.DispatchAll();
 
             // 5. Post-Physics Tick
-            world.PrePhysicsTick(tick, TickDeltaTime);
+            world.PostPhysicsTick(tick, TickDeltaTime);
             commandSystem.DispatchAll();
 
             // 6. Commit Structural Changes
@@ -85,7 +104,7 @@ namespace SimulationCore
         }
         public void UpdatePresentation()
         {
-            presentation.Render();
+            presentation.Render(PresentationAlpha);
         }
     }
 

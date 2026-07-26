@@ -43,6 +43,24 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
         }
 
         [Test]
+        public void EnqueueCommand_WhenEventInstanceIsPassed_Throws()
+        {
+            CommandServices services = new();
+
+            Assert.Throws<InvalidOperationException>(
+                () => services.EnqueueCommand(Metadata(), new TraceEvent("event")));
+        }
+
+        [Test]
+        public void EnqueueEvent_WhenEventIsNull_Throws()
+        {
+            CommandServices services = new();
+
+            Assert.Throws<ArgumentNullException>(
+                () => services.EnqueueEvent<TraceEvent>(Metadata(), null));
+        }
+
+        [Test]
         public void DispatchCommands_WhenNoCommandsArePending_DoesNotInvokeHandlers()
         {
             CommandServices services = new();
@@ -77,11 +95,7 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
 
             Assert.Throws<InvalidOperationException>(() => services.DispatchAll());
 
-            int calls = 0;
-            services.RegisterCommandHandler(new RecordingHandler<UnhandledCommand>(_ => calls++));
-            services.DispatchAll();
-
-            Assert.AreEqual(0, calls);
+            Assert.DoesNotThrow(() => services.DispatchAll());
         }
 
         [Test]
@@ -144,6 +158,116 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
                     "follow:second:b"
                 },
                 trace);
+        }
+
+        [Test]
+        public void DispatchAll_WhenEventHasNoSubscribers_DoesNotThrow()
+        {
+            CommandServices services = new();
+            List<string> trace = new();
+            services.RegisterCommandHandler(
+                new RecordingHandler<TraceCommand>(command => trace.Add(command.Label)));
+
+            services.EnqueueEvent(Metadata(), new TraceEvent("unobserved"));
+            services.EnqueueCommand(Metadata(), new TraceCommand("command"));
+
+            Assert.DoesNotThrow(() => services.DispatchAll());
+            CollectionAssert.AreEqual(new[] { "command" }, trace);
+        }
+
+        [Test]
+        public void DispatchAll_WhenEventHasMultipleSubscribers_DispatchesSubscribersInRegistrationOrder()
+        {
+            CommandServices services = new();
+            List<string> trace = new();
+            services.RegisterEventHandler(
+                new RecordingEventHandler<TraceEvent>(@event => trace.Add($"first:{@event.Label}")));
+            services.RegisterEventHandler(
+                new RecordingEventHandler<TraceEvent>(@event => trace.Add($"second:{@event.Label}")));
+            services.RegisterCommandHandler(
+                new RecordingHandler<TraceCommand>(command => trace.Add($"command:{command.Label}")));
+
+            services.EnqueueEvent(Metadata(), new TraceEvent("event"));
+            services.EnqueueCommand(Metadata(), new TraceCommand("command"));
+            services.DispatchAll();
+
+            CollectionAssert.AreEqual(
+                new[] { "first:event", "second:event", "command:command" },
+                trace);
+        }
+
+        [Test]
+        public void DispatchAll_ReplayingSameCommandAndEventSequence_ProducesSameTrace()
+        {
+            string[] expected =
+            {
+                "event:first:alpha",
+                "event:second:alpha",
+                "event:audit:alpha",
+                "command:first",
+                "command:second",
+                "event:first:beta",
+                "event:second:beta",
+                "event:audit:beta",
+                "command:third"
+            };
+
+            for (int i = 0; i < 20; i++)
+            {
+                CollectionAssert.AreEqual(expected, RunCommandAndEventDeterminismScenario());
+            }
+        }
+
+        [Test]
+        public void RegisterCommandHandler_WhenDispatchHasStarted_Throws()
+        {
+            CommandServices services = new();
+            services.RegisterCommandHandler(new RecordingHandler<TraceCommand>(_ => { }));
+            services.EnqueueCommand(Metadata(), new TraceCommand("start"));
+            services.DispatchAll();
+
+            Assert.Throws<InvalidOperationException>(
+                () => services.RegisterCommandHandler(new RecordingHandler<FollowUpCommand>(_ => { })));
+        }
+
+        [Test]
+        public void RegisterEventHandler_WhenDispatchHasStarted_Throws()
+        {
+            CommandServices services = new();
+            services.RegisterCommandHandler(new RecordingHandler<TraceCommand>(_ => { }));
+            services.EnqueueCommand(Metadata(), new TraceCommand("start"));
+            services.DispatchAll();
+
+            Assert.Throws<InvalidOperationException>(
+                () => services.RegisterEventHandler(new RecordingEventHandler<TraceEvent>(_ => { })));
+        }
+
+        [Test]
+        public void RegisterCommandHandler_WhenCalledDuringDispatch_Throws()
+        {
+            CommandServices services = new();
+            services.RegisterCommandHandler(
+                new RecordingHandler<TraceCommand>(
+                    _ => Assert.Throws<InvalidOperationException>(
+                        () => services.RegisterCommandHandler(
+                            new RecordingHandler<FollowUpCommand>(__ => { })))));
+
+            services.EnqueueCommand(Metadata(), new TraceCommand("start"));
+            services.DispatchAll();
+        }
+
+        [Test]
+        public void RegisterEventHandler_WhenCalledDuringDispatch_Throws()
+        {
+            CommandServices services = new();
+            services.RegisterCommandHandler(
+                new RecordingHandler<TraceCommand>(
+                    _ => Assert.Throws<InvalidOperationException>(
+                        () => services.RegisterEventHandler(
+                            new RecordingEventHandler<TraceEvent>(__ => { })))));
+
+            services.EnqueueCommand(Metadata(), new TraceCommand("start"));
+            services.DispatchAll();
         }
 
         [Test]
@@ -229,6 +353,38 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             return trace;
         }
 
+        private static List<string> RunCommandAndEventDeterminismScenario()
+        {
+            CommandServices services = new();
+            List<string> trace = new();
+
+            services.RegisterEventHandler(
+                new RecordingEventHandler<TraceEvent>(
+                    @event => trace.Add($"event:first:{@event.Label}")));
+            services.RegisterEventHandler(
+                new RecordingEventHandler<TraceEvent>(
+                    @event => trace.Add($"event:second:{@event.Label}")));
+            services.RegisterEventHandler(
+                new RecordingEventHandler<AuditEvent>(
+                    @event => trace.Add($"event:audit:{@event.Label}")));
+            services.RegisterCommandHandler(
+                new RecordingHandler<TraceCommand>(
+                    command => trace.Add($"command:{command.Label}")));
+
+            services.EnqueueEvent(Metadata(), new TraceEvent("alpha"));
+            services.EnqueueEvent(Metadata(), new AuditEvent("alpha"));
+            services.EnqueueCommand(Metadata(), new TraceCommand("first"));
+            services.EnqueueCommand(Metadata(), new TraceCommand("second"));
+            services.DispatchAll();
+
+            services.EnqueueEvent(Metadata(), new TraceEvent("beta"));
+            services.EnqueueEvent(Metadata(), new AuditEvent("beta"));
+            services.EnqueueCommand(Metadata(), new TraceCommand("third"));
+            services.DispatchAll();
+
+            return trace;
+        }
+
         private static CommandMetadata Metadata()
         {
             return CommandMetadata.Internal(42, CommandSource.Gameplay);
@@ -247,6 +403,22 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
             public void Handle(TCommand command)
             {
                 handle(command);
+            }
+        }
+
+        private sealed class RecordingEventHandler<TEvent> : IEventHandler<TEvent>
+            where TEvent : IEvent
+        {
+            private readonly Action<TEvent> handle;
+
+            internal RecordingEventHandler(Action<TEvent> handle)
+            {
+                this.handle = handle;
+            }
+
+            public void Handle(TEvent @event)
+            {
+                handle(@event);
             }
         }
 
@@ -292,6 +464,26 @@ namespace ReplayAndSimulationCore.Test.CommandSystem.Application
 
         private sealed class UnhandledCommand : ICommand
         {
+        }
+
+        private sealed class TraceEvent : IEvent
+        {
+            internal readonly string Label;
+
+            internal TraceEvent(string label)
+            {
+                Label = label;
+            }
+        }
+
+        private sealed class AuditEvent : IEvent
+        {
+            internal readonly string Label;
+
+            internal AuditEvent(string label)
+            {
+                Label = label;
+            }
         }
     }
 }

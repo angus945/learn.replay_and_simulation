@@ -69,7 +69,12 @@ namespace SimulationCore.Infrastructure
 
         public void PublishPhysicsEvents()
         {
-            throw new System.NotImplementedException();
+            // No-op
+        }
+
+        public void PublishPhysicsEvents(ulong tick)
+        {
+            // No-op
         }
     }
     public class NullSimulationPresentation : ISimulationPresentation
@@ -82,6 +87,11 @@ namespace SimulationCore.Infrastructure
         public void Render()
         {
             // No-op
+        }
+
+        public void Render(float interpolationAlpha)
+        {
+            throw new System.NotImplementedException();
         }
     }
 
