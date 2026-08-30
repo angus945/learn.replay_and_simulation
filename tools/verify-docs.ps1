@@ -59,6 +59,7 @@ Add-RequiredDocument 'tools/arena-checks/README.md'
 Add-RequiredDocument 'tools/framework-checks/README.md'
 Add-RequiredDocument 'Assets/game/arena/README.md'
 Add-RequiredDocument 'docs/verification/arena-rebuild-2026-08-30.md'
+Add-RequiredDocument 'docs/verification/arena-ui-toolkit-2026-08-30.md'
 
 $assetsPath = Join-Path $projectRoot 'Assets'
 foreach ($document in Get-ChildItem -LiteralPath $assetsPath -Filter README.md -Recurse -File) {

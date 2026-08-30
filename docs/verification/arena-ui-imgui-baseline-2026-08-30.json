@@ -1,0 +1,59 @@
+{
+  "profile": [
+    {
+      "phase": 0,
+      "traceRows": 160,
+      "seconds": 5.007838200006518,
+      "samples": 215,
+      "fps": 42.93269698683959,
+      "ticksPerSecond": 60.105775781575424,
+      "frameP50Ms": 21.97050116956234,
+      "frameP95Ms": 32.902996987104416,
+      "guiCpuMeanMs": 6.8909023255814,
+      "guiMarkerValid": true,
+      "gcMeanBytes": 484640.33023255813,
+      "scaledSeconds": 5.013700801879168,
+      "unscaledSeconds": 5.013700801879168
+    },
+    {
+      "phase": 1,
+      "traceRows": 0,
+      "seconds": 5.008990500005893,
+      "samples": 300,
+      "fps": 59.89230764155912,
+      "ticksPerSecond": 60.091948667030984,
+      "frameP50Ms": 16.736699268221855,
+      "frameP95Ms": 19.514597952365875,
+      "guiCpuMeanMs": 2.0813103333333323,
+      "guiMarkerValid": true,
+      "gcMeanBytes": 94417.98333333334,
+      "scaledSeconds": 5.005815593525767,
+      "unscaledSeconds": 5.005815593525767
+    },
+    {
+      "phase": 2,
+      "traceRows": 160,
+      "seconds": 5.007297499993001,
+      "samples": 224,
+      "fps": 44.734709691268215,
+      "ticksPerSecond": 59.91255762223421,
+      "frameP50Ms": 21.099496632814407,
+      "frameP95Ms": 30.136600136756897,
+      "guiCpuMeanMs": 6.658809821428567,
+      "guiMarkerValid": true,
+      "gcMeanBytes": 477773.98660714284,
+      "scaledSeconds": 5.005531899631023,
+      "unscaledSeconds": 5.005531899631023
+    }
+  ],
+  "profilerEnabled": true,
+  "deepProfile": false,
+  "scale": 1,
+  "maxDelta": 0.333333343,
+  "targetFps": -1,
+  "vsync": 0,
+  "width": 1050,
+  "height": 824,
+  "scope": "Editor A/B/A: polling frozen; only diagnostic trace list changed; no gameplay source changes",
+  "date": "2026-08-30"
+}

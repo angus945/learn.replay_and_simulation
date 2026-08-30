@@ -19,6 +19,7 @@ namespace Arena.Composition
         private readonly RealtimeSimulationRunner runner;
         private readonly int ownerThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
         private bool disposed;
+        private bool inputDirty;
         private ulong sequence;
         public ArenaLiveSession(ArenaScenario scenario = null)
         {
@@ -35,6 +36,7 @@ namespace Arena.Composition
         public TemplateFailure Failure => session.Failure;
         public Exception DriverFailure => runner.Failure;
         public bool IsPaused => runner.IsPaused;
+        public double PendingSeconds => runner.PendingSeconds;
         public IDiagnosticReader<ArenaObservation> Diagnostics => session.Diagnostics;
         public ArenaObservation Observe() => session.Observe();
         public TemplateRecording CaptureRecording() => session.CaptureRecording();
@@ -43,14 +45,17 @@ namespace Arena.Composition
             EnsureInputAccess();
             if (!Position.IsFinite(x) || !Position.IsFinite(y)) throw new ArgumentException("Input must be finite.");
             input.CaptureAxis(0, x); input.CaptureAxis(1, y);
+            inputDirty = true;
         }
-        public void CaptureAttack(bool down) { EnsureInputAccess(); input.CaptureButton(0, down); }
+        public void CaptureAttack(bool down) { EnsureInputAccess(); input.CaptureButton(0, down); inputDirty = true; }
         public void ClearInput()
         {
             EnsureInputAccess();
+            if (!inputDirty) return;
             // A buffer has no Reset operation. Replacing this host-owned buffer discards stale
             // edges without swallowing a fresh press captured before the next simulation tick.
             input = CreateInputBuffer();
+            inputDirty = false;
         }
         private static TickInputBuffer CreateInputBuffer()
         {

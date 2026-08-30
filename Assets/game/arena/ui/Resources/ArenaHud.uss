@@ -1,0 +1,114 @@
+.arena-hud {
+    flex-grow: 1;
+    color: rgb(228, 242, 247);
+    font-size: 12px;
+}
+
+.hud-columns {
+    flex-grow: 1;
+    flex-direction: row;
+}
+
+.arena-main {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+    padding: 24px;
+}
+
+.panel {
+    background-color: rgba(9, 14, 20, 0.97);
+    border-left-width: 3px;
+    border-left-color: rgb(46, 229, 237);
+    padding: 14px 16px;
+}
+
+.heading { flex-shrink: 0; }
+.heading.replay-mode { border-left-color: rgb(255, 102, 87); }
+.title-row { flex-direction: row; align-items: center; }
+.title { flex-grow: 1; min-width: 0; font-size: 25px; -unity-font-style: bold; }
+.eyebrow { color: rgb(118, 158, 174); font-size: 10px; margin-top: 4px; white-space: normal; }
+.help-text { color: rgb(187, 211, 219); font-size: 11px; margin-top: 13px; white-space: normal; }
+.tick-label { color: rgb(46, 229, 237); font-size: 12px; margin-top: 7px; }
+.performance-label { color: rgb(148, 179, 190); font-size: 11px; margin-top: 3px; white-space: normal; }
+.world-space { flex-grow: 1; justify-content: flex-end; align-items: center; padding-bottom: 20px; }
+.respawn-label { color: rgb(228, 242, 247); font-size: 11px; -unity-text-align: middle-center; }
+.failure-label { background-color: rgb(68, 19, 18); color: rgb(255, 183, 173); padding: 12px; margin-top: 12px; white-space: normal; display: none; }
+.controls { flex-shrink: 0; }
+.section-title { font-size: 12px; -unity-font-style: bold; color: rgb(224, 239, 245); white-space: normal; }
+.mode-label { color: rgb(46, 229, 237); margin-bottom: 5px; }
+.button-row { flex-direction: row; margin-top: 4px; }
+.button-row > Button { flex-grow: 1; flex-basis: 0; }
+Button {
+    min-height: 26px;
+    margin: 2px;
+    padding: 3px 9px;
+    color: rgb(209, 231, 238);
+    background-color: rgb(25, 42, 53);
+    border-width: 1px;
+    border-color: rgb(46, 74, 85);
+    border-radius: 3px;
+    font-size: 11px;
+    -unity-font-style: normal;
+}
+Button:hover { background-color: rgb(38, 62, 75); border-color: rgb(72, 145, 154); }
+Button:active { background-color: rgb(31, 97, 107); }
+Button:disabled { color: rgb(87, 111, 120); background-color: rgb(17, 28, 35); border-color: rgb(30, 45, 53); }
+.primary-button { color: rgb(157, 251, 251); border-color: rgb(40, 132, 143); }
+.quiet-button { min-height: 25px; margin-left: 10px; padding: 3px 7px; font-size: 10px; }
+.path-row { flex-direction: row; margin-top: 5px; }
+#replay-path { flex-grow: 1; flex-basis: 0; min-width: 0; margin: 2px; }
+#replay-path > .unity-text-field__input {
+    color: rgb(215, 234, 241);
+    background-color: rgb(6, 11, 16);
+    border-width: 1px;
+    border-color: rgb(46, 74, 85);
+    border-radius: 3px;
+    padding: 4px 6px;
+    font-size: 11px;
+}
+#replay-path:focus > .unity-text-field__input { border-color: rgb(46, 229, 237); }
+.message-label { color: rgb(143, 176, 188); font-size: 11px; white-space: normal; min-height: 32px; margin-top: 6px; }
+.diagnostics-panel {
+    width: 31%;
+    min-width: 306px;
+    max-width: 390px;
+    flex-shrink: 0;
+    margin-top: 16px;
+    margin-bottom: 16px;
+    margin-right: 16px;
+    padding: 16px 14px;
+}
+.diagnostics-title { color: rgb(224, 239, 245); font-size: 15px; -unity-font-style: bold; }
+.session-label { color: rgb(143, 176, 188); margin-top: 18px; margin-bottom: 5px; font-size: 11px; }
+.invariant-label { margin-top: 12px; color: rgb(162, 210, 212); font-size: 11px; white-space: normal; }
+.world-title { margin-top: 16px; }
+.observation-label { margin-top: 6px; color: rgb(151, 184, 197); font-size: 11px; white-space: normal; }
+.trace-title { margin-top: 16px; }
+.trace-status-label { margin-top: 6px; color: rgb(126, 163, 179); font-size: 10px; white-space: normal; }
+.trace-list { flex-grow: 1; flex-basis: 0; min-height: 84px; margin-top: 9px; background-color: rgb(6, 12, 17); border-width: 0; }
+.trace-row {
+    height: 42px;
+    margin: 0;
+    padding: 5px 4px;
+    color: rgb(164, 196, 209);
+    font-size: 10px;
+    white-space: normal;
+    overflow: hidden;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(23, 38, 46);
+}
+.trace-row:hover { background-color: rgb(20, 35, 44); }
+.trace-detail-panel { display: none; align-self: stretch; margin-top: 10px; max-height: 190px; }
+.trace-detail-title { flex-grow: 1; }
+.trace-detail-scroll { max-height: 128px; }
+.trace-detail { font-size: 11px; color: rgb(164, 196, 209); white-space: normal; }
+.trace-list .unity-scroller--vertical { width: 12px; }
+.diagnostic-error-label { color: rgb(255, 142, 123); font-size: 10px; white-space: normal; margin-top: 7px; display: none; }
+.capability-label { color: rgb(101, 152, 165); font-size: 10px; margin-top: 12px; }
+.actor-overlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
+.actor-label { position: absolute; left: 0; top: 0; width: 156px; height: 30px; align-items: center; }
+.actor-label-text { color: rgb(228, 242, 247); font-size: 10px; -unity-font-style: bold; -unity-text-align: middle-center; }
+.actor-health { width: 78px; height: 5px; margin-top: 3px; padding: 1px; background-color: rgb(7, 11, 15); }
+.actor-health-fill { height: 3px; background-color: rgb(46, 229, 237); }
+.enemy-label .actor-health-fill { background-color: rgb(255, 102, 87); }

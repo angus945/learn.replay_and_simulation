@@ -1,0 +1,67 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="ArenaHud.uss" />
+    <ui:VisualElement name="arena-hud" class="arena-hud" picking-mode="Ignore">
+        <ui:VisualElement name="actor-overlay" class="actor-overlay" picking-mode="Ignore" />
+        <ui:VisualElement class="hud-columns" picking-mode="Ignore">
+            <ui:VisualElement name="arena-main" class="arena-main" picking-mode="Ignore">
+                <ui:VisualElement name="heading" class="panel heading">
+                    <ui:VisualElement class="title-row">
+                        <ui:Label text="ARENA / REPLAY LAB" class="title" />
+                        <ui:Button name="diagnostics-toggle" text="Hide evidence" class="quiet-button" />
+                    </ui:VisualElement>
+                    <ui:Label text="ONE DOMAIN / ONE SESSION / REPRODUCIBLE EVIDENCE" class="eyebrow" />
+                    <ui:Label text="WASD / ARROWS  move    SPACE  attack nearby enemy" class="help-text" />
+                    <ui:Label name="tick-label" class="tick-label" />
+                    <ui:Label name="performance-label" class="performance-label" />
+                </ui:VisualElement>
+                <ui:Label name="failure-label" class="failure-label" />
+                <ui:VisualElement class="world-space" picking-mode="Ignore">
+                    <ui:Label name="respawn-label" class="respawn-label" picking-mode="Ignore" />
+                    <ui:VisualElement name="trace-detail-panel" class="panel trace-detail-panel">
+                        <ui:VisualElement class="title-row">
+                            <ui:Label text="SELECTED TRACE / CAPTURED EVIDENCE" class="section-title trace-detail-title" />
+                            <ui:Button name="trace-detail-close" text="Close" class="quiet-button" />
+                        </ui:VisualElement>
+                        <ui:ScrollView class="trace-detail-scroll">
+                            <ui:Label name="trace-detail" class="trace-detail" />
+                        </ui:ScrollView>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="panel controls">
+                    <ui:Label name="mode-label" class="section-title mode-label" />
+                    <ui:VisualElement class="button-row">
+                        <ui:Button name="save-recording" text="Save recording" class="primary-button" />
+                        <ui:Button name="live-toggle" text="Pause live" />
+                        <ui:Button name="return-live" text="Return live" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="path-row">
+                        <ui:TextField name="replay-path" tooltip="Recording JSON path. Movement input is suspended while editing this field." />
+                        <ui:Button name="load-replay" text="Load path" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="button-row playback-row">
+                        <ui:Button name="replay-play" text="Play" />
+                        <ui:Button name="replay-pause" text="Pause" />
+                        <ui:Button name="replay-step" text="Step +1" />
+                        <ui:Button name="replay-restart" text="Restart replay" />
+                    </ui:VisualElement>
+                    <ui:Label name="message-label" class="message-label" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="diagnostics-panel" class="panel diagnostics-panel">
+                <ui:Label text="EVIDENCE / READ ONLY" class="diagnostics-title" />
+                <ui:Label text="Observation + invariants + trace cursor" class="eyebrow" />
+                <ui:Label name="session-label" class="session-label" />
+                <ui:Label name="state-label" class="section-title" />
+                <ui:Label name="invariant-label" class="invariant-label" />
+                <ui:Label text="COMMITTED WORLD" class="section-title world-title" />
+                <ui:Label name="observation-label" class="observation-label" />
+                <ui:Label text="TRACE / NEWEST FIRST" class="section-title trace-title" />
+                <ui:Label text="Click a row for full evidence" class="eyebrow" />
+                <ui:Label name="trace-status-label" class="trace-status-label" />
+                <ui:ListView name="trace-list" class="trace-list" fixed-item-height="42" />
+                <ui:Label name="diagnostic-error-label" class="diagnostic-error-label" />
+                <ui:Label text="NO SUBMIT / NO STEP / NO ADMIN" class="capability-label" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

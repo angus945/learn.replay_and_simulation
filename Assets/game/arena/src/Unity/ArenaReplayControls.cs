@@ -13,9 +13,27 @@ namespace Arena.Unity
         private string replayPath = string.Empty;
         private string replayMessage = "Recording every submitted input from tick 0. Save a run, then load it to verify replay.";
         private bool resumeLiveAfterReplay;
+        private string uiError;
         public TemplateReplayState? PlaybackState => replay?.State;
         public TemplateDifference ReplayDifference => replay?.FirstDifference;
         public string RecordingPath => replayPath;
+        public string ReplayPath { get => replayPath; set => replayPath = value ?? string.Empty; }
+        public string ReplayStatus => replay == null ? (livePaused ? "LIVE / PAUSED" : "LIVE / RECORDING")
+            : "REPLAY / " + replay.State + "  " + replay.CurrentTick + "/" + replay.EndTick;
+        public string UiMessage
+        {
+            get
+            {
+                if (uiError != null) return uiError;
+                if (replay?.FirstDifference != null)
+                    return "DIVERGED at tick " + replay.FirstDifference.Tick + " / " + replay.FirstDifference.Category;
+                if (replay?.State == TemplateReplayState.Completed)
+                    return "VERIFIED / all recorded tick hashes and action results match.";
+                if (replay?.State == TemplateReplayState.ReproducedFailure)
+                    return "REPRODUCED FAILURE / the recorded failure fingerprint matches. This is not a replay divergence.";
+                return replayMessage;
+            }
+        }
 
         public string SaveRecording()
         {
@@ -111,49 +129,11 @@ namespace Arena.Unity
             replayMessage = "Returned to the original live session. Replay time never advanced its clock.";
         }
 
-        private void DrawReplayControls(Rect rect)
+        /// <summary>View event boundary: report a control error without stopping the simulation adapter.</summary>
+        public void InvokeUi(Action action)
         {
-            ArenaGui.Fill(rect, ArenaGui.Panel);
-            GUILayout.BeginArea(new Rect(rect.x + 16, rect.y + 10, rect.width - 32, rect.height - 20));
-            string state = replay == null ? (livePaused ? "LIVE / PAUSED" : "LIVE / RECORDING") : "REPLAY / " + replay.State + "  " + replay.CurrentTick + "/" + replay.EndTick;
-            GUILayout.Label(state, statStyle);
-            GUILayout.BeginHorizontal();
-            GUI.enabled = replay == null;
-            if (GUILayout.Button("Save recording", GUILayout.Height(25))) TryControl(() => SaveRecording());
-            if (GUILayout.Button(livePaused ? "Resume live" : "Pause live", GUILayout.Height(25)))
-                TryControl(livePaused ? (Action)ResumeLive : PauseLive);
-            GUI.enabled = true;
-            if (GUILayout.Button("Load path", GUILayout.Height(25))) TryControl(() => LoadReplay(replayPath));
-            GUI.enabled = replay != null;
-            if (GUILayout.Button("Return live", GUILayout.Height(25))) TryControl(ReturnToLive);
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
-            GUI.SetNextControlName("ArenaRecordingPath");
-            replayPath = GUILayout.TextField(replayPath, GUILayout.Height(23));
-            pathFocused = GUI.GetNameOfFocusedControl() == "ArenaRecordingPath";
-            GUILayout.BeginHorizontal();
-            GUI.enabled = replay != null && replay.State == TemplateReplayState.Paused;
-            if (GUILayout.Button("Play", GUILayout.Height(23))) TryControl(PlayReplay);
-            if (GUILayout.Button("Step +1", GUILayout.Height(23))) TryControl(StepReplay);
-            GUI.enabled = replay != null && replay.State == TemplateReplayState.Playing;
-            if (GUILayout.Button("Pause", GUILayout.Height(23))) TryControl(PauseReplay);
-            GUI.enabled = replay != null;
-            if (GUILayout.Button("Restart replay", GUILayout.Height(23))) TryControl(RestartReplay);
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
-            string message = replay?.FirstDifference == null ? replayMessage :
-                "DIVERGED at tick " + replay.FirstDifference.Tick + " / " + replay.FirstDifference.Category;
-            if (replay != null && replay.State == TemplateReplayState.Completed) message = "VERIFIED / all recorded tick hashes and action results match.";
-            if (replay != null && replay.State == TemplateReplayState.ReproducedFailure)
-                message = "REPRODUCED FAILURE / the recorded failure fingerprint matches. This is not a replay divergence.";
-            GUILayout.Label(message, subtitleStyle);
-            GUILayout.EndArea();
-        }
-
-        private void TryControl(Action action)
-        {
-            try { action(); GUI.FocusControl(null); pathFocused = false; }
-            catch (Exception exception) { replayMessage = exception.GetType().Name + ": " + exception.Message; }
+            try { action(); uiError = null; }
+            catch (Exception exception) { uiError = exception.GetType().Name + ": " + exception.Message; }
         }
     }
 }

@@ -16,6 +16,8 @@ dotnet run --project tools/arena-checks -- all
 
 Unity 場景為 [ArenaDemo](scenes/ArenaDemo.unity)。Play 後 WASD／方向鍵移動、Space 攻擊；HUD 提供唯讀證據與錄製／播放控制。場景組裝來源是 [ArenaSceneBuilder](src/Editor/ArenaSceneBuilder.cs)。
 
+HUD 使用 UI Toolkit。Hide／Show evidence 可切換診斷面板；目標 Hz 與實測 FPS／tick/s 分開顯示。UI 資產由 `Tools > Arena > Prepare UI Assets` 準備，scene／build 入口也會檢查。
+
 ## 各層放什麼
 
 - [Domain](src/Domain/)：Actor aggregate、ActorId、Position、不可變 ArenaRules。沒有 Unity、framework 或 registry reference。
@@ -24,6 +26,8 @@ Unity 場景為 [ArenaDemo](scenes/ArenaDemo.unity)。Play 後 WASD／方向鍵�
 - [Integration](src/Integration/)：scenario／input／observation、phase 與事件映射、canonical state、post-tick oracle、trace metadata。
 - [Composition](src/Composition/)：ArenaDefinition 與 ArenaLiveSession，建立獨立世界、唯一 driver 和 per-session checks。
 - [Unity](src/Unity/)：輸入、時間轉交、pool/view、唯讀面板、recording/replay UI；沒有另一套權威遊戲狀態。
+
+Unity UI 再分兩個角色：[ArenaDiagnosticsPanel](src/Unity/ArenaDiagnosticsPanel.cs) 只接 `IDiagnosticReader`，10 Hz 輪詢並快取最新 160 筆文字；[ArenaHudView](src/Unity/ArenaHudView.cs) 搭配 [UXML／USS](ui/Resources/) 建立 retained 畫面，trace 使用固定高度 42 的虛擬化 ListView。隱藏面板停止自動輪詢，重新顯示仍需報告 cursor 缺口。完整接線與目的見 [第 10 章](../../../docs/arena-guide/10-unity.md)。
 
 各層有獨立 asmdef；[tools/arena-build](../../../tools/arena-build/) 以對應 netstandard2.1 ProjectReference libraries 建置同一 production sources，不靠單一巨型 executable 隱藏依賴方向。
 
@@ -56,3 +60,5 @@ Arena 不支援舊 game API／recording 相容。內層不依賴 Protocol、netw
 本遊戲未接 Physics gameplay；Unity framework 的 local sensor adapters 是可選 reference。沒有 dynamic Rigidbody authority、snapshot restore／rollback、任意 seek、process watchdog 或跨平台 bitwise determinism 保證。
 
 測試來源在 [tests](tests/)；實際結果必須來自當次執行。Domain 規則測試、Application ports 測試、兩 framework 契約、Arena headless integration 與 Unity PlayMode／Player 層次不互相替代。
+
+[UI Toolkit 驗證報告](../../../docs/verification/arena-ui-toolkit-2026-08-30.md) 記錄此次 UI 變更的測試與量測條件。UI 替換不改 Domain／Application、simulation thread 或時間來源；`Time.deltaTime` 的長卡頓截斷問題仍是獨立的 host 時間政策。

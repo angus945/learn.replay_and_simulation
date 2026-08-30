@@ -213,6 +213,41 @@ namespace Arena.Tests
                 using (Playback replay = new ArenaDefinition().CreateReplay(live.CaptureRecording()))
                 { while (replay.State == TemplateReplayState.Paused) replay.Step(); Require(replay.State == TemplateReplayState.Completed && live.TickNumber == 4, "Replay never advances live."); }
             }
+            using (ArenaLiveSession cleared = new ArenaLiveSession(new ArenaScenario(tickDelta: .25f, enemyHealthMin: 40, enemyHealthMax: 40)))
+            {
+                int health = cleared.Observe().FindActor(2).Health;
+                cleared.CaptureAxes(1, 0); cleared.CaptureAttack(true); cleared.CaptureAttack(false);
+                cleared.ClearInput(); cleared.ClearInput(); cleared.ClearInput();
+                cleared.CaptureAttack(true); cleared.CaptureAttack(false);
+                cleared.AdvanceTime(.75f);
+                TemplateRecording recording = cleared.CaptureRecording();
+                Require(cleared.Observe().FindActor(1).X == 0 && cleared.Observe().FindActor(2).Health == health - 10,
+                    "Repeated clears discard stale input without swallowing a subsequently captured press.");
+                Require(recording.Ticks[0].Results.Count == 2 && recording.Ticks[1].Results.Count == 1 && recording.Ticks[2].Results.Count == 1,
+                    "A new press after repeated clears executes only once across catchup ticks.");
+            }
+            using (ArenaLiveSession held = new ArenaLiveSession(new ArenaScenario(tickDelta: .25f, enemyHealthMin: 40, enemyHealthMax: 40)))
+            {
+                held.CaptureAxes(1, 0); held.CaptureAttack(true); held.AdvanceTime(.25f);
+                float x = held.Observe().FindActor(1).X;
+                int health = held.Observe().FindActor(2).Health;
+                // Consuming a tick clears edges, but held axes/button state still needs clearing.
+                held.ClearInput(); held.ClearInput(); held.AdvanceTime(.25f);
+                Require(held.Observe().FindActor(1).X == x && held.Observe().FindActor(2).Health == health &&
+                    held.CaptureRecording().Ticks[1].Results.Count == 1,
+                    "Clearing previously consumed held input stops movement and does not produce another attack.");
+                held.CaptureAttack(true); held.AdvanceTime(.25f);
+                Require(held.Observe().FindActor(2).Health == health - 10,
+                    "Clearing held input resets button-down state so a fresh press does not require a synthetic release.");
+            }
+            using (ArenaLiveSession clean = new ArenaLiveSession())
+            {
+                Expect<InvalidOperationException>(() => System.Threading.Tasks.Task.Run(() => clean.ClearInput()).GetAwaiter().GetResult());
+                clean.CaptureAxes(1, 0); clean.ClearInput();
+                Expect<InvalidOperationException>(() => System.Threading.Tasks.Task.Run(() => clean.ClearInput()).GetAwaiter().GetResult());
+                Require(clean.TickNumber == 0 && clean.CaptureRecording().Inputs.Count == 0,
+                    "The idempotent ClearInput fast path still enforces owner-thread access without advancing or submitting input.");
+            }
             using (Session session = new ArenaDefinition().CreateTestSession(new ArenaScenario()))
             {
                 using (DeterministicSimulation.Framework.RealtimeSimulationRunner runner = session.CreateRealtimeRunner())

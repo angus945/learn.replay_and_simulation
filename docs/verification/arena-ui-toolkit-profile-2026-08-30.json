@@ -1,0 +1,122 @@
+[
+  {
+    "phase": 0,
+    "traceRows": 160,
+    "realizedRows": 13,
+    "polling": false,
+    "seconds": 5.0107540000026347,
+    "samples": 300,
+    "fps": 59.871228960719733,
+    "ticksPerSecond": 60.070799723922136,
+    "frameP50Ms": 16.613101586699486,
+    "frameP95Ms": 19.948398694396019,
+    "gcMeanBytes": 60792.216666666667,
+    "markers": [
+      {
+        "name": "PreLateUpdate.UIElementsUpdatePanels",
+        "valid": true,
+        "meanMs": 0.11055066666666666
+      },
+      {
+        "name": "PostLateUpdate.UIElementsRepaintPanels",
+        "valid": true,
+        "meanMs": 0.285738
+      },
+      {
+        "name": "Game.Arena.Unity.dll!Arena.Unity::ArenaHost.LateUpdate() [Invoke]",
+        "valid": true,
+        "meanMs": 0.17968233333333344
+      }
+    ]
+  },
+  {
+    "phase": 1,
+    "traceRows": 0,
+    "realizedRows": 0,
+    "polling": false,
+    "seconds": 5.0072908000001917,
+    "samples": 301,
+    "fps": 60.112346580707573,
+    "ticksPerSecond": 60.112346580707573,
+    "frameP50Ms": 16.786599531769753,
+    "frameP95Ms": 20.162798464298248,
+    "gcMeanBytes": 60606.006644518275,
+    "markers": [
+      {
+        "name": "PreLateUpdate.UIElementsUpdatePanels",
+        "valid": true,
+        "meanMs": 0.12467109634551501
+      },
+      {
+        "name": "PostLateUpdate.UIElementsRepaintPanels",
+        "valid": true,
+        "meanMs": 0.31520498338870423
+      },
+      {
+        "name": "Game.Arena.Unity.dll!Arena.Unity::ArenaHost.LateUpdate() [Invoke]",
+        "valid": true,
+        "meanMs": 0.21447375415282396
+      }
+    ]
+  },
+  {
+    "phase": 2,
+    "traceRows": 160,
+    "realizedRows": 13,
+    "polling": false,
+    "seconds": 5.0193367999963812,
+    "samples": 301,
+    "fps": 59.968081839062286,
+    "ticksPerSecond": 59.968081839062286,
+    "frameP50Ms": 16.776800155639648,
+    "frameP95Ms": 21.055802702903748,
+    "gcMeanBytes": 60686.916943521595,
+    "markers": [
+      {
+        "name": "PreLateUpdate.UIElementsUpdatePanels",
+        "valid": true,
+        "meanMs": 0.12643289036544847
+      },
+      {
+        "name": "PostLateUpdate.UIElementsRepaintPanels",
+        "valid": true,
+        "meanMs": 0.289082392026578
+      },
+      {
+        "name": "Game.Arena.Unity.dll!Arena.Unity::ArenaHost.LateUpdate() [Invoke]",
+        "valid": true,
+        "meanMs": 0.20187475083056478
+      }
+    ]
+  },
+  {
+    "phase": 3,
+    "traceRows": 160,
+    "realizedRows": 13,
+    "polling": true,
+    "seconds": 5.0018555999995442,
+    "samples": 291,
+    "fps": 58.178408828920716,
+    "ticksPerSecond": 59.977741060743007,
+    "frameP50Ms": 16.667898744344711,
+    "frameP95Ms": 24.498002603650093,
+    "gcMeanBytes": 85380.883161512029,
+    "markers": [
+      {
+        "name": "PreLateUpdate.UIElementsUpdatePanels",
+        "valid": true,
+        "meanMs": 0.13503127147766325
+      },
+      {
+        "name": "PostLateUpdate.UIElementsRepaintPanels",
+        "valid": true,
+        "meanMs": 1.0164927835051545
+      },
+      {
+        "name": "Game.Arena.Unity.dll!Arena.Unity::ArenaHost.LateUpdate() [Invoke]",
+        "valid": true,
+        "meanMs": 0.67831546391752506
+      }
+    ]
+  }
+]

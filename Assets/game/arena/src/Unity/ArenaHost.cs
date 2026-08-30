@@ -23,12 +23,9 @@ namespace Arena.Unity
         private ArenaScenario scenario;
         private Exception adapterFailure;
         private bool livePaused;
-        private bool pathFocused;
         private bool disposed;
-        private GUIStyle titleStyle;
-        private GUIStyle subtitleStyle;
-        private GUIStyle statStyle;
-        private GUIStyle actorStyle;
+        private ArenaHudView hud;
+        private readonly ArenaPerformanceMetrics performance = new ArenaPerformanceMetrics();
 
         public bool IsInitialized => live != null && !disposed;
         public bool IsReplaying => replay != null;
@@ -39,6 +36,8 @@ namespace Arena.Unity
         public Exception AdapterFailure => adapterFailure;
         public ArenaActorPresentation Views => views;
         public ArenaDiagnosticsPanel DiagnosticsPanel => diagnostics;
+        public ArenaHudView Hud => hud;
+        public ArenaPerformanceMetrics Performance => performance;
 
         private void Awake()
         {
@@ -60,10 +59,13 @@ namespace Arena.Unity
                 views.Snap(next.Observe());
                 live = next;
                 BindDiagnostics(live.Diagnostics);
+                hud = new ArenaHudView(this, diagnostics);
+                performance.Reset(Time.realtimeSinceStartupAsDouble, TickNumber);
             }
             catch
             {
-                views?.Dispose(); views = null; next.Dispose();
+                hud?.Dispose(); hud = null;
+                views?.Dispose(); views = null; next.Dispose(); live = null;
                 throw;
             }
         }
@@ -110,9 +112,10 @@ namespace Arena.Unity
                 if (referenceGrid != null)
                     referenceGrid.position = new Vector3(Mathf.Floor(player.X), Mathf.Floor(player.Y), 0);
             }
-            float panelPixels = 372 * UiScale;
-            arenaCamera.rect = new Rect(0, 0, Mathf.Clamp01((Screen.width - panelPixels) / Screen.width), 1);
+            arenaCamera.rect = new Rect(0, 0, 1f - hud.SidebarWidthFraction, 1);
             diagnostics.Refresh(Time.unscaledTime);
+            performance.Sample(Time.realtimeSinceStartupAsDouble, current.Tick, replay == null ? live.PendingSeconds : 0);
+            hud.Refresh(current, views, arenaCamera, Time.unscaledTime);
         }
 
         public void PauseLive()
@@ -138,7 +141,7 @@ namespace Arena.Unity
                 if (replay == null)
                 {
                     Keyboard keyboard = Keyboard.current;
-                    bool canRead = keyboard != null && UnityEngine.Application.isFocused && !pathFocused && !livePaused;
+                    bool canRead = keyboard != null && UnityEngine.Application.isFocused && !hud.IsTextInputFocused && !livePaused;
                     float horizontal = canRead ? Axis(keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed,
                         keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) : 0;
                     float vertical = canRead ? Axis(keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed,
@@ -153,8 +156,12 @@ namespace Arena.Unity
 
         private void LateUpdate()
         {
-            if (!IsInitialized || adapterFailure != null) return;
-            try { RenderFrame(); }
+            if (!IsInitialized) return;
+            try
+            {
+                if (adapterFailure == null) RenderFrame();
+                else hud.Refresh(CurrentObservation, views, arenaCamera, Time.unscaledTime);
+            }
             catch (Exception exception) { FailAdapter(exception); }
         }
 
@@ -178,7 +185,11 @@ namespace Arena.Unity
             finally
             {
                 try { live?.Dispose(); }
-                finally { views?.Dispose(); }
+                finally
+                {
+                    try { views?.Dispose(); }
+                    finally { hud?.Dispose(); }
+                }
             }
         }
 
@@ -186,6 +197,8 @@ namespace Arena.Unity
         {
             diagnostics = new ArenaDiagnosticsPanel(reader);
             diagnostics.Poll();
+            hud?.BindDiagnostics(diagnostics);
+            performance.Reset(Time.realtimeSinceStartupAsDouble, TickNumber);
         }
 
         private void FailAdapter(Exception exception)
@@ -203,75 +216,5 @@ namespace Arena.Unity
         }
 
         private static float Axis(bool negative, bool positive) => (positive ? 1f : 0f) - (negative ? 1f : 0f);
-        private static float UiScale => Mathf.Clamp(Screen.width / 1280f, .6f, 1.5f);
-
-        private void OnGUI()
-        {
-            if (!IsInitialized) return;
-            EnsureStyles();
-            Matrix4x4 oldMatrix = GUI.matrix;
-            Color oldColor = GUI.color;
-            float scale = UiScale;
-            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1));
-            float width = Screen.width / scale;
-            float height = Screen.height / scale;
-            float canvasWidth = width - 372;
-            DrawHeading(canvasWidth);
-            DrawActorLabels(scale, height);
-            DrawReplayControls(new Rect(24, height - 188, canvasWidth - 48, 164));
-            diagnostics.Draw(new Rect(width - 356, 16, 340, height - 32));
-            if (adapterFailure != null)
-            {
-                ArenaGui.Fill(new Rect(24, 172, canvasWidth - 48, 92), new Color(.27f, .075f, .07f, .98f));
-                GUI.Label(new Rect(38, 182, canvasWidth - 76, 70), "HOST ADAPTER STOPPED\n" + adapterFailure.Message +
-                    "\nCompleted ticks remain available for saving. Restart Play Mode after fixing the adapter.", subtitleStyle);
-            }
-            GUI.matrix = oldMatrix;
-            GUI.color = oldColor;
-        }
-
-        private void DrawHeading(float canvasWidth)
-        {
-            ArenaGui.Fill(new Rect(24, 24, canvasWidth - 48, 130), ArenaGui.Panel);
-            ArenaGui.Fill(new Rect(24, 24, 4, 130), IsReplaying ? ArenaGui.Coral : ArenaGui.Cyan);
-            GUI.Label(new Rect(42, 34, canvasWidth - 80, 38), "ARENA / REPLAY LAB", titleStyle);
-            GUI.Label(new Rect(44, 77, canvasWidth - 82, 22), "ONE DOMAIN  /  ONE SESSION  /  REPRODUCIBLE EVIDENCE", subtitleStyle);
-            GUI.Label(new Rect(44, 107, canvasWidth - 82, 25),
-                "WASD / ARROWS  move     SPACE  attack nearby enemy     TICK " + TickNumber.ToString("D6") +
-                "  /  " + (1f / CurrentObservation.TickDelta).ToString("0") + " Hz", statStyle);
-        }
-
-        private void DrawActorLabels(float scale, float logicalHeight)
-        {
-            ArenaObservation observation = CurrentObservation;
-            foreach (ActorSnapshot actor in observation.Actors)
-            {
-                if (!views.TryGetView(actor.Id, out GameObject instance)) continue;
-                Vector3 screen = arenaCamera.WorldToScreenPoint(instance.transform.position + new Vector3(0, actor.Enemy ? .6f : -.8f, 0));
-                if (screen.z <= 0) continue;
-                float x = screen.x / scale;
-                float y = logicalHeight - screen.y / scale;
-                Color color = actor.Enemy ? ArenaGui.Coral : ArenaGui.Cyan;
-                ArenaGui.Fill(new Rect(x - 39, y - 4, 78, 5), new Color(.03f, .045f, .06f, .95f));
-                float fraction = actor.MaxHealth > 0 ? Mathf.Clamp01((float)actor.Health / actor.MaxHealth) : 0;
-                ArenaGui.Fill(new Rect(x - 38, y - 3, 76 * fraction, 3), color);
-                GUI.Label(new Rect(x - 78, y - 24, 156, 22), (actor.Enemy ? "ENEMY" : "PLAYER") + "  " + actor.Health + "/" + actor.MaxHealth, actorStyle);
-            }
-            if (observation.PendingRespawnTicks.Count > 0)
-            {
-                float x = (Screen.width / scale - 372) * .5f - 130;
-                GUI.Label(new Rect(x, logicalHeight * .68f, 260, 30), "ENEMY RESPAWN SCHEDULED / t" + observation.PendingRespawnTicks[0], actorStyle);
-            }
-        }
-
-        private void EnsureStyles()
-        {
-            if (titleStyle != null) return;
-            titleStyle = ArenaGui.Label(27, ArenaGui.Text, FontStyle.Bold);
-            subtitleStyle = ArenaGui.Label(11, ArenaGui.Muted);
-            statStyle = ArenaGui.Label(12, ArenaGui.Cyan);
-            actorStyle = ArenaGui.Label(10, ArenaGui.Text, FontStyle.Bold);
-            actorStyle.alignment = TextAnchor.MiddleCenter;
-        }
     }
 }

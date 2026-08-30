@@ -7,7 +7,7 @@
 ## 執行
 
 Unity 6000.3.20f1 開啟 `Assets/game/arena/scenes/ArenaDemo.unity`，按 Play。
-WASD／方向鍵移動，Space 攻擊附近敵人。畫面提供唯讀 diagnostics、Pause、錄製、載入、逐 tick Replay 與返回原 Live session。
+WASD／方向鍵移動，Space 攻擊附近敵人。UI Toolkit 畫面提供可隱藏的唯讀 diagnostics、Pause、錄製、載入、逐 tick Replay 與返回原 Live session；目標 Hz 與實測 FPS／tick/s 分開顯示。接線與效能邊界見 [Unity 教學](docs/arena-guide/10-unity.md)。
 
 無 Unity 驗證需要 .NET 9 SDK：
 
@@ -44,5 +44,6 @@ Unity、CLI、整合測試與 Replay 都由 `ArenaDefinition` 建立正式 sessi
 ## 文件與驗證
 
 - [功能接線與驗收清單](docs/arena-guide/capabilities.md)。
-- [本次驗證紀錄](docs/verification/arena-rebuild-2026-08-30.md)。
+- [UI Toolkit 改造驗證](docs/verification/arena-ui-toolkit-2026-08-30.md)。
+- [Arena 初次重建驗證](docs/verification/arena-rebuild-2026-08-30.md)：保留當時結果，不代表後續 UI 變更已通過。
 - [封存政策](docs/archive/README.md)：舊 game 完全替換；舊教學與原始驗收只作歷史，不是第二條主線。

@@ -38,8 +38,10 @@
 ## Unity 外圍整合
 
 - Input System → TickInputBuffer → Submit：frame axes 與 press edge 分開，模式切換清 buffer。見 [10](10-unity.md)、[ArenaHost](../../Assets/game/arena/src/Unity/ArenaHost.cs)。
-- Observation → ActorPose → UnityActorPresentation／Pool：stable game ID 與 instance generation 分開；死亡移除、出生 snap、catch-up pair、跨 session snap。
-- 唯讀 diagnostics consumer：ArenaDiagnosticsPanel 只有 IDiagnosticReader，不取得 Step／Admin。
+- Observation → ActorPose → UnityActorPresentation／Pool：stable game ID 與 instance generation 分開；死亡移除、出生 snap、catch-up pair、跨 session snap。capture／Snap 後快取 ID→view，HUD 重用角色標籤。
+- 唯讀 diagnostics presenter：ArenaDiagnosticsPanel 只有 IDiagnosticReader，不取得 Step／Admin；10 Hz 自動讀取、最新 160 筆 history、快取文字、來源／cursor／本地缺口分開。
+- UI Toolkit retained view：ArenaHudView 與 UXML／USS 分離，固定高度 42 的 ListView 虛擬化；TraceRevision 改變才 RefreshItems。隱藏 evidence 停止自動讀取，重新顯示續讀並報缺口；owned UIDocument／PanelSettings 在 dispose 釋放。
+- 時間可觀察性：目標 Hz 與實測 FPS／tick/s 分開；至少 .5 秒 wall-clock 更新，live debt 是 Live runner 的剩餘時間，Replay 時此欄不量測其 accumulator。未改 Time.deltaTime／maximumDeltaTime 或 owner-thread 政策。
 - Recording／Replay UI：保存新檔、載入、播放、pause、step、restart、return live；播放不推進原 live world。
 - 需要另外執行 Unity 編譯、EditMode／PlayMode、scene smoke 與 Player build／startup。CLI 成功不能填補這些證據。
 

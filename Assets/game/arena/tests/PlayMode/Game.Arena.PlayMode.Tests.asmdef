@@ -8,7 +8,9 @@
     "Game.Arena.Application",
     "Framework.Testability",
     "Framework.DeterministicSimulation",
-    "Framework.DeterministicSimulation.Unity"
+    "Framework.DeterministicSimulation.Unity",
+    "Module.TraceBuffer",
+    "Module.InvariantChecks"
   ],
   "optionalUnityReferences": ["TestAssemblies"]
 }

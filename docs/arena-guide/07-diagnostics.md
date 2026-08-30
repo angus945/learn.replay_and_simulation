@@ -70,6 +70,16 @@ cursor = batch.NextCursor;
 
 Unity 的 [ArenaDiagnosticsPanel](../../Assets/game/arena/src/Unity/ArenaDiagnosticsPanel.cs) 只取得這個 reader。來源 overwrite、尚未讀到就遺失、面板本地歷史淘汰是三件不同事；reader 無法 Submit／Step／Reset。
 
+它現在是「診斷 presenter」，不是一個自行繪圖的 `OnGUI` 面板：
+
+- `Refresh` 在可見時以最多約 10 Hz 輪詢；session／stream 改變時清除舊歷史與缺口計數。
+- 每批最多讀 512 筆，面板只保留最新 160 筆。超過本地上限的資料算 `LocalEvictedCount`，不要和來源 `OverwrittenCount`、游標 `MissedCount` 混成一個數字。
+- 新保留的 record 才建立 `ArenaTraceRow`，預先格式化兩行 `Summary` 與完整 `Detail`。已經知道會淘汰的舊資料不再格式化。
+- `TraceRows` 是同一個唯讀清單介面。`TraceRevision` 表示列資料改變；`Revision` 表示標題、snapshot 文字或錯誤文字改變。
+- Hide evidence 只停止自動讀取／格式化，不停止 simulation。重新顯示立即續讀原 cursor，若來源期間已覆寫，必須顯示缺口。測試或明確 Step 使用的 `Poll()` 刻意不受顯示狀態和節流限制。
+
+[第 10 章](10-unity.md) 才把這個 presenter 接給 UI Toolkit view。虛擬化只限制建立幾個畫面元素；有界歷史、少做格式化及只讀 capability 仍是 presenter 自己的責任。
+
 ## 在沒有 exception 的情況下產生首次 failure
 
 以下片段放在測試／console 方法中：

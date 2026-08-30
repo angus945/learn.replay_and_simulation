@@ -46,7 +46,7 @@ Unity 每個 frame 呼叫 `CaptureAxes`／`CaptureAttack`；它們只更新 buff
 
 同一 frame 補跑多 ticks 時沿用軸值，Attack edge 只消耗一次。沒有 timestamp 的短暫鍵盤變化可能落在兩次 frame 取樣之間而遺失；此 adapter 不宣稱不同真實 FPS 會產生完全相同的 input/tick 分配。
 
-ClearInput 重新建立 host-owned TickInputBuffer，清除舊 axes／edges，不改 simulation tick 或 recording。清完後新取樣的 press 仍要被接受；不要用「無條件忽略下一次 Attack」的旗標，把切換模式後的新按鍵一起吞掉。
+ClearInput 在 buffer 曾被取樣後重新建立 host-owned TickInputBuffer，清除舊 axes／edges，不改 simulation tick 或 recording。`inputDirty` 讓已清空的 buffer 不因持續失焦／暫停而每 frame 重建。清完後新取樣的 press 仍要被接受；不要用「無條件忽略下一次 Attack」的旗標，把切換模式後的新按鍵一起吞掉。
 
 `CaptureAxes`、`CaptureAttack`、`ClearInput` 也受 owner-thread 與 disposed guard 保護，不能因為它們「只改 buffer」就讓背景執行緒搶寫。非建立執行緒呼叫會拋 InvalidOperationException；在 owner thread 對已 Dispose 的 live session 呼叫會拋 ObjectDisposedException。背景來源應先排入 host 的 owner thread，再取樣，不直接把 transport callback 接到這些方法。
 
@@ -106,6 +106,21 @@ using (ArenaLiveSession live = new ArenaLiveSession(
 - 所有操作在 owner thread，不是背景 thread scheduler。
 
 ArenaLiveSession.Dispose 先 runner.Dispose，再 session.Dispose。runner 只釋放驅動權，不會替 caller 釋放 world。
+
+## 設定 Hz、實測 tick/s 與 debt 不同
+
+固定 tick interval 不表示 host 一定有足夠時間達到目標速度。[ArenaPerformanceMetrics](../../Assets/game/arena/src/Unity/ArenaPerformanceMetrics.cs) 是 Unity 外層的觀察工具，每累積至少 .5 秒真實時間更新一次：
+
+- `TARGET Hz` 來自目前 observation 的 `TickDelta`，是設定值。
+- `FPS` 是取樣區間的呈現 frame 數除以 wall-clock 秒數。
+- `tick/s` 是目前顯示世界的 tick 增量除以相同 wall-clock 秒數；Live、Replay、暫停應分開解讀。
+- `live debt` 是 Live runner 已收到、尚未處理完的時間，以 ms 顯示；它包含不足一個 tick 的餘數。Replay 時此欄傳入 0，不是 Replay accumulator 的量測。
+
+這個計數器只讀 `Time.realtimeSinceStartupAsDouble`、tick 與 `PendingSeconds`。它不把量測時間餵回 runner，不重寫 tick rate，也沒有搬到背景 thread。frame 很慢時 FPS 可以下降而 tick/s 暫時維持目標，因為 runner 可能在同一 frame 補跑多 ticks。
+
+目前 ArenaHost 仍以 `Time.deltaTime` 呼叫 AdvanceFrame。這保留 Unity timeScale 與 `Time.maximumDeltaTime` 的政策：長卡頓超過最大 delta 時，Unity 截斷的時間根本沒有傳進 runner，不能從 pending debt 看出或追回。UI 重構並未自動解決這個時間來源問題。[Unity 時間變動說明](https://docs.unity3d.com/6000.3/Documentation/Manual/time-handling-variations.html)
+
+若未來要改成真實時間驅動，應另外決定失焦、暫停、長停頓及補跑上限，補測 input/tick 分配；不能因為換了 UI 就悄悄改變這些語意。效能數字及測量條件記在 [UI Toolkit 驗證報告](../verification/arena-ui-toolkit-2026-08-30.md)，不由本章的設計說明推定改善幅度。
 
 ## 執行與反例
 

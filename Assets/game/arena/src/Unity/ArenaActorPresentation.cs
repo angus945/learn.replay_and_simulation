@@ -14,6 +14,7 @@ namespace Arena.Unity
     {
         private readonly UnityActorPool pool;
         private readonly UnityActorPresentation presentation;
+        private readonly Dictionary<ulong, GameObject> activeViews = new Dictionary<ulong, GameObject>();
         private ArenaObservation source;
         private ArenaObservation lastPresented;
         private float tickDelta;
@@ -59,6 +60,7 @@ namespace Arena.Unity
                     if (!ReferenceEquals(lastPresented, previous)) Snap(previous);
                     source = current;
                     presentation.CaptureTickState(Context(SimulationPhase.PresentationCapture));
+                    RefreshViewCache();
                     lastPresented = current;
                 }
             }
@@ -70,6 +72,7 @@ namespace Arena.Unity
         {
             source = observation ?? throw new ArgumentNullException(nameof(observation));
             presentation.SnapToCurrent(Context(SimulationPhase.PresentationCapture));
+            RefreshViewCache();
             lastPresented = observation;
         }
 
@@ -90,16 +93,18 @@ namespace Arena.Unity
         }
 
         public bool TryGetView(ulong actorId, out GameObject view)
+            => activeViews.TryGetValue(actorId, out view);
+
+        private void RefreshViewCache()
         {
+            activeViews.Clear();
             foreach (ActorBinding binding in pool.GetActiveBindings())
-                if (binding.Id.Value == actorId) return pool.TryGetInstance(binding.Instance, out view);
-            view = null;
-            return false;
+                if (pool.TryGetInstance(binding.Instance, out GameObject instance)) activeViews.Add(binding.Id.Value, instance);
         }
 
         private SimulationContext Context(SimulationPhase phase)
             => new SimulationContext(new SimulationTick(source.Tick, tickDelta), phase);
 
-        public void Dispose() => pool.Dispose();
+        public void Dispose() { activeViews.Clear(); pool.Dispose(); }
     }
 }

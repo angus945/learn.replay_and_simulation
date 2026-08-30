@@ -5,6 +5,7 @@ using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
 namespace Arena.Unity.Editor
 {
@@ -14,6 +15,28 @@ namespace Arena.Unity.Editor
         public const string ScenePath = "Assets/game/arena/scenes/ArenaDemo.unity";
         private const string VisualFolder = "Assets/game/arena/visuals";
 
+        [MenuItem("Tools/Arena/Prepare UI Assets")]
+        public static void EnsureUiAssets()
+        {
+            const string folder = "Assets/game/arena/ui/Resources";
+            const string path = folder + "/ArenaPanelSettings.asset";
+            if (AssetDatabase.LoadAssetAtPath<PanelSettings>(path) != null) return;
+            if (AssetDatabase.LoadMainAssetAtPath(path) != null)
+                throw new InvalidOperationException("An unrelated asset occupies " + path);
+            ThemeStyleSheet theme = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(folder + "/ArenaTheme.tss");
+            if (theme == null) throw new InvalidOperationException("Import ArenaTheme.tss before preparing the UI assets.");
+            EnsureFolder(folder);
+            PanelSettings settings = ScriptableObject.CreateInstance<PanelSettings>();
+            settings.name = "Arena Panel Settings";
+            settings.themeStyleSheet = theme;
+            settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            settings.referenceResolution = new Vector2Int(1280, 800);
+            settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            settings.match = 0;
+            AssetDatabase.CreateAsset(settings, path);
+            AssetDatabase.SaveAssets();
+        }
+
         [MenuItem("Tools/Arena/Create Demo Scene")]
         public static void CreateScene()
         {
@@ -22,6 +45,7 @@ namespace Arena.Unity.Editor
             for (int index = 0; index < SceneManager.sceneCount; index++)
                 if (SceneManager.GetSceneAt(index).isDirty)
                     throw new InvalidOperationException("Save open scenes before creating the Arena scene.");
+            EnsureUiAssets();
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) != null)
             {
                 EditorSceneManager.OpenScene(ScenePath);
@@ -89,6 +113,7 @@ namespace Arena.Unity.Editor
             if (EditorApplication.isPlayingOrWillChangePlaymode)
                 throw new InvalidOperationException("Stop Play mode before building the Arena player.");
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) == null) CreateScene();
+            EnsureUiAssets();
             string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
             string output = Path.Combine(projectRoot, ".utmp", "ArenaPlayer", "Arena.exe");
             Directory.CreateDirectory(Path.GetDirectoryName(output));
