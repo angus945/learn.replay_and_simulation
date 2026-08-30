@@ -4,13 +4,14 @@ using CharacterMovement.Integration;
 using GameplaySimulation;
 using Testability;
 using Testability.Templates;
+using DeterministicSimulation.Framework;
 using TickInputBuffering;
 using TickInputBuffering.Contract;
 
 namespace MovementDemo
 {
     /// <summary>Realtime input/presentation adapter around the same control plane used by tests.</summary>
-    public sealed class MovementDemoSession : IDisposable
+    public sealed class MovementDemoSession : IDisposable, IRealtimeInputSource, IRealtimePresentation
     {
         private readonly TickInputBuffer input = new TickInputBuffer();
         private readonly TestableSimulationSession<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> gameplay;
@@ -18,7 +19,7 @@ namespace MovementDemo
         private readonly GameplayScenario scenario;
         private MovementPosition previous;
         private MovementPosition current;
-        private double accumulator;
+        private readonly RealtimeSimulationRunner runner;
         private ulong sequence;
         private bool attackPending;
         private bool attackDown;
@@ -34,16 +35,17 @@ namespace MovementDemo
             gameplay = new GameplayDefinition().CreateTestSession(scenario,
                 new TemplateLimits(scenario.MaxTicks, scenario.MaxActions, scenario.TraceCapacity,
                     maxTotalPayloadBytes: 8388608));
+            runner = gameplay.CreateRealtimeRunner(input: this, presentation: this);
             view.SetPosition(default);
         }
         public MovementPosition CurrentPosition => current;
         public ulong TickNumber => gameplay.CurrentTick;
-        public float PresentationAlpha => (float)Math.Min(1, Math.Max(0, accumulator / scenario.TickDelta));
+        public float PresentationAlpha => runner.PresentationAlpha;
         public SessionState State => gameplay.State;
         public GameplayObservation Observe() => gameplay.Observe();
         public TemplateFailure Failure => gameplay.Failure;
         public TemplateRecording CaptureReplay() => gameplay.CaptureRecording();
-        public void Dispose() => gameplay.Dispose();
+        public void Dispose() { runner.Dispose(); gameplay.Dispose(); }
         public void ClearInput()
         {
             CaptureAxes(0, 0); attackPending = false; attackDown = false;
@@ -62,36 +64,34 @@ namespace MovementDemo
             input.CaptureAxis(0, horizontal); input.CaptureAxis(1, vertical);
         }
         public void AdvanceTime(float seconds)
+            => runner.AdvanceTime(seconds);
+
+        void IRealtimeInputSource.AcquireInput(DeterministicSimulation.SimulationTick context)
         {
-            if (float.IsNaN(seconds) || float.IsInfinity(seconds) || seconds < 0) throw new ArgumentOutOfRangeException(nameof(seconds));
-            if (State != SessionState.Running) return;
-            accumulator += seconds;
-            while (accumulator >= scenario.TickDelta && State == SessionState.Running)
+            ulong tick = context.Number;
+            TickInputFrame frame = input.ConsumeTick(tick);
+            SubmissionResult move = gameplay.Submit(gameplay.Id, ++sequence, tick, new GameplayInput(
+                GameplayActionKind.Move, 1, x: frame.GetAxis(0).Value, y: frame.GetAxis(1).Value));
+            if (!move.Queued) { gameplay.Stop(); return; }
+            if (attackPending)
             {
-                if (TickNumber >= (ulong)scenario.MaxTicks) { gameplay.Stop(); break; }
-                TickInputFrame frame = input.ConsumeTick(TickNumber + 1);
-                SubmissionResult move = gameplay.Submit(gameplay.Id, ++sequence, TickNumber + 1, new GameplayInput(
-                    GameplayActionKind.Move, 1, x: frame.GetAxis(0).Value, y: frame.GetAxis(1).Value));
-                if (!move.Queued) { gameplay.Stop(); break; }
-                if (attackPending)
-                {
-                    ulong target = 2;
-                    foreach (ActorObservation actor in gameplay.Observe().Actors)
-                        if (actor.Id != 1 && actor.Active) { target = actor.Id; break; }
-                    SubmissionResult attack = gameplay.Submit(gameplay.Id, ++sequence, TickNumber + 1, new GameplayInput(GameplayActionKind.Attack, 1, target));
-                    attackPending = false;
-                    if (!attack.Queued) { gameplay.Stop(); break; }
-                }
-                gameplay.Simulation.Step();
-                previous = current;
-                ActorObservation player = gameplay.Observe().Actors[0];
-                current = new MovementPosition(player.X, player.Y);
-                accumulator -= scenario.TickDelta;
+                ulong target = 2;
+                foreach (ActorObservation actor in gameplay.Observe().Actors)
+                    if (actor.Id != 1 && actor.Active) { target = actor.Id; break; }
+                SubmissionResult attack = gameplay.Submit(gameplay.Id, ++sequence, tick, new GameplayInput(GameplayActionKind.Attack, 1, target));
+                attackPending = false;
+                if (!attack.Queued) { gameplay.Stop(); return; }
             }
         }
-        public void UpdatePresentation()
+        void IRealtimePresentation.CaptureTickState(ulong tick)
         {
-            float alpha = PresentationAlpha;
+            previous = current;
+            ActorObservation player = gameplay.Observe().Actors[0];
+            current = new MovementPosition(player.X, player.Y);
+        }
+        public void UpdatePresentation() => runner.UpdatePresentation();
+        void IRealtimePresentation.Render(float alpha)
+        {
             view.SetPosition(new MovementPosition(previous.X + (current.X - previous.X) * alpha,
                 previous.Y + (current.Y - previous.Y) * alpha));
         }

@@ -75,8 +75,8 @@ using (TemplateReplay<TemplateCounter, int, CounterInput, CounterSnapshot> repla
 | Diagnostics | IDiagnosticReader：唯讀 snapshot 與 cursor trace，不能 cast 回 Step／Admin |
 | CaptureRecording | 取得正常或首次失敗的可序列化錄製 |
 
-這版採 Manual 驅動，單一 owner thread；沒有內建 Realtime clock claim 或 player input adapter。
-可由專案自己的 frame adapter 在 owner thread 呼叫 Step，但不可同時再給另一個 driver 推進。
+支援 Manual Step，也可透過 CreateRealtimeRunner 取得唯一即時驅動權，仍在單一 owner thread 執行；輸入 adapter 由專案提供。
+Runner 逐 tick 經過 Testability 正式流程，保留記錄、hash 與 invariants。掛上 Runner 後不得手動 Step，先 Dispose Runner 才能切回手動；詳見 [即時 Runner](realtime-runner.md)。
 Port 是整合邊界，不是防止惡意同程序程式的安全沙箱。
 
 ## Admission、執行與診斷時機

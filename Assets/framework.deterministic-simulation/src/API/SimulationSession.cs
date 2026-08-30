@@ -12,6 +12,7 @@ namespace DeterministicSimulation.Framework
         private SimulationPipeline pipeline;
         private SimulationRunner runner;
         private bool busy;
+        private readonly SimulationDriveOwnership drive = new SimulationDriveOwnership();
         private readonly Action<SimulationPhase, bool> onPhase;
         private readonly Action<MessageDispatch> onDispatch;
 
@@ -38,6 +39,28 @@ namespace DeterministicSimulation.Framework
         }
 
         public void Step()
+        {
+            drive.EnsureManual(); StepCore();
+        }
+
+        public RealtimeSimulationRunner CreateRealtimeRunner(int maxTicksPerFrame = 120,
+            IRealtimeInputSource input = null, IRealtimePresentation presentation = null)
+        {
+            EnsureRunning();
+            return drive.CreateRunner(new TickSource(this), maxTicksPerFrame, input, presentation);
+        }
+
+        private sealed class TickSource : ISimulationTickSource
+        {
+            private readonly SimulationSession<TWorld, TScenario> owner;
+            internal TickSource(SimulationSession<TWorld, TScenario> owner) { this.owner = owner; }
+            public float TickDelta => owner.runner.TickDeltaTime;
+            public ulong TickNumber => owner.TickNumber;
+            public bool PrepareTick() { owner.EnsureIdle(); return owner.State == SimulationSessionState.Running; }
+            public void AdvanceTick() => owner.StepCore();
+        }
+
+        private void StepCore()
         {
             EnsureRunning();
             busy = true;
@@ -76,6 +99,7 @@ namespace DeterministicSimulation.Framework
 
         public void Reset(TScenario scenario)
         {
+            drive.EnsureManual();
             EnsureIdle();
             busy = true;
             try
@@ -91,6 +115,7 @@ namespace DeterministicSimulation.Framework
         public void Dispose()
         {
             if (State == SimulationSessionState.Disposed) return;
+            drive.EnsureManual();
             EnsureIdle();
             busy = true;
             State = SimulationSessionState.Disposed;

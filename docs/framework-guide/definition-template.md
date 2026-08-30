@@ -2,6 +2,8 @@
 
 [回到索引](README.md)
 
+想先用普通 Player 類別理解接線，請看 [極簡接線範例](minimal-wiring.md)：不依賴既有角色領域，附完整可執行程式碼。
+
 這是實際已存在的 API，不是概念草圖。模板位於 `Framework.DeterministicSimulation`，namespace 為 `DeterministicSimulation.Framework`。
 需要正式輸入記錄、診斷與重播時，直接使用 [Testability／Replay 延伸模板](testability-replay-template.md)。以下仍描述基本 host，不代表延伸模板缺少這些能力。
 你的 Domain 保持原樣；繼承的是外圍組裝 definition。
@@ -76,7 +78,7 @@ Observer 的例外會傳出但不改 session 狀態，因為 observer 契約是�
 
 ## 與現有 GameplaySession 的區別
 
-本模板是單執行緒、手動 Step 的基礎 host；呼叫者必須指定唯一的 clock owner，尚未提供 capability-based Realtime driver。
+本模板提供手動 Step，也可透過 CreateRealtimeRunner 建立具唯一驅動權的即時 driver；掛上 Runner 後不可手動 Step，先 Dispose Runner 才能切回手動控制。詳見 [即時 Runner](realtime-runner.md)。
 EnqueueIntent 是放入下一次處理的 intent queue，不是帶 SessionId／Sequence／TargetTick 的 gameplay admission。
 Stop 保留不可再執行的 queue，Reset／Dispose 丟棄；沒有 ActionResult 或取消結果查詢。
 沒有任意公開 world／pipeline 存取；definition／observer 是可信整合程式，不是安全沙箱。

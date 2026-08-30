@@ -10,6 +10,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="FrameworkGuideExamples.cs" />
     <Compile Include="MovementDefinitionExample.cs" />
+    <Compile Include="MinimalWiringExample.cs" />
     <Compile Include="../../Assets/game/movement-demo/src/Composition/MovementDemoSession.cs" />
     <Compile Include="../../Assets/game/gameplay-simulation/tests/DemoTemplateChecks.cs" />
     <Compile Include="../../Assets/framework.testability/tests/TemplateContractChecks.cs" />

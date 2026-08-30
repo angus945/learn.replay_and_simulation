@@ -84,6 +84,51 @@ namespace Testability.Tests
 
     public static class TemplateContractChecks
     {
+        public static void RealtimeRecordingAndOwnership()
+        {
+            ReplayCounterDefinition definition = new ReplayCounterDefinition();
+            using (TestableSimulationSession<TemplateCounter, int, CounterInput, CounterSnapshot> session =
+                definition.CreateTestSession(0, new TemplateLimits(maxTicks: 4)))
+            {
+                using (RealtimeSimulationRunner runner = session.CreateRealtimeRunner(input: new CounterInputSource(session, 1)))
+                {
+                    Expect<InvalidOperationException>(() => session.Simulation.Step());
+                    Expect<InvalidOperationException>(() => session.Step());
+                    Expect<InvalidOperationException>(() => session.CreateRealtimeRunner());
+                    Expect<InvalidOperationException>(() => session.Admin.Reset(0));
+                    Expect<InvalidOperationException>(() => session.Dispose());
+                    Check(runner.AdvanceTime(5) == 4 && session.CurrentTick == 4 && session.State == SessionState.Stopped,
+                        "Realtime tick budget did not stop cleanly.");
+                    Check(session.Diagnostics.ObserveDiagnostics().Tick == 4, "Diagnostics not updated by realtime ticks.");
+                    using (TemplateReplay<TemplateCounter, int, CounterInput, CounterSnapshot> replay = definition.CreateReplay(session.CaptureRecording()))
+                    {
+                        replay.Play(); replay.AdvanceTime(1);
+                        Check(replay.State == TemplateReplayState.Completed, "Realtime recording did not replay.");
+                    }
+                }
+                session.Admin.Reset(0);
+                session.Step();
+                using (RealtimeSimulationRunner runner = session.CreateRealtimeRunner(input: new CounterInputSource(session, 77)))
+                {
+                    definition.BrokenObservation = true;
+                    Check(runner.AdvanceTime(2) == 1 && session.State == SessionState.Faulted && session.CurrentTick == 2,
+                        "Recorded fault did not stop catch-up.");
+                    Check(runner.AdvanceTime(1) == 0 && session.Failure != null, "Fault lost evidence or kept advancing.");
+                }
+            }
+        }
+        private sealed class CounterInputSource : IRealtimeInputSource
+        {
+            private readonly TestableSimulationSession<TemplateCounter, int, CounterInput, CounterSnapshot> session;
+            private readonly int amount;
+            internal CounterInputSource(TestableSimulationSession<TemplateCounter, int, CounterInput, CounterSnapshot> session, int amount)
+            { this.session = session; this.amount = amount; }
+            public void AcquireInput(SimulationTick tick)
+            {
+                Check(session.Gameplay.Submit(session.Id, tick.Number, tick.Number, new CounterInput { Amount = amount }).Queued,
+                    "Realtime input admission failed.");
+            }
+        }
         public static void AdmissionAndDiagnostics()
         {
             ReplayCounterDefinition definition = new ReplayCounterDefinition();

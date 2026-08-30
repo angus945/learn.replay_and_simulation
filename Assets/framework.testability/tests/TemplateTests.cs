@@ -4,6 +4,7 @@ namespace Testability.Tests
 {
     public sealed class TemplateTests
     {
+        [Test] public void RealtimeRecordingAndOwnership() => TemplateContractChecks.RealtimeRecordingAndOwnership();
         [Test] public void AdmissionAndDiagnostics() => TemplateContractChecks.AdmissionAndDiagnostics();
         [Test] public void OrderingResetAndLimits() => TemplateContractChecks.OrderingResetAndLimits();
         [Test] public void ReplayFrameMatrix() => TemplateContractChecks.ReplayFrameMatrix();

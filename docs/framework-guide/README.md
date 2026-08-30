@@ -5,9 +5,15 @@
 
 ## 建議閱讀順序
 
+第一次接自己的玩法：先讀 [極簡接線範例](minimal-wiring.md)，包含遊戲端類別分工、完整程式碼，以及升級到 Replay 模板的必填接點。
+
+想直接從 Unity 開始：閱讀獨立的 [從零建立 Unity 接線案例](minimal-unity-wiring.md)，從遊戲物件、輸入與 Definition 到 MonoBehaviour／Runner 全部逐步建立，不需要先完成其他範例。
+
 **想直接繼承並讓編譯器指出必填責任：先讀 [Definition／Session 模板](definition-template.md)。** 已提供實際 abstract class、組裝 builder 與契約檢查。
 
 需要正式控制面、診斷、錄製與失敗重現：使用 [Testability／Replay 模板](testability-replay-template.md)，不必自行重寫 session 流程。
+
+需要把 Session 接到 Unity Update：使用 [可組裝的即時 Runner](realtime-runner.md)，由 framework 管理時間累積與獨占 tick 驅動權。
 
 1. [入門與可執行範例](getting-started.md)：先跑最小移動，再看正式控制面。
 2. [架構、DDD 邊界與組裝](architecture.md)：決定程式放哪裡、依賴誰。

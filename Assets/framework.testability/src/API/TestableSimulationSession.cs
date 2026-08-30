@@ -29,6 +29,7 @@ namespace Testability.Templates
         private ulong attemptedTick;
         private long totalPayloadBytes;
         private bool busy, disposed;
+        private readonly SimulationDriveOwnership drive = new SimulationDriveOwnership();
 
         internal TestableSimulationSession(ReplayableSimulationDefinition<TWorld, TScenario, TInput, TObservation> definition,
             TScenario scenario, TemplateLimits limits)
@@ -84,6 +85,33 @@ namespace Testability.Templates
         }
 
         public TemplateTick Step()
+        {
+            drive.EnsureManual(); return StepCore();
+        }
+        public RealtimeSimulationRunner CreateRealtimeRunner(int maxTicksPerFrame = 120,
+            IRealtimeInputSource input = null, IRealtimePresentation presentation = null)
+        {
+            EnsureIdle();
+            if (State != SessionState.Running) throw new InvalidOperationException("Session is not running.");
+            return drive.CreateRunner(new TickSource(this), maxTicksPerFrame, input, presentation);
+        }
+        private sealed class TickSource : ISimulationTickSource
+        {
+            private readonly TestableSimulationSession<TWorld, TScenario, TInput, TObservation> owner;
+            internal TickSource(TestableSimulationSession<TWorld, TScenario, TInput, TObservation> owner) { this.owner = owner; }
+            public float TickDelta => owner.TickDelta;
+            public ulong TickNumber => owner.CurrentTick;
+            public bool PrepareTick() => owner.CanAdvanceRealtime();
+            public void AdvanceTick() => owner.StepCore();
+        }
+        private bool CanAdvanceRealtime()
+        {
+            EnsureIdle();
+            if (State == SessionState.Running && CurrentTick >= (ulong)limits.MaxTicks)
+            { Stop(); cancellationReason = "tick.budget"; }
+            return State == SessionState.Running;
+        }
+        private TemplateTick StepCore()
         {
             EnsureIdle();
             if (State != SessionState.Running) throw new InvalidOperationException("Session is not running.");
@@ -158,6 +186,7 @@ namespace Testability.Templates
         }
         public void Reset(TScenario scenario)
         {
+            drive.EnsureManual();
             EnsureIdle(); busy = true;
             try { Initialize(scenario); }
             finally { busy = false; }
@@ -171,6 +200,7 @@ namespace Testability.Templates
         public void Dispose()
         {
             if (disposed) return;
+            drive.EnsureManual();
             EnsureIdle(); busy = true; disposed = true;
             try { core.Dispose(); pending.Clear(); }
             finally { busy = false; }

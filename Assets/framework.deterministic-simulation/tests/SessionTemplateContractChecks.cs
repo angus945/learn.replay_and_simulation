@@ -73,6 +73,113 @@ namespace DeterministicSimulation.Framework.Tests
             Expect<ObjectDisposedException>(() => session.Step());
         }
 
+        public static void RealtimeTimingAndOwnership()
+        {
+            CounterDefinition definition = new CounterDefinition();
+            using (SimulationSession<Counter, float> session = definition.CreateSession(.25f))
+            {
+                CounterRealtimeAdapter adapter = new CounterRealtimeAdapter(session);
+                using (RealtimeSimulationRunner clock = session.CreateRealtimeRunner(2,
+                    input: adapter, presentation: adapter))
+                {
+                    Expect<InvalidOperationException>(() => session.Step());
+                    Expect<InvalidOperationException>(() => session.CreateRealtimeRunner());
+                    Expect<InvalidOperationException>(() => session.Reset(.5f));
+                    Expect<InvalidOperationException>(() => session.Dispose());
+                    Expect<ArgumentOutOfRangeException>(() => clock.AdvanceTime(float.NaN));
+                    Expect<ArgumentOutOfRangeException>(() => clock.AdvanceTime(float.PositiveInfinity));
+                    Expect<ArgumentOutOfRangeException>(() => clock.AdvanceTime(-1));
+                    Check(clock.AdvanceTime(.125f) == 0 && clock.PresentationAlpha == .5f, "Subtick timing.");
+                    Check(clock.AdvanceTime(1) == 2 && adapter.Observed == 2 && clock.PendingSeconds == .625, "Catch-up bound/debt.");
+                    Check(clock.AdvanceTime(0) == 2 && adapter.Observed == 4 && clock.PendingSeconds == .125, "Debt was discarded.");
+                    clock.UpdatePresentation();
+                    Check(adapter.Alpha == .5f && session.TickNumber == 4, "Presentation advanced simulation or used wrong alpha.");
+                    clock.Pause();
+                    Check(clock.AdvanceTime(5) == 0 && clock.PendingSeconds == 0, "Pause accumulated time.");
+                    Expect<InvalidOperationException>(() => session.Step());
+                    clock.Resume();
+                    clock.AdvanceTime(.25f);
+                    Check(adapter.Observed == 5, "Resume caught up paused time.");
+                    Exception threadError = null;
+                    System.Threading.Tasks.Task.Run(() =>
+                    { try { clock.AdvanceTime(0); } catch (Exception error) { threadError = error; } }).Wait();
+                    Check(threadError is InvalidOperationException, "Cross-thread driver access.");
+                }
+                session.Step();
+                session.Reset(.5f);
+                using (RealtimeSimulationRunner clock = session.CreateRealtimeRunner())
+                { Check(clock.TickDelta == .5f && clock.AdvanceTime(.5f) == 1, "Reset/rebind used old delta."); }
+            }
+        }
+
+        public static void RealtimeFailuresAndReentry()
+        {
+            CounterDefinition definition = new CounterDefinition();
+            using (SimulationSession<Counter, float> session = definition.CreateSession(.25f))
+            {
+                CounterRealtimeAdapter adapter = new CounterRealtimeAdapter(session) { StopAndCheckReentry = true };
+                RealtimeSimulationRunner clock = session.CreateRealtimeRunner(input: adapter);
+                adapter.Runner = clock;
+                using (clock) Check(clock.AdvanceTime(1) == 0 && session.TickNumber == 0, "Stop in beforeTick still advanced.");
+                session.Reset(.25f);
+                using (RealtimeSimulationRunner failed = session.CreateRealtimeRunner(presentation: new CounterRealtimeAdapter(session) { FailCapture = true }))
+                {
+                    Expect<ApplicationException>(() => failed.AdvanceTime(1));
+                    Check(session.TickNumber == 1 && failed.Failure != null && session.State == SimulationSessionState.Running, "View fault corrupted session.");
+                    Expect<InvalidOperationException>(() => failed.AdvanceTime(1));
+                    Expect<InvalidOperationException>(() => failed.Resume());
+                }
+                using (RealtimeSimulationRunner failed = session.CreateRealtimeRunner(presentation: new CounterRealtimeAdapter(session) { FailRender = true }))
+                {
+                    ulong tick = session.TickNumber;
+                    Expect<ApplicationException>(() => failed.UpdatePresentation());
+                    Check(failed.Failure != null && session.TickNumber == tick, "Render failure changed tick.");
+                    Expect<InvalidOperationException>(() => failed.AdvanceTime(1));
+                }
+                definition.Callback = () => throw new ApplicationException("domain");
+                session.Reset(.25f);
+                using (RealtimeSimulationRunner failed = session.CreateRealtimeRunner(input: new CounterRealtimeAdapter(session)))
+                {
+                    Expect<ApplicationException>(() => failed.AdvanceTime(1));
+                    Check(session.State == SimulationSessionState.Faulted && session.TickNumber == 1, "Domain fault did not stop driver.");
+                }
+            }
+        }
+
+        private sealed class CounterRealtimeAdapter : IRealtimeInputSource, IRealtimePresentation
+        {
+            private readonly SimulationSession<Counter, float> session;
+            internal CounterRealtimeAdapter(SimulationSession<Counter, float> session) { this.session = session; }
+            internal RealtimeSimulationRunner Runner;
+            internal bool StopAndCheckReentry, FailCapture, FailRender;
+            internal int Observed;
+            internal float Alpha;
+            public void AcquireInput(SimulationTick tick)
+            {
+                Check(tick.Number == session.TickNumber + 1 && tick.DeltaTime == .25f, "Input tick context.");
+                if (StopAndCheckReentry)
+                {
+                    Expect<InvalidOperationException>(() => Runner.AdvanceTime(0));
+                    Expect<InvalidOperationException>(() => Runner.Dispose());
+                    Expect<InvalidOperationException>(() => Runner.Pause());
+                    Expect<InvalidOperationException>(() => Runner.UpdatePresentation());
+                    session.Stop(); return;
+                }
+                session.EnqueueIntent(new IncrementIntent());
+            }
+            public void CaptureTickState(ulong tick)
+            {
+                if (FailCapture) throw new ApplicationException("view");
+                Check(tick == session.TickNumber, "Capture tick order.");
+                Observed = session.Observe(new CounterObserver());
+            }
+            public void Render(float alpha)
+            {
+                if (FailRender) throw new ApplicationException("render");
+                Alpha = alpha;
+            }
+        }
+
         public static void MissingConfiguration()
         {
             CounterDefinition definition = new CounterDefinition { Missing = true };

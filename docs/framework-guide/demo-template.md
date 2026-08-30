@@ -4,7 +4,7 @@ MovementDemoHost → MovementDemoSession → GameplayDefinition.CreateTestSessio
 
 ## 分工
 
-- `MovementDemoSession` 只負責 Unity-independent 的輸入取樣、固定 tick 累積與畫面插值，私有持有模板 session，不公開第二個 tick driver。
+- `MovementDemoSession` 負責 Unity-independent 的輸入取樣與畫面插值；固定 tick 累積已委派給 framework 的 [RealtimeSimulationRunner](realtime-runner.md)，私有持有模板 session，不公開第二個 tick driver。
 - `GameplayDefinition` 示範繼承模板：scenario/input codec、world 建立與 phase 組裝、不可變 Observation、canonical bytes、invariant、InputOutcome。
 - `GameplayWorld` 擁有 movement/combat aggregate、registry、RNG、重生排程。Domain aggregate 沒有繼承 framework。
 - `GameplayInput` 只有玩法 payload；session ID、sequence、target tick 由模板 envelope 處理。模板將 input 轉為 Intent → Internal Command；死亡 Domain Event 再觸發 SpawnEnemy command，出生／移除只在 StructuralCommit 完成。

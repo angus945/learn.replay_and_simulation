@@ -14,6 +14,12 @@ internal static class FrameworkGuideExamples
         MinimalMovement();
         ControlledMovement();
         MovementDefinitionExample.Verify();
+        DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.RealtimeTimingAndOwnership();
+        DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.RealtimeFailuresAndReentry();
+        Testability.Tests.TemplateContractChecks.RealtimeRecordingAndOwnership();
+        Console.WriteLine("PASS: composable realtime runner (timing, authority, failures and recording/replay).");
+        MinimalWiringExample.Example.Run();
+        Console.WriteLine("PASS: minimal wiring example (queue, movement, stop and reset).");
         GameplaySimulation.Tests.DemoTemplateChecks.Verify();
         Console.WriteLine("PASS: migrated demo template, legacy gameplay parity and replay frame matrix.");
         Testability.Tests.TemplateContractChecks.AdmissionAndDiagnostics();
