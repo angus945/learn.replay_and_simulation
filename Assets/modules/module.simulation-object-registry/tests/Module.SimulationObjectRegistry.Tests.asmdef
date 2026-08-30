@@ -1,0 +1,13 @@
+{
+  "name": "Module.SimulationObjectRegistry.Tests",
+  "rootNamespace": "SimulationObjects.Tests",
+  "references": [
+    "Module.SimulationObjectRegistry"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

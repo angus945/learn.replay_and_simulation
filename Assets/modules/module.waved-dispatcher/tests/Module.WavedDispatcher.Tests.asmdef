@@ -1,0 +1,7 @@
+{
+  "name": "Module.WavedDispatcher.Tests",
+  "rootNamespace": "WavedDispatcher.Tests",
+  "references": ["Module.WavedDispatcher"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

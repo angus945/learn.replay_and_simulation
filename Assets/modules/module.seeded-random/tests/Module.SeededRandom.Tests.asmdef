@@ -1,0 +1,13 @@
+{
+  "name": "Module.SeededRandom.Tests",
+  "rootNamespace": "SeededRandom.Tests",
+  "references": [
+    "Module.SeededRandom"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

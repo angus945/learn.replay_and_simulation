@@ -1,0 +1,6 @@
+{
+  "name": "Game.CharacterMovement.Domain",
+  "rootNamespace": "CharacterMovement.Domain",
+  "references": [],
+  "noEngineReferences": true
+}

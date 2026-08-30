@@ -1,0 +1,6 @@
+{
+  "name": "Game.CharacterMovement.Tests",
+  "references": ["Game.CharacterMovement.Domain", "Game.CharacterMovement.Application", "Game.CharacterMovement.Integration", "Framework.DeterministicSimulation", "Module.SimulationPrimitives"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

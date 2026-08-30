@@ -1,0 +1,8 @@
+{
+  "name": "Framework.DeterministicSimulation",
+  "rootNamespace": "DeterministicSimulation.Framework",
+  "references": [
+    "Module.SimulationPrimitives",
+    "Module.WavedDispatcher"
+  ]
+}

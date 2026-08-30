@@ -1,0 +1,14 @@
+{
+  "name": "Framework.DeterministicSimulation.Tests",
+  "rootNamespace": "DeterministicSimulation.Framework.Tests",
+  "references": [
+    "Framework.DeterministicSimulation",
+    "Module.SimulationPrimitives"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

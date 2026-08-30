@@ -1,0 +1,4 @@
+{
+  "name": "Game.MovementDemo.Unity",
+  "references": ["Game.MovementDemo", "Game.CharacterMovement.Domain", "Game.CharacterMovement.Integration", "Unity.InputSystem"]
+}

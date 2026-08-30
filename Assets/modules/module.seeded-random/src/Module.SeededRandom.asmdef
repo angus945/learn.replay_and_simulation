@@ -1,0 +1,5 @@
+{
+  "name": "Module.SeededRandom",
+  "rootNamespace": "SeededRandom",
+  "noEngineReferences": true
+}

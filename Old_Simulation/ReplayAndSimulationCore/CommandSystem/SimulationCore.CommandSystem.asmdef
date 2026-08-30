@@ -1,0 +1,16 @@
+{
+    "name": "SimulationCore.CommandSystem",
+    "rootNamespace": "",
+    "references": [
+        "GUID:4ca999cbee1592f4bb939bb7444df9e5"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
