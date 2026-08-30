@@ -8,6 +8,7 @@ namespace DeterministicSimulation.Framework
     public sealed class SimulationSession<TWorld, TScenario> : IDisposable where TWorld : class
     {
         private readonly SimulationDefinition<TWorld, TScenario> definition;
+        private readonly int ownerThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
         private TWorld world;
         private SimulationPipeline pipeline;
         private SimulationRunner runner;
@@ -40,6 +41,7 @@ namespace DeterministicSimulation.Framework
 
         public void Step()
         {
+            EnsureOwnerThread();
             drive.EnsureManual(); StepCore();
         }
 
@@ -99,6 +101,7 @@ namespace DeterministicSimulation.Framework
 
         public void Reset(TScenario scenario)
         {
+            EnsureOwnerThread();
             drive.EnsureManual();
             EnsureIdle();
             busy = true;
@@ -114,6 +117,7 @@ namespace DeterministicSimulation.Framework
 
         public void Dispose()
         {
+            EnsureOwnerThread();
             if (State == SimulationSessionState.Disposed) return;
             drive.EnsureManual();
             EnsureIdle();
@@ -152,8 +156,14 @@ namespace DeterministicSimulation.Framework
         { Failure = Failure ?? error; State = SimulationSessionState.Faulted; }
         private void EnsureIdle()
         {
+            EnsureOwnerThread();
             if (State == SimulationSessionState.Disposed) throw new ObjectDisposedException(GetType().Name);
             if (busy) throw new InvalidOperationException("Session callbacks cannot reenter the host.");
+        }
+        private void EnsureOwnerThread()
+        {
+            if (System.Threading.Thread.CurrentThread.ManagedThreadId != ownerThread)
+                throw new InvalidOperationException("Use the simulation session owner thread.");
         }
         private void EnsureRunning()
         {

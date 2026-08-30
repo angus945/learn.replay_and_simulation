@@ -7,15 +7,16 @@
 在 repository 根目錄，使用 .NET 9 SDK 或相容 SDK：
 
 ```powershell
-dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj
+dotnet run --project tools/gameplay-lessons -- all
 ```
 
-不需開啟 Unity。新增的[FrameworkGuideExamples.cs](../../tools/gameplay-checks/FrameworkGuideExamples.cs)會隨此命令編譯並執行，接著跑既有 gameplay／Replay 檢查；任一檢查失敗會以非零 exit code 結束。
-以下導讀使用該來源，不另維護一份脫離編譯的完整程式副本。
+不需開啟 Unity。[五章路線](learning-path.md)由同一 CharacterMovement 累加 Domain、Application、Definition、Testability 與 Replay；任一斷言失敗回傳非零 exit code。第一次閱讀以此為主，不必先做另一套 Player／CubeActor 範例。
+
+以下 A 補充低階機制，B 對應現行正式入口；都連到實際參與編譯的來源，不另維護脫離程式的完整副本。
 
 ## 範例 A：最小 Domain → Pipeline
 
-閱讀 `MinimalMovement()`，依序理解：
+如果需要理解 Definition 底下做了什麼，閱讀 [FrameworkGuideExamples.MinimalMovement](../../tools/gameplay-checks/FrameworkGuideExamples.cs)，依序理解：
 
 1. 建立 CharacterId 與 Movement aggregate。領域只知道位置、方向、速度。
 2. 建立 repository 並加入角色；這是組裝工作，不是玩家操作 API。
@@ -33,6 +34,8 @@ EnqueueIntent 本身不移動角色，且角色不包含 Unity Transform。
 它使用既有獨立移動 adapter，Intent handler 直接呼叫 application，沒有需要額外發布的事件。
 這不等於完整 Demo 的正式操作路徑；完整路徑見範例 B。
 
+此補充來源在 `dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj` 編譯並執行。[第 3 章](../../tools/gameplay-lessons/lessons/03-simulation.md)則使用 MovementDefinitionExample 代為管理 Create／Reset／Dispose，兩種入口共用既有 domain，不能一起驅動同一世界。
+
 ### 新專案需要什麼依賴？
 
 重用框架時，最小核心是 `Module.SimulationPrimitives`、`Module.WaveDispatcher`、`Framework.DeterministicSimulation`。
@@ -42,29 +45,32 @@ EnqueueIntent 本身不移動角色，且角色不包含 Unity Transform。
 
 ## 範例 B：正式操作、排序與結果
 
-閱讀 `ControlledMovement()`：
+執行 `dotnet run --project tools/gameplay-lessons -- testability`，閱讀 [Stage04Testability](../../tools/gameplay-lessons/Stage04Testability.cs)：
 
-1. 建立 Manual GameplaySession，透過 Admin.Start 初始化。
-2. 設定無敵人、tickDelta=0.25，讓觀察只聚焦移動。
-3. 提交 TargetTick=2、Sequence=1 的 Move request。
-4. 驗證 Queued=true，但位置尚未改變。
-5. 第一次 Step：tick 1 沒有執行結果，位置仍為 0。
-6. 第二次 Step：回傳 Accepted，玩家 X=1。
-7. 從 Results 查詢同一個 action 的最終結果。
+1. 建立 GameplayDefinition，以無敵人、tickDelta=.25、4 ticks／4 inputs 預算的 scenario 呼叫 CreateTestSession；回傳已 Running 的 session，不再呼叫 Start。
+2. 從 observation.PlayerId 取得玩家，不用 Actors[0] 猜身分。
+3. 向 tick 2 先提交 sequence 2 向左，再提交 sequence 1 向右，接著提交 unknown actor 的 sequence 3。
+4. 三筆 envelope 都 Queued，但位置未變；重複 sequence 在 admission 拒絕。
+5. tick 1 沒有結果；tick 2 按 sequence 1、2、3 執行。兩次方向變更 Accepted，未知角色回 actor.unknown。
+6. 最後方向向左，再於 PrePhysics 移動，玩家 X=-1；舊 snapshot 仍為 X=0。
+7. Results.Find 取得執行結果；Reset 重建世界與 identity，舊 identity 提交回 session.stale。
 
-這段使用的是本專案的 GameplaySession，不是假定 framework 自帶玩家與 Move/Attack。
-新專案要建立自己的 request、application handler、observation、composition；可沿用這種端口分工，不需照抄遊戲型別。
+GameplayDefinition／GameplayWorld／GameplayActions 是本專案的組裝與玩法，framework 不自帶玩家與 Move／Attack。新專案提供自己的 input、application／domain、observation 與 definition；沿用端口分工，不需照抄所有遊戲型別。
+
+FrameworkGuideExamples 的 `ControlledMovement()` 仍驗證 GameplaySession 舊 ports。該 facade 已轉接同一 template runtime，用於相容驗證；不是新功能的推薦起點，也不需要在其中另寫 handlers。
 
 ## 再閱讀完整 Demo
 
 依順序讀：
 
-- [GameplaySession](../../Assets/game/gameplay-simulation/src/Runtime/GameplaySession.cs)：Initialize、StepCore、handlers、Commit。
-- [MovementDemoSession](../../Assets/game/movement-demo/src/Composition/MovementDemoSession.cs)：frame 輸入、accumulator、唯一 realtime driver。
-- [MovementDemoHost](../../Assets/game/movement-demo/src/Unity/MovementDemoHost.cs)：鍵盤、Transform、敵人 view、Overlay。
-- [ReplayPlayback](../../Assets/game/gameplay-simulation/src/Runtime/ReplayPlayback.cs)：新 Manual session、重送輸入、逐 tick 比較。
+- [GameplayDefinition](../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)：world factory、codec、canonical state、invariant／trace metadata。
+- [GameplayActions](../../Assets/game/gameplay-simulation/src/Runtime/GameplayActions.cs)與[GameplayWorld](../../Assets/game/gameplay-simulation/src/Runtime/GameplayWorld.cs)：玩法決策、domain 組合與生命週期接線。
+- [MovementDemoSession](../../Assets/game/movement-demo/src/Composition/MovementDemoSession.cs)：frame 輸入與呈現 callbacks；時間累積交給唯一 realtime runner。
+- [MovementDemoHost](../../Assets/game/movement-demo/src/Unity/MovementDemoHost.cs)與[GameplayActorPresentation](../../Assets/game/movement-demo/src/Unity/GameplayActorPresentation.cs)：鍵盤、按 ID 綁定的 pooled view、Overlay。
+- [TemplateReplay](../../Assets/framework.testability/src/API/TemplateReplay.cs)：依同一 definition 重建獨立 session、重送輸入、逐 tick 比較；可先執行[第 5 章](../../tools/gameplay-lessons/lessons/05-replay.md)。
 
 不要同時把最小範例的 runner 和完整 Demo 的 session 接到同一世界，否則可能重複推進。
+Protocol 暫緩；上述步驟與現行錄製不需要先接協定。舊 GameplaySession／ReplayPlayback 的格式相容責任見 [Demo 整合](demo-template.md)。
 
 ## 第一個功能的完成條件
 

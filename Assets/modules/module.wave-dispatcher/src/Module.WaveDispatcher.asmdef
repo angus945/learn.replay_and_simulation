@@ -1,4 +1,5 @@
 {
   "name": "Module.WaveDispatcher",
-  "rootNamespace": "WaveDispatching"
+  "rootNamespace": "WaveDispatching",
+  "noEngineReferences": true
 }

@@ -1,0 +1,10 @@
+{
+  "name": "Framework.DeterministicSimulation.Unity.PlayMode.Tests",
+  "references": [
+    "Framework.DeterministicSimulation.Unity",
+    "Framework.DeterministicSimulation",
+    "Module.SimulationPrimitives",
+    "Module.SimulationObjectRegistry"
+  ],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

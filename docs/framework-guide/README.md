@@ -3,48 +3,58 @@
 目標：不必先讀完框架實作，就能建立一個純 C#、可推進 tick、可測試的玩法，再接上 Unity 與 Replay。
 本指南對應此 repository 的現有 API；不是已發布的獨立套件安裝說明。
 
-## 建議閱讀順序
+## 唯一推薦的累積路線
 
-第一次接自己的玩法：先讀 [極簡接線範例](minimal-wiring.md)，包含遊戲端類別分工、完整程式碼，以及升級到 Replay 模板的必填接點。
+從 [CharacterMovement 累積教學路線](learning-path.md)開始：同一個角色依序接上 Application、固定 tick、Testability、攻擊／死亡與 Replay，Unity 則連接現有 Demo，不在中途另造 Player／CubeActor 模型。
 
-想直接從 Unity 開始：閱讀獨立的 [從零建立 Unity 接線案例](minimal-unity-wiring.md)，從遊戲物件、輸入與 Definition 到 MonoBehaviour／Runner 全部逐步建立，不需要先完成其他範例。
+五個純 C# 階段已可獨立執行：在根目錄執行 `dotnet run --project tools/gameplay-lessons -- all`，或用 `domain`、`application`、`simulation`、`testability`、`replay` 選一章。[逐章說明與來源](../../tools/gameplay-lessons/README.md)列出每次增加的責任與斷言。
 
-**想直接繼承並讓編譯器指出必填責任：先讀 [Definition／Session 模板](definition-template.md)。** 已提供實際 abstract class、組裝 builder 與契約檢查。
+Unity 沿用現行 Demo，已新增[多物件／Pool 與獨立 Physics sensor adapters](../../Assets/framework.deterministic-simulation.unity/README.md)，最終測試證據另行整理；五章 PASS 不代表整個進階課程與 Unity 已完成。各項驗收見 [分階段實作進度](../implementation-progress.md)。
 
-需要正式控制面、診斷、錄製與失敗重現：使用 [Testability／Replay 模板](testability-replay-template.md)，不必自行重寫 session 流程。
+| 入口 | 定位 |
+| --- | --- |
+| [MovementDefinitionExample.cs](../../tools/gameplay-checks/MovementDefinitionExample.cs) | 已有純 C# 接線來源；沿用 CharacterMovement，以 Definition 建立基本 Session |
+| [Definition／Session 模板](definition-template.md) | 基本接線 API；Domain 不需要繼承 framework |
+| [Testability／Replay 模板](testability-replay-template.md) | 正式輸入、診斷、錄製與失敗重現；現行 Demo 的方向 |
+| [可組裝的即時 Runner](realtime-runner.md) | Unity frame 到固定 tick；唯一驅動權與呈現 callbacks |
+| [現行 Demo 整合](demo-template.md) | MovementDemoSession → GameplayDefinition → TestableSimulationSession 的完整範例 |
+| [入門與可執行範例](getting-started.md) | 五章主線、低階 Pipeline 補充與現行正式操作導讀 |
+| [架構](architecture.md)、[契約](contracts.md)、[功能食譜](recipes.md) | GameplayActions／GameplayWorld 的責任、phase／hash 邊界，以及新增功能時實際修改的接點 |
+| [驗證與交付檢查表](verification.md) | 區分純 .NET、Unity 編譯、PlayMode 與 Player Build 證據 |
 
-需要把 Session 接到 Unity Update：使用 [可組裝的即時 Runner](realtime-runner.md)，由 framework 管理時間累積與獨占 tick 驅動權。
+## 機制參考與歷史導讀
 
-1. [入門與可執行範例](getting-started.md)：先跑最小移動，再看正式控制面。
-2. [架構、DDD 邊界與組裝](architecture.md)：決定程式放哪裡、依賴誰。
-3. [契約與專案策略](contracts.md)：哪些不可違反，哪些只是 Demo 的選擇。
-4. [功能食譜](recipes.md)：新增 action、跨領域事件、RNG、生命週期及觀察。
-5. [驗證與交付檢查表](verification.md)：如何避免新功能破壞重現性。
+以下素材保留供查閱，不是三條都必須完成的入門課：
+
+- [極簡接線範例](minimal-wiring.md)：獨立 Player 模型，已有編譯來源；只用來比較最少接點。
+- [從零建立 Unity 接線案例](minimal-unity-wiring.md)：獨立 CubeActor 文件範例；該頁明示尚未完成其 Unity 編譯／Play Mode 驗證。
+- [FrameworkGuideExamples](../../tools/gameplay-checks/FrameworkGuideExamples.cs) 中的 ControlledMovement 保留 GameplaySession 相容 ports 檢查。該 facade 已轉接同一 template runtime；新組裝使用 GameplayDefinition，不需要先完成相容 API 範例。
 
 ## 依任務選擇
 
 | 你要做的事             | 從哪裡開始                                     |
 | ---------------------- | ---------------------------------------------- |
-| 建立第一個玩法         | 入門的範例 A；暫不加入 Protocol、RNG、registry |
-| 加入正式操作與測試入口 | 入門的範例 B、action 食譜                      |
-| 加入攻擊、死亡、生成   | 跨領域與生命週期食譜                           |
-| 接上 Unity             | 架構的三層組裝、現有 MovementDemoSession       |
+| 建立第一個玩法         | 累積路線第 1–3 章；先不加 RNG、registry 或 Protocol |
+| 加入正式操作與測試入口 | 可執行第 4 階段、Testability／Replay 模板 |
+| 理解攻擊、死亡與錄製   | 可執行第 5 階段；包含 seeded 血量、延遲重生與現行 GameplayWorld |
+| 接上 Unity             | 累積路線的 Unity 連接、RealtimeRunner、MovementDemoSession |
 | 排查 Replay 不一致     | 驗證檢查表、契約中的 hash 邊界                 |
-| 未來接外部 AI／Fuzzer  | 先完成正式控制面，再讀 Protocol README         |
+| 未來接外部 AI／Fuzzer  | Protocol 暫緩；先完成當前 framework 與 game 接線驗收 |
 
 ## 現有參考實作
 
 - [module／assembly／namespace 對照](../module-naming.md)。
-- [GameplaySession 與控制面](../../Assets/game/gameplay-simulation/README.md)。
+- [Gameplay Simulation 與相容控制面](../../Assets/game/gameplay-simulation/README.md)；現行 Demo 路徑見 [Demo 整合](demo-template.md)。
 - [Testability](../../Assets/framework.testability/README.md)。
 - [完整 Demo](../../Assets/game/movement-demo/README.md)。
 - [生命週期、phase、RNG 與重生排程](../testability/simulation-lifecycle-phase-random.md)。
-- [Protocol 核心](../../Assets/framework.gameplay-protocol/README.md)與[專案 adapter](../../Assets/game/gameplay-protocol/README.md)。目前沒有網路 listener，也未接到 Demo。
+- [Protocol 核心](../../Assets/framework.gameplay-protocol/README.md)與[專案 adapter](../../Assets/game/gameplay-protocol/README.md)：**Deferred（暫緩）**，保留相容；目前沒有網路 listener，也未接到 Demo。
 
 ## 使用範圍
 
-本輪提供指南與可執行組裝範例，不新增遊戲機制、不提供 generator、不搬移原有領域程式。
-範例分成「最小機制展示」與「完整專案參考」；不要把完整 GameplaySession 整份複製後當成所有遊戲的標準模型。
+本輪依實作進度分階段整理 framework 與教學；導航完成不等於接線、測試或全部課程完成。Protocol 等其他 framework 穩定後再處理，不阻擋目前各階段驗收，也不因此刪除它仍需的相容入口。
+
+範例分成「最小機制展示」「現行 Demo」與「過渡相容路徑」；不要把完整 GameplaySession 整份複製後當成所有遊戲的標準模型。
 目前目標是相同 runtime／規則下重現，不承諾跨平台 bitwise determinism、完整 snapshot restore 或 rollback。
 
 維護原則：修改契約時，同時更新本指南與對應測試；程式範例以實際參與編譯的來源為準。

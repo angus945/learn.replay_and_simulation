@@ -25,19 +25,29 @@
 - 不為每個方法增加 command/event。只有需要派送、排序或跨邊界反應時才建立訊息。
 - 小切片可以先合併 application／integration 組裝類別，但應保留責任可辨識性。
 
-例如目前 Combatant 管理 HP；攻擊距離需 Movement 位置，因此由 GameplaySession 協調。
-Combatant 不引用 IDomainEvent；協調層在扣血後把事實映射成 ActorDamaged／ActorDied。
+例如目前 Combatant 管理 HP；攻擊距離需要 Movement 位置，因此由 [GameplayActions](../../Assets/game/gameplay-simulation/src/Runtime/GameplayActions.cs)協調。它驗證 actor／target、距離與死亡狀態，呼叫 MovementApplication／Domain，再回傳 GameplayOutcome；不操作 tick driver、trace 或 dispatcher。
+Combatant 不引用 IDomainEvent；[GameplayWorld.Execute](../../Assets/game/gameplay-simulation/src/Runtime/GameplayWorld.cs)把 outcome 映射為 InputOutcome 與 ActorDamaged／ActorDied，保留輸入 sequence 的因果關係。
 未來領域可有自己的事件資料，再由 adapter 映射，不必讓 domain 為框架服務。
 
-## 三層 composition root
+目前 GameplayActions 放在 game 的 simulation assembly，角色是專案 application 協調類別；不需要為了資料夾對稱另建 assembly 或每類一個 interface。GameplayWorld 組合多個 aggregate 與服務，不因名稱為 World 就成為 DDD Aggregate。
 
-1. Unity host 建立 view 與玩家 adapter，不建另一份權威 domain。
-2. 玩家 adapter 建立 Realtime session、輸入 buffer 與 accumulator，領取唯一 clock driver。
-3. GameplaySession 建立 domain、repository、registry、RNG、pipeline、checks、trace，註冊後 Seal。
+## 從外往內的組裝
 
-Manual 測試與 Replay 不需要前兩層，直接組裝同一個 GameplaySession。
+1. [MovementDemoHost](../../Assets/game/movement-demo/src/Unity/MovementDemoHost.cs)建立 Unity view／pool 與輸入入口，依已提交 observation 呈現 active IDs，不建立另一份權威 domain。
+2. [MovementDemoSession](../../Assets/game/movement-demo/src/Composition/MovementDemoSession.cs)建立輸入 buffer，呼叫 GameplayDefinition.CreateTestSession，再取得唯一 RealtimeSimulationRunner。frame accumulator 在 framework runner 內；此 adapter 負責取樣與 tick 後的呈現 callback。
+3. [GameplayDefinition](../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)提供 scenario／input codec、world factory、canonical state、invariant factories 與 metadata。它建立 GameplayWorld；world 組合 aggregates、repository、registry、RNG、GameplayActions，並向 builder 註冊 PrePhysics／StructuralCommit 與死亡 reaction。
+
+[TestableSimulationSession](../../Assets/framework.testability/src/API/TestableSimulationSession.cs)負責 admission、輸入排序、逐 tick 結果、hash／invariant、trace／recording；底層 SimulationSession 負責 world／pipeline 生命週期。玩法判斷保留在 game，框架不認識玩家或敵人。
+
+Manual 測試直接使用 GameplayDefinition.CreateTestSession；TemplateReplay 也用相同 definition 建立自己的乾淨世界。它們共用實作，但不共用可變 world。
 目前是 constructor injection 與明確 new／Register，不需要 DI container 或全域 singleton。
 擴大專案時可把註冊拆成 composition helper，但 helper 不應在不明確的時機偷偷改寫 domain。
+
+## 相容 facade 的界線
+
+[GameplaySession](../../Assets/game/gameplay-simulation/src/Runtime/GameplaySession.cs)現在只把舊 request／ports／artifact 接到 GameplayDefinition → TestableSimulationSession，並投影既有 hash 格式。它沒有自己的 actor collection、RNG、移動／攻擊規則或另一條 pipeline。
+
+玩法改動應進入 GameplayActions／GameplayWorld，接線與序列化改動進入 GameplayDefinition，再驗證現行與相容入口。Protocol **Deferred**；保留 facade 是為了既有 consumer，不要求先遷移 Protocol 才能完成新玩法或教學，也不在 facade 補寫第二份規則。
 
 ## 新專案建議骨架（示意，不是已存在的檔案）
 

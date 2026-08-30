@@ -4,5 +4,6 @@
   "references": [
     "Module.SimulationPrimitives",
     "Module.WaveDispatcher"
-  ]
+  ],
+  "noEngineReferences": true
 }

@@ -1,7 +1,11 @@
 # Gameplay Protocol 專案 adapter
 
+> **Deferred（暫緩）**：先穩定 deterministic-simulation、testability、game 接線與教學，之後才遷移／擴充本 adapter。保留既有 Protocol 程式、DTO 與必要相容入口；不新增 transport，也不以 Protocol 遷移完成阻擋其他階段。最新範圍見 [分階段實作進度](../../../docs/implementation-progress.md)。
+
 純 C# Game.GameplayProtocol 引用 Framework.GameplayProtocol，將協定 DTO 映射到既有正式控制面。
 這是本專案整合，不把 Move/Attack/Observation 塞進 framework。
+
+下列範例仍使用 `GameplaySession` 相容 API；該 facade 現在轉接與 Demo 相同的 `GameplayDefinition → TestableSimulationSession` runtime，沒有另一份玩法。Protocol adapter 本身仍暫緩，尚未改為直接使用現行 ports，也不代表外部服務已完成。
 
 由 host 先建立並 Start 一個 session，再建立 GameplayProtocolAdapter。
 Manual session 供 Fuzzer／AI 操作；Realtime session 本版只供觀察，不搶玩家輸入／tick driver。
@@ -54,7 +58,8 @@ Namespaces：GameplaySimulation、GameplayProtocol、GameplayProtocol.Game、Sys
 `ProtocolJson` 提供 JSON codec；DTO 對外可變，但 Enqueue 接收的是已編碼 immutable string，不攜帶共享 DTO 實例。
 Codec 是 adapter 的 JSON 選擇，framework handler 仍只接收 envelope，沒有 domain 類型依賴。
 
-## 下一步
+## 暫緩後的後續範圍
 
-選一種本機 transport，加入可信 client session／authentication、主執行緒 pump、關閉與重連規則，
-再做真正跨程序的端到端測試。現在的驗證是 JSON boundary in-process，不冒稱已完成遠端連線。
+其他 framework 與正式 game ports 穩定後，先處理 adapter／results／capabilities 的對接與相容性，再選本機 transport、可信 client session／authentication、主執行緒 pump、關閉與重連規則。
+
+上述工作目前不執行；既有程式與測試保留。未來需補真正跨程序的端到端測試，現在只有 JSON boundary 的 in-process 實作，不宣稱已完成遠端連線。

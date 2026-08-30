@@ -27,7 +27,7 @@ namespace Testability.Tests
     }
 
     // Executable reference definition. Counter is intentionally unrelated to the game's movement/combat model.
-    public sealed class ReplayCounterDefinition : ReplayableSimulationDefinition<TemplateCounter, int, CounterInput, CounterSnapshot>
+    public class ReplayCounterDefinition : ReplayableSimulationDefinition<TemplateCounter, int, CounterInput, CounterSnapshot>
     {
         public int CleanupCount;
         public string Policy = "counter-v1";
@@ -84,6 +84,133 @@ namespace Testability.Tests
 
     public static class TemplateContractChecks
     {
+        private sealed class ResetBudgetDefinition : ReplayCounterDefinition
+        {
+            protected override TemplateLimits CreateDefaultLimits(int scenario)
+                => scenario == 0 ? new TemplateLimits(maxTicks: 4, maxInputs: 4, traceCapacity: 64)
+                    : new TemplateLimits(maxTicks: 1, maxInputs: 1, traceCapacity: 2);
+        }
+        private readonly struct CounterChanged : IDomainEvent
+        {
+            internal CounterChanged(ulong cause, int value) { Cause = cause; Value = value; }
+            internal ulong Cause { get; }
+            internal int Value { get; }
+        }
+        private sealed class ContextCounterDefinition : ReplayCounterDefinition
+        {
+            internal string LastSession;
+            internal ulong LastTargetTick;
+            internal bool FailEvent;
+            internal bool FailDecode;
+            protected override TemplateLimits CreateDefaultLimits(int scenario) => new TemplateLimits(maxTicks: 3, maxInputs: 4, traceCapacity: 128);
+            protected override TemplateTraceMetadata DescribeInput(CounterInput input)
+                => new TemplateTraceMetadata("counter.set", sequence: 999, actor: 7, target: 8, detail: "requested=" + input.Amount.ToString(CultureInfo.InvariantCulture));
+            protected override TemplateTraceMetadata DescribeMessage(object message)
+                => message is CounterChanged changed ? new TemplateTraceMetadata("counter.changed", changed.Cause, 7, 8,
+                    "value=" + changed.Value.ToString(CultureInfo.InvariantCulture)) : null;
+            protected override CounterInput DecodeInput(string payload)
+            {
+                if (FailDecode) throw new FormatException("injected replay decoder failure");
+                return base.DecodeInput(payload);
+            }
+            protected override void ConfigureWorld(SimulationBuilder builder, TemplateCounter world, int scenario)
+            {
+                base.ConfigureWorld(builder, world, scenario);
+                builder.RegisterDomainEventHandler(new ChangedHandler(this));
+            }
+            protected override InputOutcome ExecuteInput(TemplateCounter world, CounterInput input, InputExecutionContext context)
+            {
+                LastSession = context.SessionId; LastTargetTick = context.TargetTick;
+                InputOutcome outcome = base.ExecuteInput(world, input, context.Events);
+                if (outcome.Status == ActionStatus.Accepted) context.Events.PublishDomainEvent(new CounterChanged(context.Sequence, world.Value));
+                return outcome;
+            }
+            private sealed class ChangedHandler : IDomainEventHandler<CounterChanged>
+            {
+                private readonly ContextCounterDefinition definition;
+                internal ChangedHandler(ContextCounterDefinition definition) { this.definition = definition; }
+                public void Handle(CounterChanged message)
+                { if (definition.FailEvent) throw new InvalidOperationException("injected event failure"); }
+            }
+        }
+
+        public static void MetadataCausationAndResultPages()
+        {
+            ContextCounterDefinition definition = new ContextCounterDefinition();
+            using (TestableSimulationSession<TemplateCounter, int, CounterInput, CounterSnapshot> session = definition.CreateTestSession(0))
+            {
+                Check(session.Limits.MaxTicks == 3 && session.Policy == definition.PolicyId && !session.InvariantReport.Evaluated,
+                    "Default run policy or initial invariant report was not exposed.");
+                CounterInput source = new CounterInput { Amount = 12 };
+                session.Submit(session.Id, 90, 1, source); source.Amount = 99;
+                session.Submit(session.Id, 3, 2, new CounterInput { Amount = 21 });
+                session.Step();
+                Check(definition.LastSession == session.Id && definition.LastTargetTick == 1, "Input envelope context was lost.");
+                TraceEntry admission = session.CaptureRecording().Trace.Single(entry => entry.Stage == "Admission" && entry.Sequence == 90);
+                TraceEntry fact = session.CaptureRecording().Trace.Single(entry => entry.Type == "counter.changed");
+                Check(admission.Type == "counter.set" && admission.Actor == 7 && admission.Target == 8, "Input diagnostic metadata was lost.");
+                Check(session.CaptureRecording().Trace.Single(entry => entry.Stage == "Intent" && entry.Type == "counter.set").Sequence == 90,
+                    "Input metadata replaced the authoritative envelope sequence.");
+                Check(fact.Stage == "DomainEvent" && fact.Sequence == 90 && fact.Actor == 7 && fact.Target == 8 && fact.Code == "value=12",
+                    "Event causation, payload or frozen input was lost.");
+                Check(session.CaptureRecording().Trace.Any(entry => entry.Stage == "StateHash"), "Hash checkpoint was not traced.");
+                TemplateActionResultPage first = session.Results.Read(session.Id, 0, 1);
+                session.Step();
+                TemplateActionResultPage page = session.Results.Read(session.Id, 0, 1);
+                Check(page.Items[0].Sequence == 90 && page.NextIndex == 1 && page.HasMore, "Results must use completion order, not input sequence.");
+                Check(first.Items.Count == 1 && !first.HasMore, "Result page changed after later completion.");
+                TemplateActionResultPage second = session.Results.Read(session.Id, page.NextIndex, 1);
+                Check(second.Items[0].Sequence == 3 && !second.HasMore && session.InvariantReport.Tick == 2, "Result cursor or completed invariant report is wrong.");
+                Expect<ArgumentOutOfRangeException>(() => session.Results.Read(session.Id, 3, 1));
+                Expect<ArgumentOutOfRangeException>(() => session.Results.Read(session.Id, 0, 1025));
+                TemplateRecording recording = RoundTrip(session.CaptureRecording());
+                using (TemplateReplay<TemplateCounter, int, CounterInput, CounterSnapshot> replay = definition.CreateReplay(recording))
+                { replay.Step(); replay.Step(); Check(replay.State == TemplateReplayState.Completed, "Metadata changed replay behavior."); }
+                string oldId = session.Id;
+                session.Reset(0);
+                Expect<ArgumentException>(() => session.Results.Read(oldId, 0, 1));
+                Check(session.Results.Read(session.Id, 0, 1).Items.Count == 0 && !session.InvariantReport.Evaluated, "Reset retained result/invariant evidence.");
+            }
+            definition.FailEvent = true;
+            using (TestableSimulationSession<TemplateCounter, int, CounterInput, CounterSnapshot> session = definition.CreateTestSession(0))
+            {
+                session.Submit(session.Id, 7, 1, new CounterInput { Amount = 3 }); session.Step();
+                Check(session.Failure.Sequence == 7 && session.Results.Find(session.Id, 7).Result.Status == ActionStatus.Accepted,
+                    "Event failure lost its cause or rewrote the completed action.");
+                using (TemplateReplay<TemplateCounter, int, CounterInput, CounterSnapshot> replay = definition.CreateReplay(RoundTrip(session.CaptureRecording())))
+                { replay.Step(); Check(replay.State == TemplateReplayState.ReproducedFailure, "Causal event failure did not replay."); }
+            }
+        }
+
+        public static void PolicyAndReplaySetupFailures()
+        {
+            ContextCounterDefinition definition = new ContextCounterDefinition();
+            TemplateRecording recording;
+            using (TestableSimulationSession<TemplateCounter, int, CounterInput, CounterSnapshot> session = definition.CreateTestSession(0))
+            { session.Submit(session.Id, 1, 1, new CounterInput { Amount = 5 }); session.Step(); recording = RoundTrip(session.CaptureRecording()); }
+            definition.Policy = "counter-next-policy";
+            using (TemplateReplay<TemplateCounter, int, CounterInput, CounterSnapshot> replay = definition.CreateReplay(recording))
+            {
+                Check(replay.State == TemplateReplayState.Diverged && replay.FirstDifference.Tick == 0 && replay.FirstDifference.Category == "policy",
+                    "Changed policy was not rejected before advancing.");
+                replay.Play(); replay.AdvanceTime(10);
+                Check(replay.CurrentTick == 0, "Policy mismatch executed gameplay.");
+            }
+            definition.Policy = recording.Policy;
+            using (TemplateReplay<TemplateCounter, int, CounterInput, CounterSnapshot> replay = definition.CreateReplay(recording))
+            {
+                replay.Step();
+                int cleanupBefore = definition.CleanupCount;
+                definition.FailDecode = true;
+                Expect<FormatException>(() => replay.Restart());
+                Check(replay.State == TemplateReplayState.Diverged && definition.CleanupCount == cleanupBefore + 1,
+                    "Failed replay setup leaked its candidate world.");
+                definition.FailDecode = false;
+                replay.Restart(); replay.Step();
+                Check(replay.State == TemplateReplayState.Completed, "Replay could not restart after failed candidate setup.");
+            }
+        }
+
         public static void RealtimeRecordingAndOwnership()
         {
             ReplayCounterDefinition definition = new ReplayCounterDefinition();
@@ -173,6 +300,34 @@ namespace Testability.Tests
                 Check(session.Diagnostics.ReadTrace(old.NextCursor, 10).StreamChanged, "Trace stream identity");
                 session.Step(); session.Step(); session.Step();
                 Expect<InvalidOperationException>(() => session.Step()); Check(session.State == SessionState.Stopped, "Tick budget stop");
+            }
+            foreach (bool failHash in new[] { false, true })
+            {
+                ResetBudgetDefinition candidateDefinition = new ResetBudgetDefinition
+                { BrokenObservation = !failHash, BrokenHash = failHash };
+                using (TestableSimulationSession<TemplateCounter, int, CounterInput, CounterSnapshot> session =
+                    candidateDefinition.CreateTestSession(0))
+                {
+                    string originalId = session.Id;
+                    TemplateLimits originalLimits = session.Limits;
+                    session.Submit(session.Id, 1, 2, new CounterInput { Amount = 9 });
+                    session.Step();
+                    CounterSnapshot originalObservation = session.Observe();
+                    // Candidate 77 uses narrower defaults, then fails after its world was created.
+                    Expect<InvalidOperationException>(() => session.Admin.Reset(77));
+                    Check(ReferenceEquals(session.Limits, originalLimits) && session.Id == originalId && session.CurrentTick == 1 &&
+                        session.LastCompletedTick == 1 && session.State == SessionState.Running &&
+                        ReferenceEquals(session.Observe(), originalObservation), "Failed Reset replaced committed run state or limits");
+                    Check(candidateDefinition.CleanupCount == 1, "Failed Reset did not dispose only the candidate world");
+                    Check(session.Submit(session.Id, 2, 4, new CounterInput { Amount = 12 }).Queued,
+                        "Failed Reset applied candidate admission limits");
+                    session.Step();
+                    Check(session.Observe().Value == 9 && session.Find(session.Id, 1).Result.Status == ActionStatus.Accepted,
+                        "Failed Reset lost the original world or pending input");
+                    session.Step(); session.Step();
+                    Check(session.Observe().Value == 12 && session.CaptureRecording().Limits.MaxTicks == 4,
+                        "Failed Reset changed the recorded budget or continued world");
+                }
             }
         }
         public static void ReplayFrameMatrix()

@@ -62,7 +62,8 @@ namespace GameplaySimulation
         public void Validate()
         {
             if (!Finite(TickDelta) || TickDelta <= 0 || !Finite(Speed) || Speed < 0 || Health <= 0 || Damage <= 0 ||
-                !Finite(AttackRange) || AttackRange <= 0 || MaxTicks < 1 || MaxActions < 1 || TraceCapacity < 1 || string.IsNullOrWhiteSpace(Build))
+                !Finite(AttackRange) || AttackRange <= 0 || MaxTicks < 1 || MaxTicks > 100000 || MaxActions < 1 || MaxActions > 100000 ||
+                TraceCapacity < 1 || TraceCapacity > 65536 || string.IsNullOrWhiteSpace(Build))
                 throw new ArgumentException("Invalid scenario configuration.");
             if (RandomEnemyHealth && (EnemyHealthMin < 1 || EnemyHealthMax < EnemyHealthMin || EnemyHealthMax == int.MaxValue))
                 throw new ArgumentException("Invalid inclusive enemy health range.");
@@ -92,15 +93,23 @@ namespace GameplaySimulation
     public sealed class GameplayObservation
     {
         public GameplayObservation(ulong tick, IEnumerable<ActorObservation> actors, ulong enemyRandomState = 0, int enemiesSpawned = 0,
-            ulong respawnRandomState = 0, IEnumerable<ulong> pendingRespawnTicks = null)
+            ulong respawnRandomState = 0, IEnumerable<ulong> pendingRespawnTicks = null, ulong playerId = 1, LifecycleSnapshot lifecycle = null)
         { Tick = tick; Actors = new List<ActorObservation>(actors).AsReadOnly(); EnemyRandomState = enemyRandomState; EnemiesSpawned = enemiesSpawned;
-            RespawnRandomState = respawnRandomState; PendingRespawnTicks = new List<ulong>(pendingRespawnTicks ?? Array.Empty<ulong>()).AsReadOnly(); }
+            RespawnRandomState = respawnRandomState; PendingRespawnTicks = new List<ulong>(pendingRespawnTicks ?? Array.Empty<ulong>()).AsReadOnly();
+            PlayerId = playerId; Lifecycle = lifecycle; }
         public ulong Tick { get; }
         public IReadOnlyList<ActorObservation> Actors { get; }
         public ulong EnemyRandomState { get; }
         public int EnemiesSpawned { get; }
         public ulong RespawnRandomState { get; }
         public IReadOnlyList<ulong> PendingRespawnTicks { get; }
+        public ulong PlayerId { get; }
+        public LifecycleSnapshot Lifecycle { get; }
+        public ActorObservation FindActor(ulong id)
+        {
+            foreach (ActorObservation actor in Actors) if (actor.Id == id) return actor;
+            return null;
+        }
     }
 
     public sealed class TickReport

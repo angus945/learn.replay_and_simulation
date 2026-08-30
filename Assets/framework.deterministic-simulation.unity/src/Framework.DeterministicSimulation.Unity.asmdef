@@ -1,0 +1,9 @@
+{
+  "name": "Framework.DeterministicSimulation.Unity",
+  "rootNamespace": "DeterministicSimulation.Unity",
+  "references": [
+    "Framework.DeterministicSimulation",
+    "Module.SimulationPrimitives",
+    "Module.SimulationObjectRegistry"
+  ]
+}

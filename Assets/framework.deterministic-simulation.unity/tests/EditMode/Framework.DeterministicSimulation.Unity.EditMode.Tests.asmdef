@@ -1,0 +1,11 @@
+{
+  "name": "Framework.DeterministicSimulation.Unity.EditMode.Tests",
+  "references": [
+    "Framework.DeterministicSimulation.Unity",
+    "Framework.DeterministicSimulation",
+    "Module.SimulationPrimitives",
+    "Module.SimulationObjectRegistry"
+  ],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

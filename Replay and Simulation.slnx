@@ -1,10 +1,12 @@
-﻿<Solution>
+<Solution>
   <Project Path="Game.GameplaySimulation.csproj" />
   <Project Path="Game.GameplaySimulation.Tests.csproj" />
+  <Project Path="Framework.DeterministicSimulation.Unity.csproj" />
   <Project Path="Framework.Testability.Tests.csproj" />
   <Project Path="Module.SimulationObjectRegistry.csproj" />
   <Project Path="Module.SeededRandom.csproj" />
   <Project Path="Game.CharacterMovement.Integration.csproj" />
+  <Project Path="Module.WaveDispatcher.Tests.csproj" />
   <Project Path="Module.InvariantChecks.csproj" />
   <Project Path="Framework.DeterministicSimulation.Tests.csproj" />
   <Project Path="Framework.DeterministicSimulation.csproj" />
@@ -21,9 +23,10 @@
   <Project Path="Module.WaveDispatcher.csproj" />
   <Project Path="Module.TickInputBuffer.Tests.csproj" />
   <Project Path="Framework.Testability.csproj" />
+  <Project Path="Framework.DeterministicSimulation.Unity.EditMode.Tests.csproj" />
+  <Project Path="Framework.DeterministicSimulation.Unity.PlayMode.Tests.csproj" />
   <Project Path="Module.SimulationObjectRegistry.Tests.csproj" />
   <Project Path="Game.MovementDemo.Tests.csproj" />
-  <Project Path="Module.WaveDispatcher.Tests.csproj" />
   <Project Path="Game.MovementDemo.Editor.csproj" />
   <Project Path="Framework.GameplayProtocol.csproj" />
   <Project Path="Module.SimulationPrimitives.csproj" />
@@ -31,6 +34,7 @@
   <Project Path="Game.DebugOverlay.Tests.csproj" />
   <Project Path="Module.SeededRandom.Tests.csproj" />
   <Project Path="Game.CharacterMovement.Tests.csproj" />
+  <Project Path="Game.MovementDemo.PlayMode.Tests.csproj" />
   <Project Path="Game.GameplayProtocol.Tests.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Game.MovementDemo.csproj" />

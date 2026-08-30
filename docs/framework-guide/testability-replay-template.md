@@ -7,7 +7,7 @@
 它繼承基本 SimulationDefinition，但由框架補上外部 Input Intent → Internal Command → ExecuteInput 的橋接。
 Domain 不需要實作框架介面；你保留自己的 DDD 寫法。
 
-## 必填接點：編譯器會指出尚未完成的責任
+## 接點與責任
 
 | 接點 | 你實作的內容 |
 |---|---|
@@ -23,12 +23,16 @@ Domain 不需要實作框架介面；你保留自己的 DDD 寫法。
 | PolicyId | 規則／codec／hash／invariant 版本識別；規則改變時由專案明確更新 |
 
 不再 override 基本 Configure，它在此模板中 sealed；請 override ConfigureWorld。
+ExecuteInput 有兩個 virtual overload，需覆寫至少一個；都不覆寫時執行會明確拋出 NotSupportedException，因此這個接點不是靠 abstract 編譯錯誤檢查。需要輸入的 sequence／tick／session metadata 時選 InputExecutionContext overload；不需要時可用只接 IDomainEventSink 的相容 overload。
 不要把可變 world／RNG／invariant instance 放在共用 definition 欄位中。每個 world 必須獨立。
 Codec 必須純粹、可重複，decode 回傳新物件／不可變值；不可依呼叫次數改變結果。
 Payload 是字串，內部格式由你決定；外層 recording 使用固定 DataContract JSON，不儲存任意 CLR type name。
 
 ## 可執行參考
 
+現行 game 範例是 [GameplayDefinition](../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)：它建立 GameplayWorld，以 GameplayActions／Domain 執行移動與攻擊，提供兩條 RNG stream、生命週期 canonical state 與每個 session 的 invariant factories。[第 4 章](../../tools/gameplay-lessons/lessons/04-testability.md)先接正式控制面，[第 5 章](../../tools/gameplay-lessons/lessons/05-replay.md)再接 seeded 血量／重生與錄製。這是同一 CharacterMovement 的推薦路線。
+
+若要閱讀不帶遊戲語意的 framework 契約測試，
 [TemplateContractChecks.cs](../../Assets/framework.testability/tests/TemplateContractChecks.cs)包含完整 ReplayCounterDefinition：
 
 - TemplateCounter 是普通 domain class，不繼承 framework。
@@ -89,7 +93,7 @@ Exception 代表 simulation fault，不代表可重試的普通拒絕。
 成功 tick：Pipeline → CaptureObservation → hash → invariants → LastCompletedTick。
 讀取 Gameplay.Observe／Diagnostics 只回快取，不重新 capture／hash／Evaluate，也不新增 trace。
 初始 tick 0 建立 snapshot/hash，invariant report 是 Not Evaluated；第一次 Step 才評估 checks。
-Phase 與 dispatch trace 有界；ActionResult trace 帶 action sequence。額外 domain event 的 trace 不自動繼承 action correlation。
+Phase 與 dispatch trace 有界；ActionResult trace 帶 action sequence。額外 domain event 的 trace 不自動繼承 action correlation：專案需把 sequence 放進事件，並覆寫 DescribeMessage 提供 TemplateTraceMetadata。GameplayWorld.ActorDamaged／ActorDied 與 GameplayDefinition 已示範此接線；不是由 Domain 直接呼叫 trace。
 
 ## 首次失敗證據與重現
 
@@ -122,6 +126,7 @@ CreateReplay／Restart 遇到非法 codec 或組裝錯誤會拋出，不當成�
 使用 TemplateRecordingIO.Write(stream, recording)／Read(stream)，呼叫者擁有 stream 與路徑，不會被工具關閉，也不會自動覆寫檔案。
 Reader 在反序列化前限制整份資料大小，預設 16 MiB，可設定到 64 MiB；超過明確拒絕。
 TemplateLimits 預設：10,000 ticks、10,000 inputs、512 traces、單筆 payload 64 KiB、scenario＋inputs payload 合計 4 MiB。
+這是 generic 預設；definition 可覆寫 CreateDefaultLimits。現行 GameplayDefinition 由 GameplayScenario.MaxTicks／MaxActions／TraceCapacity 建立預算，並把合計 payload 設為 8 MiB。呼叫端明確傳入 TemplateLimits 才覆蓋這份預設，實際 limits 會寫進錄製。
 這不是精準 heap 上限，JSON escaping／結果／trace 仍有額外大小。寫入無自動截斷；大型合法錄製可能需調高 Read 的 file byte limit。
 錄製包含尚未到期輸入，但只重播到錄製最後一個 tick。Reset 會清掉舊歷史並更換 identity；跨 Reset 請分開保存錄製。
 
@@ -140,13 +145,13 @@ Testability host 先建立候選世界、checks、初始 observation/hash；這�
 - 不在 ConfigureWorld 註冊另一個未記錄的外部 input source，否則錄製不完整。
 - Domain event／Internal Command 是重新執行的結果，不作為錄製輸入。
 
-MovementDemo 現在透過 GameplayDefinition／GameplayWorld 使用新模板；舊 GameplaySession 保留給既有 Protocol 與舊格式測試。沒有擴充 Protocol、snapshot seek/restore、rollback 或跨平台 bitwise 保證。
+MovementDemo、現行 CLI 與教學直接使用 GameplayDefinition／GameplayWorld／GameplayActions。GameplaySession 已轉接同一 TestableSimulationSession runtime，只保留既有 ports 與舊格式投影；不是尚待合併的第二份世界或規則。Protocol **Deferred**，保留 adapter 相容性，不作此模板或教學驗收的阻擋。沒有擴充 snapshot seek/restore、rollback 或跨平台 bitwise 保證。
 新 TemplateRecording schema 與既有 Gameplay ReplayArtifact 是不同格式，不互相冒充相容。
 
-## 本輪驗證（2026-08-30）
+## 驗證入口
 
-- Unity 編譯無錯誤，EditMode 158/158 通過。
-- 純 .NET gameplay-checks 通過，含基本模板 5 組與 testability／Replay 模板 8 組契約檢查。
-- 正常重播覆蓋 30/60/144 FPS 與不規則 frame delta；例外、invariant、phase、observation/hash 失敗均驗證重現。
-- 驗證 JSON round trip、錄製檔案大小上限、輸入容量、readonly facade、Reset stream identity 與 owner-thread/reentry 限制。
-- 初次模板驗證未修改 Demo；後續 Demo 改接與驗證見 [Demo 整合](demo-template.md)。
+- `dotnet run --project tools/gameplay-lessons -- all`：同一 game 的逐步接線、正式操作、seeded 重生、錄製與 invariant failure 重現。
+- `dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj`：framework 契約與 game 整合檢查；共用來源為 [TemplateContractChecks](../../Assets/framework.testability/tests/TemplateContractChecks.cs)及[ModernGameplayContractChecks](../../Assets/game/gameplay-simulation/tests/ModernGameplayContractChecks.cs)。
+- 驗證範圍包含正常 frame matrix、JSON／容量、Reset／trace identity、owner thread／reentry、phase／observation／hash failure、policy 差異及首次失敗重現。
+
+當次結果以 [實作進度](../implementation-progress.md)為準；純 .NET 不取代 Unity 編譯、PlayMode 或 Player Build。現行場景接線與專屬驗收入口見 [Demo 整合](demo-template.md)。

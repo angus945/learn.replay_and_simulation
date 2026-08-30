@@ -54,6 +54,8 @@ namespace MovementDemo.Unity
             // Resume the original recording, not the replay's state. Playback never advances this session.
             replay.Dispose();
             replay = null;
+            presentedReplayObservation = null;
+            actorViews?.Snap(session.Observe());
             if (overlay != null) overlay.Bind(session.Diagnostics);
             replayMessage = "Resumed live recording (playback time excluded).";
         }

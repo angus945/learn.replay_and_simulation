@@ -35,11 +35,14 @@ namespace WaveDispatching
         }
     }
 
+    /// <summary>Handlers may enqueue the next wave. Nested dispatch and Clear during dispatch are rejected.
+    /// An unhandled callback exception abandons all current/pending work and releases the dispatch guard.</summary>
     public sealed class WaveDispatcher<T>
     {
         public const int DefaultMaxWaves = 32;
 
         private readonly WaveBuffer<T> buffer = new WaveBuffer<T>();
+        private bool dispatching;
 
         public WaveDispatcher(int maxWaves = DefaultMaxWaves)
         {
@@ -61,12 +64,14 @@ namespace WaveDispatching
 
         public void DispatchAll(Action<int, T> dispatch)
         {
+            EnsureIdle();
             if (dispatch == null)
             {
                 throw new ArgumentNullException(nameof(dispatch));
             }
 
             int wave = 0;
+            dispatching = true;
 
             try
             {
@@ -92,11 +97,23 @@ namespace WaveDispatching
                 buffer.Clear();
                 throw;
             }
+            finally
+            {
+                dispatching = false;
+            }
         }
 
+        /// <summary>Clears queued work between dispatch calls. Handlers may enqueue, but may not clear or dispatch recursively.</summary>
         public void Clear()
         {
+            EnsureIdle();
             buffer.Clear();
+        }
+
+        private void EnsureIdle()
+        {
+            if (dispatching)
+                throw new InvalidOperationException("A dispatch callback may enqueue work, but cannot dispatch or clear this dispatcher.");
         }
     }
 }

@@ -1,36 +1,40 @@
 # Character Movement Demo
 
-開啟 `scenes/CharacterMovementDemo.unity`，按 Play，點擊 Game View，以 WASD／方向鍵移動，空白鍵攻擊附近紅色敵人。
-敵人預設 30 HP，攻擊固定 10 傷害、距離 2；死亡後不再顯示。重新 Play 可重建示範。
-Editor／Development Build 自動顯示唯讀 Diagnostics Overlay，F3 切換；顯示時隱藏舊 HUD。
-面板包含 Session／tick、角色 Observation、快取 invariant 結果與增量 trace，不提供任何管理操作。
-預設 60 ticks/s、4 units/s，可在 Movement Composition Root Inspector 調整（Play 前）。
-HUD 顯示權威位置、tick 與插值 alpha。失去焦點或沒有鍵盤時送零方向。
+開啟 `scenes/CharacterMovementDemo.unity`，Play 後點 Game View，以 WASD／方向鍵移動、Space 攻擊附近紅色敵人。它也是正式 Build Settings 的啟動場景。
 
-## 執行路徑
+敵人出生血量為 seeded RNG 的 20–40，攻擊傷害 10、距離 2；死亡移除後經 1–3 simulation 秒重生。兩個 RNG stream 分開管理。預設 60 ticks/s、4 units/s，可在 Play 前調整 Composition Root。
 
-Unity Keyboard → TickInputBuffer → GameplayRequest → GameplaySession.Submit
-→ IIntent → Internal Command → Movement／Combat → Domain Event → StructuralCommit
-→ Observation → Render 插值 → Unity Transform。
+Editor / Development Build 提供 F3 唯讀 diagnostics，包含 observation、快取 invariant、增量 trace。底部控制可保存 recording、載入、播放、暫停、逐步、Restart、Return live。Replay 不推进原 live session；返回 live 明確 snap，不混合兩個 session 的位置。
 
-`src/Composition` 組裝純 C# session；`src/Unity` 只處理 Unity 輸入與畫面；`tests` 測試整條流程。
-Domain、Application、Integration、Composition 各有 noEngineReferences assembly 邊界。
-GameplaySession 透過 registry 在初始化配發 player=1／enemy=2，死亡時在 StructuralCommit 移除。
-MovementDemoSession 的無敵人模式仍保留供原本 Movement 測試使用；Unity host 開啟敵人。
-seeded-random 不參與移動，此切片不需要隨機數。
+## 接線
 
-## 輸入與時間限制
+```text
+Keyboard → TickInputBuffer → GameplayInput
+  → GameplayDefinition / TestableSimulationSession
+  → Intent → InternalCommand → GameplayActions → Movement / Combat
+  → DomainEvent → GameplayWorld lifecycle → committed GameplayObservation
+  → GameplayActorPresentation → UnityActorPresentation / UnityActorPool
+  → stable ID 對應的 Unity Transform
+```
 
-- 每個畫面 frame 擷取當下鍵盤狀態；每 tick 使用最後擷取的軸值，補跑 tick 沿用該值。
-- 相同初始狀態、tick delta 與逐 tick 輸入可產生相同結果；不保證不同 frame 排程將真實鍵盤事件分配到同一 tick。
-- frame 之間按下又放開的極短移動輸入可能不被擷取；此 adapter 尚非具時間戳的輸入事件記錄器。
-- simulation 使用 float 與現有 runner；尚不保證跨平台浮點一致性。已有 in-process scenario 重跑，沒有通用 Replay／rollback。
-- 不使用 Rigidbody、Physics step 或 FixedUpdate；後續物理整合需另外設計。
+`src/Composition/MovementDemoSession` 是純 C# frame/input adapter。每個完成 tick 將 immutable observation 交給 presentation callback；catch-up 也逐 tick 捕捉。`src/Unity/GameplayActorPresentation` 將 PlayerId 與 active actor 映射到 view archetype；framework pool 管理 instance generation、重用與清理，不保管生命值或攻擊規則。
 
-場景產生器位於 `src/Unity/Editor`，透過 Unity Editor API 建立素材與場景。
-Tools → Movement Demo → Create Demo Scene 僅在場景不存在且所有場景已儲存時建立，不覆寫既有場景。
+本場景以兩個 sprite template 註冊 player/enemy view，inactive 原始 template 不參與遊戲；相同 adapter 可接受 prefab。原 character transform 只作相機跟隨 anchor。所有遊戲判定用 ID，不依 Actors 陣列索引。多 actor、出生 snap、死亡移除、pool reuse 與 replay/live 切換有獨立 integration tests。
 
-## 驗證
+## 物理與時間邊界
 
-原 12 項 Movement EditMode 測試保留；控制面、戰鬥與 diagnostics 測試位於 game/gameplay-simulation/tests。
-測試結果與限制見專案根目錄 docs/testability/phase1-3.md。
+此 Demo 的權威是純 C# 邏輯位置，沒有 Rigidbody movement / FixedUpdate。可選的 [Unity framework integration](../../framework.deterministic-simulation.unity/README.md) 提供隔離 local PhysicsScene 的 kinematic/static sensors 與排序去重 facts，另有 PlayMode 範例測試；此遊戲未憑空加入碰撞傷害規則。
+
+相同 scenario、tick delta 與逐 tick input 可重現；不同 frame 排程未必會把真實鍵盤事件分配到同一 tick。每 frame 取最後軸值、catch-up 沿用，極短移動輸入可能未被擷取。Attack 的按下邊緣只消耗一次。失焦／無鍵盤時送零方向。
+
+Recording / replay 已存在；snapshot restore、rollback 與跨平台 bitwise 浮點一致性不在本輪承諾內。
+
+## 教學與驗證
+
+從 [五階段累積教學](../../../docs/framework-guide/learning-path.md) 接到此場景。場景產生器 `src/Unity/Editor/MovementDemoSceneBuilder` 僅在不存在且已儲存場景時建立，不覆寫使用者場景。
+
+- `tests/`：input、frame schedule、playback / multi actor wiring。
+- `gameplay-simulation/tests/`：共用 gameplay、invariants、limits、recording / replay。
+- `framework.deterministic-simulation.unity/tests/`：pool / presentation / local physics。
+
+當次執行證據見 [實作進度](../../../docs/implementation-progress.md)。舊 SampleScene / prefab 已保存在 Assets 外的 `Old_Simulation/LegacyUnityAssets`，不再是正式匯入或 build 依賴。

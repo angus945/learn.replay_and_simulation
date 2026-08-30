@@ -1,5 +1,7 @@
 # Gameplay Protocol Framework — v1 core
 
+> **Deferred（暫緩）**：先完成 deterministic-simulation、testability 與 game／教學接線的穩定化，再處理 Protocol。本輪保留既有程式與相容契約，不擴充協定、不接 transport；Protocol 遷移不列為其他階段的完成阻擋。最新範圍見 [分階段實作進度](../../docs/implementation-progress.md)。
+
 供 External Debug Overlay、Fuzzer、AI Test 共用的 transport-neutral 協定執行核心。
 純 C#、noEngineReferences；不依賴 GameplayObservation、Unity、HTTP 或特定 client。
 結構為 src/API、src/Contract、src/Runtime、tests。
@@ -48,13 +50,15 @@ Endpoint 不自行 timeout/cancel 已排隊請求。Client 等待逾時只代表
 Handler 必須有界；Drain 的數量上限不是時間 watchdog，也不能中斷卡住的 handler。
 Transport 還必須在反序列化前限制整個 frame 大小，補上 authentication、rate limit、連線與 shutdown lifecycle。
 
-## 本輪範圍
+## 既有實作範圍
 
-已完成核心與 `Assets/game/gameplay-protocol` adapter、JSON round trip／主執行緒／去重測試。
+已有核心與 `Assets/game/gameplay-protocol` adapter、JSON round trip／主執行緒／去重測試來源；這不代表外部協定服務已完成。
 尚未開啟任何 socket 或修改 Demo 場景；沒有外部 client、Unity pump MonoBehaviour、HTTP/WebSocket。
-Replay/failure 分頁下載、建立測試 session 的 factory route、連線關閉／重連與權限撤銷留待 transport 切片。
+Replay/failure 分頁下載、建立測試 session 的 factory route、連線關閉／重連與權限撤銷均屬暫緩範圍，待核心 framework 穩定後再安排。
 
-## 驗證
+## 歷史驗證紀錄
+
+以下是既有實作時留下的紀錄，不是本輪暫緩標記的測試結果，也不代表目前全部測試數量。
 
 2026-08-30：Unity 編譯無錯誤，EditMode **123/123 通過**（framework 10、adapter 6 項新增測試）。
 包含背景 ingress／owner-thread pump、pending/completed 重試、request conflict、權限／控制權、

@@ -1,11 +1,11 @@
 # 工具控制契約與重跑診斷
 
-本輪停在 in-process API；沒有網路服務、Protocol DTO、通用 Overlay。
-Overlay 與 GameplayObservation 維持本專案用途。程式沿用 src/API、src/Contract、src/Runtime、tests 結構。
+本文前半保留既有 GameplaySession 相容 facade 的控制契約與歷史驗收紀錄；目前玩法執行已委派給 GameplayDefinition／TestableSimulationSession。
+新 CLI 使用 TemplateRecording，見下方命令。既有 Protocol core 僅保留相容回歸，本次沒有新增 transport 或外部 client。
 
 ## API：可呼叫哪些操作
 
-GameplaySession 是 composition owner；對 consumer 分發獨立 facade，不直接傳 session。
+GameplaySession 保留既有呼叫介面；新教學與工具優先使用 GameplayDefinition 的 session ports。對 consumer 分發獨立 facade，不直接傳 session。
 
 | 屬性 | API | 用途 |
 |---|---|---|
@@ -41,7 +41,7 @@ Capabilities 的 CanSubmit/CanStep 表示生命週期與模式允許，不保證
 - Action Catalog 提供 Move/Attack、actor/target/axes 要求、成功／業務拒絕代碼；
   詳細 gameplay 與 queue 規則沿用 gameplay-simulation README。
 
-## 結構化重跑
+## 舊格式的結構化重跑
 
 `FailureRerun.Compare` 回 RerunReport：Executed、Matches、FirstDivergentTick、Differences、Warnings。
 差異含 category、tick（若適用）、expected、actual。比較 failure code/tick/action/exception type、
@@ -64,18 +64,35 @@ Capabilities 的 CanSubmit/CanStep 表示生命週期與模式允許，不保證
 
 ```text
 dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj
-dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj -- capture <new-artifact.json>
-dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj -- rerun <artifact.json>
+dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj -- capture <new-failure-recording.json>
+dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj -- capture-success <new-success-recording.json>
+dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj -- rerun <recording.json>
+dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj -- legacy-rerun docs/testability/failure-example.json
 ```
 
-無參數跑既有 headless checks；capture 另輸出 overflow 範例，CreateNew 不覆寫。
-rerun 讀指定檔案並輸出 JSON report，不改來源檔。Exit 0=比較符合、2=比較不符／重跑拒絕、
-1=CLI 用法／檔案／反序列化錯誤。GAMEPLAY_BUILD 環境變數可標示目前執行版本。
-CLI 限制 32 MiB 輸入及 1,000,000 ticks/actions；這不是不可信程式的 sandbox，也沒有 callback watchdog。
+無參數執行全部接入的 headless contract checks，包含新 core／testability／game checks，也保留舊 artifact 與 Protocol adapter 的相容回歸。
 
-下一階段才建立 versioned protocol DTO／mapping／main-thread ingress，維持現在的權限分離。
+- `capture`：透過正式 Move input 推進 gameplay，在 tick 2 由 `cli.position_limit` oracle 偵測玩家越過 x = 0.5；這是沒有 exception 的失敗示範。記錄包含自訂 oracle policy，`rerun` 會建立同一個明確配置的 oracle。
+- `capture-success`：正常對角 Move → Stop，共八 ticks，輸出同一種 TemplateRecording 格式。
+- `rerun`：以 GameplayDefinition／TemplateReplay 重建獨立 session，逐 tick 比較 policy、hash、ActionResult 與 failure fingerprint。JSON 回 Completed、ReproducedFailure 或 Diverged／FirstDifference。未知 policy 不會動態載入程式碼，也不被視為相容。
+- `legacy-rerun`：只供舊 FailureArtifact，包括目前的 failure-example.json。新、舊格式不互相假裝相容；旧檔不可直接交給 `rerun`。
+- 寫入使用 CreateNew，既有檔案不覆寫。讀取先檢查 32 MiB 上限；TemplateRecordingIO 也會在反序列化前限制實際讀入 bytes。
+- Exit 0：capture 成功或 rerun 比較符合；2：重播差異／legacy rerun 拒絕；1：命令、檔案、schema／codec 或組裝錯誤。
+- 新 recording 的 tick／input 上限由保存的 TemplateLimits 限制，最大各 100,000；legacy 路徑也採相同上限，超過上限的舊 scenario 明確拒絕，不截斷重現資料。沒有 callback watchdog 或不可信程式 sandbox。
+- GAMEPLAY_BUILD 可識別當前 build；未設定回 build.unverified，不同回 build.mismatch。Runtime 不同同樣只給 warning；Matches 不代表跨平台決定性保證。
 
-## 驗證紀錄
+這是單實例 recording／rerun 示範，沒有 RandomExplorer、自動產生合法參數或遠端 transport。
+
+## 本次 CLI 驗證（2026-08-30）
+
+- .NET 9 headless checks 通過，包含新增 core、testability、modern gameplay 契約與既有相容案例。
+- capture-success → rerun：Completed，tick 8；capture → rerun：ReproducedFailure，tick 2、cli.position_limit、沒有 exception。
+- legacy-rerun 舊範例 Matches=true；build 不同與舊檔未帶 policy 的 warning 保留。
+- 修改第三個 checkpoint：exit 2，FirstDifference 指向 tick 3；未知 policy：exit 2，停在 tick 0。
+- 已有輸出檔不覆寫，SHA-256 不變；超過 32 MiB 或把舊格式誤交新 rerun 皆 exit 1。
+- 本次沒有重跑 Unity。下列 EditMode 數量屬於歷史階段，不能當成本次證據。
+
+## 歷史驗證紀錄（舊格式）
 
 2026-08-30：Unity Editor 編譯無錯誤，EditMode **95/95 通過**（本輪新增 10 項）。
 純 .NET checks 通過；CLI capture → rerun 新 artifact 比較符合，舊 schema 1 範例也比較符合，

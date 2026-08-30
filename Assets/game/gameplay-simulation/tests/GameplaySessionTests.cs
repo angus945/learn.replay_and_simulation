@@ -138,7 +138,8 @@ namespace GameplaySimulation.Tests
             Assert.That(trace.Count(entry => entry.Type == "ActorDied"), Is.EqualTo(1));
             Assert.That(trace.Count(entry => entry.Type == "ActorDamaged"), Is.EqualTo(1));
             Assert.That(trace.Any(entry => entry.Stage == "InternalCommand" && entry.Wave >= 0), Is.True);
-            Assert.That(trace.Any(entry => entry.Stage == "StructuralCommit"), Is.True);
+            Assert.That(trace.Any(entry => entry.Stage == "Phase" && entry.Type == "StructuralCommit" && entry.Code == "end"), Is.True);
+            Assert.That(trace.Count(entry => entry.Stage == "DomainEvent" && entry.Type == "Destroyed" && entry.Actor == enemy.Id), Is.EqualTo(1));
             session.Step();
             Assert.That(session.Observe().Actors[1].X, Is.EqualTo(enemy.X));
         }

@@ -1,4 +1,5 @@
 {
   "name": "Module.SimulationPrimitives",
-  "rootNamespace": "DeterministicSimulation"
+  "rootNamespace": "DeterministicSimulation",
+  "noEngineReferences": true
 }

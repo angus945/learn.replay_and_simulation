@@ -5,6 +5,22 @@ using System.Text;
 
 namespace Testability.Templates
 {
+    /// <summary>Project-authored diagnostic description. It never changes dispatch or replay input.</summary>
+    public sealed class TemplateTraceMetadata
+    {
+        public TemplateTraceMetadata(string type, ulong sequence = 0, ulong actor = 0, ulong target = 0, string detail = "")
+        {
+            if (string.IsNullOrWhiteSpace(type) || type.Length > 256) throw new ArgumentException("A diagnostic type of at most 256 characters is required.", nameof(type));
+            if (detail == null || detail.Length > 4096) throw new ArgumentException("Diagnostic detail must contain at most 4096 characters.", nameof(detail));
+            Type = type; Sequence = sequence; Actor = actor; Target = target; Detail = detail;
+        }
+        public string Type { get; }
+        public ulong Sequence { get; }
+        public ulong Actor { get; }
+        public ulong Target { get; }
+        public string Detail { get; }
+    }
+
     public sealed class InputOutcome
     {
         public InputOutcome(ActionStatus status, string code) { Status = status; Code = code; }
@@ -79,6 +95,15 @@ namespace Testability.Templates
         public string State { get; }
         public ActionResult Result { get; }
         public string CancellationReason { get; }
+    }
+
+    public sealed class TemplateActionResultPage
+    {
+        internal TemplateActionResultPage(IEnumerable<ActionResult> items, int nextIndex, bool hasMore)
+        { Items = new List<ActionResult>(items).AsReadOnly(); NextIndex = nextIndex; HasMore = hasMore; }
+        public IReadOnlyList<ActionResult> Items { get; }
+        public int NextIndex { get; }
+        public bool HasMore { get; }
     }
 
     [DataContract]

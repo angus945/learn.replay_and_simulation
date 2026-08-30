@@ -8,6 +8,12 @@ namespace WaveDispatching.Tests
     public sealed class WaveDispatcherTests
     {
         [Test]
+        public void CallbackGuardsPreserveQueuedItems() => WaveDispatcherContractChecks.CallbackGuardsPreserveQueuedItems();
+
+        [Test]
+        public void CallbackFailureClearsWorkAndReleasesGuard() => WaveDispatcherContractChecks.CallbackFailureClearsWorkAndReleasesGuard();
+
+        [Test]
         public void DispatchAll_DefersReentrantItemsToNextWave()
         {
             WaveDispatcher<int> dispatcher = new WaveDispatcher<int>();

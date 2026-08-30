@@ -14,22 +14,7 @@ internal static class Program
     {
         try
         {
-            if (args.Length > 0 && args[0] == "rerun")
-            {
-                if (args.Length != 2) throw new ArgumentException("Usage: rerun <artifact.json>");
-                using (FileStream input = File.OpenRead(Path.GetFullPath(args[1])))
-                {
-                    if (input.Length > 32 * 1024 * 1024) throw new ArgumentException("Artifact exceeds 32 MiB CLI limit.");
-                    FailureArtifact saved = ArtifactJson.Read<FailureArtifact>(input);
-                    if (saved.FailureTick > 1000000 || saved.Actions.Count > 1000000)
-                        throw new ArgumentException("CLI rerun budget is 1,000,000 ticks/actions.");
-                    RerunReport report = FailureRerun.Compare(saved, currentBuild: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD"));
-                    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-                    return report.Matches ? 0 : 2;
-                }
-            }
-            if (args.Length > 0 && !(args.Length == 2 && args[0] == "capture"))
-                throw new ArgumentException("Usage: [capture <new-artifact.json> | rerun <artifact.json>]");
+            if (args.Length > 0) return RecordingCli.Run(args);
             CheckProtocol();
             FrameworkGuideExamples.Run();
             CheckLifecycle();
@@ -74,14 +59,6 @@ internal static class Program
                 buffer.Position = 0;
                 FailureArtifact artifact = ArtifactJson.Read<FailureArtifact>(buffer);
                 Require(ScenarioRerun.VerifyFailure(artifact), "artifact does not reproduce failure/results/hashes");
-                if (args.Length > 0)
-                {
-                    string path = Path.GetFullPath(args[1]);
-                    Directory.CreateDirectory(Path.GetDirectoryName(path));
-                    using (FileStream output = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
-                        ArtifactJson.Write(output, artifact);
-                    Console.WriteLine("Failure example: " + path);
-                }
             }
             const string previousArtifact = "docs/testability/failure-example.json";
             if (File.Exists(previousArtifact))

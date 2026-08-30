@@ -11,7 +11,8 @@ namespace Testability.Templates
     public sealed class TestableSimulationSession<TWorld, TScenario, TInput, TObservation> : IDisposable where TWorld : class
     {
         private readonly ReplayableSimulationDefinition<TWorld, TScenario, TInput, TObservation> definition;
-        private readonly TemplateLimits limits;
+        private readonly bool usesDefaultLimits;
+        private TemplateLimits limits;
         private readonly int ownerThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
         private SimulationSession<TWorld, TScenario> core;
         private InvariantRegistry<TObservation> checks;
@@ -19,6 +20,8 @@ namespace Testability.Templates
         private readonly List<RecordedInput> inputs = new List<RecordedInput>();
         private readonly List<TemplateTick> ticks = new List<TemplateTick>();
         private readonly Dictionary<ulong, ActionResult> results = new Dictionary<ulong, ActionResult>();
+        private readonly List<ActionResult> resultHistory = new List<ActionResult>();
+        private readonly Dictionary<ulong, TemplateTraceMetadata> inputMetadata = new Dictionary<ulong, TemplateTraceMetadata>();
         private readonly HashSet<ulong> sequences = new HashSet<ulong>();
         private readonly SortedDictionary<ulong, List<RecordedInput>> pending = new SortedDictionary<ulong, List<RecordedInput>>();
         private TObservation observation;
@@ -34,7 +37,7 @@ namespace Testability.Templates
         internal TestableSimulationSession(ReplayableSimulationDefinition<TWorld, TScenario, TInput, TObservation> definition,
             TScenario scenario, TemplateLimits limits)
         {
-            this.definition = definition; this.limits = limits; limits.Validate();
+            this.definition = definition; this.limits = limits; usesDefaultLimits = limits == null;
             Diagnostics = new Reader(this);
             Gameplay = new GameplayPort(this); Simulation = new SimulationPort(this);
             Admin = new AdminPort(this); Results = new ResultsPort(this);
@@ -48,6 +51,9 @@ namespace Testability.Templates
         public ulong LastCompletedTick { get; private set; }
         public float TickDelta { get; private set; }
         public TemplateFailure Failure { get; private set; }
+        public string Policy => policy;
+        public TemplateLimits Limits => limits;
+        public InvariantReport InvariantReport => report;
         public IDiagnosticReader<TObservation> Diagnostics { get; }
         public ITemplateGameplay<TInput, TObservation> Gameplay { get; }
         public ITemplateSimulation Simulation { get; }
@@ -70,14 +76,16 @@ namespace Testability.Templates
                 limits.CheckPayload(payload);
                 int payloadBytes = System.Text.Encoding.UTF8.GetByteCount(payload);
                 if (totalPayloadBytes + payloadBytes > limits.MaxTotalPayloadBytes) return new SubmissionResult(false, "input.payload_budget");
-                definition.LoadInput(payload); // Validate codec before admitting immutable encoded input.
+                TInput independent = definition.LoadInput(payload); // Describe only the frozen, decoded input.
+                TemplateTraceMetadata metadata = definition.InputMetadata(independent);
                 RecordedInput recorded = new RecordedInput(sequence, targetTick, payload);
-                inputs.Add(recorded); sequences.Add(sequence);
+                inputs.Add(recorded); sequences.Add(sequence); inputMetadata.Add(sequence, metadata);
                 totalPayloadBytes += payloadBytes;
                 if (!pending.TryGetValue(targetTick, out List<RecordedInput> batch))
                 { batch = new List<RecordedInput>(); pending.Add(targetTick, batch); }
                 batch.Add(recorded);
-                trace.Record(new TraceEntry(Id, CurrentTick, sequence, "Admission", "Input", "queue.accepted"));
+                trace.Record(new TraceEntry(Id, CurrentTick, sequence, "Admission", metadata.Type, "queue.accepted",
+                    actor: metadata.Actor, target: metadata.Target));
                 return new SubmissionResult(true, "queue.accepted");
             }
             catch (ArgumentException) { return new SubmissionResult(false, "input.invalid"); }
@@ -134,12 +142,16 @@ namespace Testability.Templates
                     core.EnqueueIntent(new ReplayableSimulationDefinition<TWorld, TScenario, TInput, TObservation>.InputIntent
                     {
                         Input = definition.LoadInput(input.Payload),
+                        Context = new InputExecutionContext(Id, input.Sequence, target, null),
+                        Metadata = inputMetadata[input.Sequence],
                         Begin = () => { executingSequence = input.Sequence; },
                         Complete = outcome =>
                         {
                             ActionResult result = new ActionResult(input.Sequence, target, outcome.Status, outcome.Code);
-                            completed.Add(result); results.Add(result.Sequence, result);
-                            trace.Record(new TraceEntry(Id, target, input.Sequence, "Action", outcome.Status.ToString(), outcome.Code));
+                            completed.Add(result); results.Add(result.Sequence, result); resultHistory.Add(result);
+                            TemplateTraceMetadata metadata = inputMetadata[input.Sequence];
+                            trace.Record(new TraceEntry(Id, target, input.Sequence, "Action", metadata.Type, outcome.Code,
+                                actor: metadata.Actor, target: metadata.Target));
                             executingSequence = 0;
                         }
                     });
@@ -147,9 +159,12 @@ namespace Testability.Templates
                 executingSequence = 0; core.Step();
                 stage = "Observation"; observation = core.Observe(definition); observationTick = target;
                 stage = "StateHash"; hash = definition.Hash(observation);
+                trace.Record(new TraceEntry(Id, target, 0, "StateHash", "State", hash));
                 stage = "Invariant";
                 IReadOnlyList<InvariantViolation> violations = checks.Evaluate(observation);
                 report = new InvariantReport(true, target, checks.Count, violations);
+                foreach (InvariantViolation violation in violations)
+                    trace.Record(new TraceEntry(Id, target, 0, "Invariant", violation.Code, violation.Detail));
                 if (violations.Count > 0) CaptureFailure(target, violations[0].Code, null, violations[0].Detail);
                 else LastCompletedTick = target;
             }
@@ -160,7 +175,7 @@ namespace Testability.Templates
                     {
                         ActionResult result = new ActionResult(input.Sequence, target, ActionStatus.Failed,
                             input.Sequence == executingSequence ? "simulation.exception" : "tick.aborted");
-                        completed.Add(result); results.Add(result.Sequence, result);
+                        completed.Add(result); results.Add(result.Sequence, result); resultHistory.Add(result);
                     }
                 CaptureFailure(target, "simulation.exception", error, error.Message);
             }
@@ -176,6 +191,17 @@ namespace Testability.Templates
             if (results.TryGetValue(sequence, out ActionResult result)) return new TemplateActionLookup("Completed", result);
             if (!sequences.Contains(sequence)) return new TemplateActionLookup("Unknown");
             return new TemplateActionLookup(State == SessionState.Running ? "Pending" : "Cancelled", reason: cancellationReason);
+        }
+
+        public TemplateActionResultPage Read(string sessionId, int afterIndex, int maxItems)
+        {
+            EnsureIdle();
+            if (sessionId != Id) throw new ArgumentException("Result cursor belongs to a different session.", nameof(sessionId));
+            if (afterIndex < 0 || afterIndex > resultHistory.Count) throw new ArgumentOutOfRangeException(nameof(afterIndex));
+            if (maxItems < 1 || maxItems > 1024) throw new ArgumentOutOfRangeException(nameof(maxItems));
+            int count = Math.Min(maxItems, resultHistory.Count - afterIndex);
+            return new TemplateActionResultPage(resultHistory.GetRange(afterIndex, count), afterIndex + count,
+                afterIndex + count < resultHistory.Count);
         }
 
         public void Stop()
@@ -208,11 +234,18 @@ namespace Testability.Templates
 
         private void Initialize(TScenario scenario)
         {
-            string payload = definition.SaveScenario(scenario); limits.CheckPayload(payload);
+            if (ReferenceEquals(scenario, null)) throw new ArgumentNullException(nameof(scenario));
+            TemplateLimits nextLimits = usesDefaultLimits ? definition.DefaultLimits(scenario) : limits;
+            nextLimits.Validate();
+            string payload = definition.SaveScenario(scenario); nextLimits.CheckPayload(payload);
             TScenario independent = definition.LoadScenario(payload);
             string nextPolicy = definition.PolicyId;
             if (string.IsNullOrWhiteSpace(nextPolicy)) throw new ArgumentException("PolicyId is required.");
             InvariantRegistry<TObservation> nextChecks = definition.CreateChecks();
+            TraceRecorder nextTrace = new TraceRecorder(nextLimits.TraceCapacity);
+            InvariantReport nextReport = new InvariantReport(false, 0, nextChecks.Count, Array.Empty<InvariantViolation>());
+            string nextId = Guid.NewGuid().ToString("N");
+            int nextPayloadBytes = System.Text.Encoding.UTF8.GetByteCount(payload);
             SimulationSession<TWorld, TScenario> next = definition.CreateSession(independent, RecordPhase, RecordDispatch);
             TObservation nextObservation; string nextHash; float nextDelta;
             try
@@ -234,14 +267,14 @@ namespace Testability.Templates
                 catch (Exception newCleanupError) { throw new AggregateException(oldCleanupError, newCleanupError); }
                 throw;
             }
-            core = next; checks = nextChecks; scenarioPayload = payload; initialHash = nextHash; policy = nextPolicy;
+            core = next; limits = nextLimits; checks = nextChecks; scenarioPayload = payload; initialHash = nextHash; policy = nextPolicy;
             observation = nextObservation; observationTick = 0; TickDelta = nextDelta;
-            trace = new TraceRecorder(limits.TraceCapacity);
-            inputs.Clear(); ticks.Clear(); results.Clear(); sequences.Clear(); pending.Clear();
-            totalPayloadBytes = System.Text.Encoding.UTF8.GetByteCount(payload);
-            Id = Guid.NewGuid().ToString("N"); Failure = null; LastCompletedTick = 0; State = SessionState.Running;
+            trace = nextTrace;
+            inputs.Clear(); ticks.Clear(); results.Clear(); resultHistory.Clear(); inputMetadata.Clear(); sequences.Clear(); pending.Clear();
+            totalPayloadBytes = nextPayloadBytes;
+            Id = nextId; Failure = null; LastCompletedTick = 0; State = SessionState.Running;
             attemptedTick = 0;
-            report = new InvariantReport(false, 0, checks.Count, Array.Empty<InvariantViolation>());
+            report = nextReport;
             stage = "Initialize"; executingSequence = 0; cancellationReason = null;
         }
         private void CaptureFailure(ulong tick, string code, Exception error, string detail)
@@ -259,7 +292,16 @@ namespace Testability.Templates
         private void RecordDispatch(MessageDispatch dispatch)
         {
             executingSequence = 0;
-            trace.Record(new TraceEntry(Id, core.TickNumber, 0, stage, dispatch.Category.ToString(), dispatch.Message.GetType().Name, dispatch.Wave));
+            TemplateTraceMetadata metadata = definition.DispatchMetadata(dispatch.Message);
+            if (metadata == null)
+            {
+                trace.Record(new TraceEntry(Id, core.TickNumber, 0, dispatch.Category.ToString(), dispatch.Message.GetType().Name,
+                    string.Empty, dispatch.Wave));
+                return;
+            }
+            executingSequence = metadata.Sequence;
+            trace.Record(new TraceEntry(Id, core.TickNumber, metadata.Sequence, dispatch.Category.ToString(), metadata.Type,
+                metadata.Detail, dispatch.Wave, metadata.Actor, metadata.Target));
         }
         private void EnsureIdle()
         {
@@ -306,6 +348,7 @@ namespace Testability.Templates
             private readonly TestableSimulationSession<TWorld, TScenario, TInput, TObservation> owner;
             internal ResultsPort(TestableSimulationSession<TWorld, TScenario, TInput, TObservation> owner) { this.owner = owner; }
             public TemplateActionLookup Find(string sessionId, ulong sequence) => owner.Find(sessionId, sequence);
+            public TemplateActionResultPage Read(string sessionId, int afterIndex, int maxItems) => owner.Read(sessionId, afterIndex, maxItems);
         }
     }
 }

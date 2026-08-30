@@ -1,0 +1,15 @@
+{
+  "name": "Game.MovementDemo.PlayMode.Tests",
+  "references": [
+    "Game.MovementDemo",
+    "Game.MovementDemo.Unity",
+    "Game.GameplaySimulation",
+    "Game.CharacterMovement.Domain",
+    "Game.CharacterMovement.Integration",
+    "Framework.Testability",
+    "Framework.DeterministicSimulation",
+    "Framework.DeterministicSimulation.Unity",
+    "Module.SimulationObjectRegistry"
+  ],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

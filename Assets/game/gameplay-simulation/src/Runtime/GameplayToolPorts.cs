@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Testability;
+using Testability.Templates;
 
 namespace GameplaySimulation
 {
@@ -16,6 +17,7 @@ namespace GameplaySimulation
 
         public IRealtimeTickDriver ClaimRealtimeDriver()
         {
+            EnsureIdle();
             if (DriveMode != SimulationDriveMode.Realtime || realtimeClaimed)
                 throw new InvalidOperationException("Realtime clock authority is unavailable or already claimed.");
             realtimeClaimed = true;
@@ -70,17 +72,17 @@ namespace GameplaySimulation
             internal ResultsPort(GameplaySession owner) { this.owner = owner; }
             public ActionLookup Find(string sessionId, ulong sequence)
             {
-                if (owner.stepping) throw new InvalidOperationException("Read results between ticks.");
+                owner.EnsureIdle();
                 if (sessionId != owner.Id) return new ActionLookup(ActionLookupState.StaleSession);
-                ActionResult result = owner.resultHistory.Find(item => item.Sequence == sequence);
-                if (result != null) return new ActionLookup(ActionLookupState.Completed, result);
-                if (!owner.sequences.Contains(sequence)) return new ActionLookup(ActionLookupState.Unknown);
-                return new ActionLookup(owner.State == SessionState.Running ? ActionLookupState.Pending : ActionLookupState.Cancelled,
-                    cancellationReason: owner.State == SessionState.Running ? null : owner.cancellationReason);
+                if (owner.core == null) return new ActionLookup(ActionLookupState.Unknown);
+                TemplateActionLookup result = owner.core.Results.Find(sessionId, sequence);
+                return new ActionLookup((ActionLookupState)Enum.Parse(typeof(ActionLookupState), result.State),
+                    result.Result, result.CancellationReason);
             }
             public ActionResultPage Read(string sessionId, int afterIndex, int maxItems)
             {
-                if (owner.stepping || sessionId != owner.Id) throw new InvalidOperationException("Busy or stale session.");
+                owner.EnsureIdle();
+                if (sessionId != owner.Id) throw new InvalidOperationException("Stale session.");
                 if (afterIndex < 0 || afterIndex > owner.resultHistory.Count) throw new ArgumentOutOfRangeException(nameof(afterIndex));
                 if (maxItems < 1 || maxItems > 1024) throw new ArgumentOutOfRangeException(nameof(maxItems));
                 int count = Math.Min(maxItems, owner.resultHistory.Count - afterIndex);

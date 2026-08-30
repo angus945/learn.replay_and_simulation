@@ -4,6 +4,8 @@ namespace Testability.Tests
 {
     public sealed class TemplateTests
     {
+        [Test] public void MetadataCausationAndResultPages() => TemplateContractChecks.MetadataCausationAndResultPages();
+        [Test] public void PolicyAndReplaySetupFailures() => TemplateContractChecks.PolicyAndReplaySetupFailures();
         [Test] public void RealtimeRecordingAndOwnership() => TemplateContractChecks.RealtimeRecordingAndOwnership();
         [Test] public void AdmissionAndDiagnostics() => TemplateContractChecks.AdmissionAndDiagnostics();
         [Test] public void OrderingResetAndLimits() => TemplateContractChecks.OrderingResetAndLimits();

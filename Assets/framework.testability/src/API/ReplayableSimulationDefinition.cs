@@ -19,7 +19,15 @@ namespace Testability.Templates
         protected abstract byte[] EncodeCanonicalState(TObservation observation);
         protected abstract void ConfigureInvariants(InvariantRegistry<TObservation> invariants);
         protected abstract void ConfigureWorld(SimulationBuilder builder, TWorld world, TScenario scenario);
-        protected abstract InputOutcome ExecuteInput(TWorld world, TInput input, IDomainEventSink events);
+        /// <summary>Override this overload when the integration needs envelope identity for event causation.</summary>
+        protected virtual InputOutcome ExecuteInput(TWorld world, TInput input, InputExecutionContext context)
+            => ExecuteInput(world, input, context.Events);
+        /// <summary>Compatibility hook for definitions that do not need input envelope metadata.</summary>
+        protected virtual InputOutcome ExecuteInput(TWorld world, TInput input, IDomainEventSink events)
+            => throw new NotSupportedException("The definition must override an ExecuteInput overload.");
+        protected virtual TemplateLimits CreateDefaultLimits(TScenario scenario) => new TemplateLimits();
+        protected virtual TemplateTraceMetadata DescribeInput(TInput input) => null;
+        protected virtual TemplateTraceMetadata DescribeMessage(object message) => null;
 
         protected sealed override void Configure(SimulationBuilder builder, TWorld world, TScenario scenario)
         {
@@ -32,7 +40,10 @@ namespace Testability.Templates
 
         public TestableSimulationSession<TWorld, TScenario, TInput, TObservation> CreateTestSession(TScenario scenario,
             TemplateLimits limits = null)
-            => new TestableSimulationSession<TWorld, TScenario, TInput, TObservation>(this, scenario, limits ?? new TemplateLimits());
+        {
+            if (ReferenceEquals(scenario, null)) throw new ArgumentNullException(nameof(scenario));
+            return new TestableSimulationSession<TWorld, TScenario, TInput, TObservation>(this, scenario, limits);
+        }
         public TemplateReplay<TWorld, TScenario, TInput, TObservation> CreateReplay(TemplateRecording recording)
             => new TemplateReplay<TWorld, TScenario, TInput, TObservation>(this, recording);
 
@@ -41,6 +52,18 @@ namespace Testability.Templates
         internal TScenario LoadScenario(string value) => DecodeScenario(value);
         internal string SaveInput(TInput value) => EncodeInput(value);
         internal TInput LoadInput(string value) => DecodeInput(value);
+        internal TemplateLimits DefaultLimits(TScenario scenario)
+            => CreateDefaultLimits(scenario) ?? throw new InvalidOperationException("Default limits cannot be null.");
+        internal TemplateTraceMetadata InputMetadata(TInput input)
+            => DescribeInput(input) ?? new TemplateTraceMetadata(typeof(TInput).Name);
+        internal TemplateTraceMetadata DispatchMetadata(object message)
+        {
+            InputIntent intent = message as InputIntent;
+            if (message is InputCommand command) intent = command.Intent;
+            if (intent == null) return DescribeMessage(message);
+            TemplateTraceMetadata metadata = intent.Metadata;
+            return new TemplateTraceMetadata(metadata.Type, intent.Context.Sequence, metadata.Actor, metadata.Target, metadata.Detail);
+        }
         internal string Hash(TObservation value) => StateDigest.Compute(EncodeCanonicalState(value)
             ?? throw new InvalidOperationException("Canonical state bytes cannot be null."));
         internal InvariantRegistry<TObservation> CreateChecks()
@@ -53,6 +76,8 @@ namespace Testability.Templates
         internal sealed class InputIntent : IIntent
         {
             internal TInput Input;
+            internal InputExecutionContext Context;
+            internal TemplateTraceMetadata Metadata;
             internal Action Begin;
             internal Action<InputOutcome> Complete;
         }
@@ -74,7 +99,7 @@ namespace Testability.Templates
             public void Handle(InputCommand command)
             {
                 command.Intent.Begin();
-                InputOutcome outcome = definition.ExecuteInput(world, command.Intent.Input, events);
+                InputOutcome outcome = definition.ExecuteInput(world, command.Intent.Input, command.Intent.Context.WithEvents(events));
                 if (outcome == null || string.IsNullOrWhiteSpace(outcome.Code) || !Enum.IsDefined(typeof(ActionStatus), outcome.Status))
                     throw new InvalidOperationException("ExecuteInput must return a valid outcome.");
                 command.Intent.Complete(outcome);

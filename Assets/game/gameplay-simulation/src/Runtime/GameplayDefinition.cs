@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using DeterministicSimulation;
@@ -12,15 +13,52 @@ namespace GameplaySimulation
     /// <summary>Concrete integration template. Domain aggregates remain framework-independent.</summary>
     public sealed class GameplayDefinition : ReplayableSimulationDefinition<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation>
     {
-        public override string PolicyId => "gameplay-template-v1/splitmix64/lifecycle-v3";
+        public const string DefaultPolicy = "gameplay-template-v1/splitmix64/lifecycle-v3";
+        private readonly string policy;
+        private readonly IReadOnlyList<Func<IInvariant<GameplayObservation>>> additionalInvariants;
+        public GameplayDefinition() : this(null, DefaultPolicy) { }
+        public GameplayDefinition(IEnumerable<Func<IInvariant<GameplayObservation>>> additionalInvariants,
+            string policyId = DefaultPolicy)
+        {
+            if (string.IsNullOrWhiteSpace(policyId)) throw new ArgumentException("A replay policy identity is required.", nameof(policyId));
+            List<Func<IInvariant<GameplayObservation>>> factories = new List<Func<IInvariant<GameplayObservation>>>(
+                additionalInvariants ?? Array.Empty<Func<IInvariant<GameplayObservation>>>());
+            foreach (Func<IInvariant<GameplayObservation>> factory in factories)
+                if (factory == null) throw new ArgumentException("Invariant factories cannot be null.", nameof(additionalInvariants));
+            if (factories.Count > 0 && policyId == DefaultPolicy)
+                throw new ArgumentException("Custom invariants require an explicit policyId.", nameof(policyId));
+            this.additionalInvariants = factories.AsReadOnly();
+            policy = policyId;
+        }
+        public override string PolicyId => policy;
+        protected override TemplateLimits CreateDefaultLimits(GameplayScenario scenario) =>
+            new TemplateLimits(scenario.MaxTicks, scenario.MaxActions, scenario.TraceCapacity, maxTotalPayloadBytes: 8388608);
         protected override void ValidateScenario(GameplayScenario scenario) => scenario.Validate();
         protected override float GetTickDelta(GameplayScenario scenario) => scenario.TickDelta;
         protected override GameplayWorld CreateWorld(GameplayScenario scenario) => new GameplayWorld(scenario);
         protected override void DestroyWorld(GameplayWorld world) { } // Managed, session-owned objects only.
         protected override void ConfigureWorld(SimulationBuilder builder, GameplayWorld world, GameplayScenario scenario) => world.Configure(builder);
-        protected override InputOutcome ExecuteInput(GameplayWorld world, GameplayInput input, IDomainEventSink events) => world.Execute(input, events);
+        protected override InputOutcome ExecuteInput(GameplayWorld world, GameplayInput input, InputExecutionContext context) =>
+            world.Execute(input, context.Events, context.Sequence);
         protected override GameplayObservation CaptureObservation(GameplayWorld world) => world.Observe();
-        protected override void ConfigureInvariants(InvariantRegistry<GameplayObservation> invariants) => invariants.Register(new GameplayInvariant());
+        protected override void ConfigureInvariants(InvariantRegistry<GameplayObservation> invariants)
+        {
+            invariants.Register(new GameplayInvariant());
+            foreach (Func<IInvariant<GameplayObservation>> factory in additionalInvariants) invariants.Register(factory());
+        }
+        protected override TemplateTraceMetadata DescribeInput(GameplayInput input) =>
+            new TemplateTraceMetadata(input.Kind.ToString(), actor: input.Actor, target: input.Target);
+        protected override TemplateTraceMetadata DescribeMessage(object message)
+        {
+            if (message is GameplayWorld.ActorDamaged damage)
+                return new TemplateTraceMetadata("ActorDamaged", damage.Sequence, damage.Actor, damage.Target,
+                    "damage=" + damage.Damage.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (message is GameplayWorld.ActorDied death)
+                return new TemplateTraceMetadata("ActorDied", death.Sequence, death.Actor, death.Target);
+            if (message is GameplayWorld.LifecycleNotice notice)
+                return new TemplateTraceMetadata(notice.Type, actor: notice.Actor, detail: notice.Code);
+            return null;
+        }
         protected override string EncodeScenario(GameplayScenario scenario) => Encode(scenario);
         protected override GameplayScenario DecodeScenario(string payload) => Decode<GameplayScenario>(payload);
         protected override string EncodeInput(GameplayInput input) => Encode(input ?? throw new ArgumentNullException(nameof(input)));

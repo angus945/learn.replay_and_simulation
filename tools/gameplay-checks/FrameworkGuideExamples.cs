@@ -14,6 +14,13 @@ internal static class FrameworkGuideExamples
         MinimalMovement();
         ControlledMovement();
         MovementDefinitionExample.Verify();
+        WaveDispatching.Tests.WaveDispatcherContractChecks.CallbackGuardsPreserveQueuedItems();
+        WaveDispatching.Tests.WaveDispatcherContractChecks.CallbackFailureClearsWorkAndReleasesGuard();
+        DeterministicSimulation.Framework.Tests.CoreHardeningContractChecks.LowLevelClockAndFailure();
+        DeterministicSimulation.Framework.Tests.CoreHardeningContractChecks.LowLevelReentryAndRenderFailure();
+        DeterministicSimulation.Framework.Tests.CoreHardeningContractChecks.SessionOwnerThread();
+        DeterministicSimulation.Framework.Tests.CoreHardeningContractChecks.ParticipantOrderAndReactionTiming();
+        Console.WriteLine("PASS: core clock, callback guards, owner thread and reaction timing (6 groups).");
         DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.RealtimeTimingAndOwnership();
         DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.RealtimeFailuresAndReentry();
         Testability.Tests.TemplateContractChecks.RealtimeRecordingAndOwnership();
@@ -22,6 +29,11 @@ internal static class FrameworkGuideExamples
         Console.WriteLine("PASS: minimal wiring example (queue, movement, stop and reset).");
         GameplaySimulation.Tests.DemoTemplateChecks.Verify();
         Console.WriteLine("PASS: migrated demo template, legacy gameplay parity and replay frame matrix.");
+        GameplaySimulation.Tests.ModernGameplayContractChecks.ScenarioLimits();
+        GameplaySimulation.Tests.ModernGameplayContractChecks.CustomInvariantIsolationAndPolicy();
+        GameplaySimulation.Tests.ModernGameplayContractChecks.EventCausation();
+        GameplaySimulation.Tests.ModernGameplayContractChecks.DiagonalMovementAndReplay();
+        Console.WriteLine("PASS: modern gameplay limits, oracle isolation, event causation and diagonal replay (4 groups).");
         Testability.Tests.TemplateContractChecks.AdmissionAndDiagnostics();
         Testability.Tests.TemplateContractChecks.OrderingResetAndLimits();
         Testability.Tests.TemplateContractChecks.ReplayFrameMatrix();
@@ -30,7 +42,9 @@ internal static class FrameworkGuideExamples
         Testability.Tests.TemplateContractChecks.DivergenceAndMalformedRecording();
         Testability.Tests.TemplateContractChecks.ThreadAndReentry();
         Testability.Tests.TemplateContractChecks.PhaseAndFileBounds();
-        Console.WriteLine("PASS: testability/replay template contract checks (8 groups).");
+        Testability.Tests.TemplateContractChecks.MetadataCausationAndResultPages();
+        Testability.Tests.TemplateContractChecks.PolicyAndReplaySetupFailures();
+        Console.WriteLine("PASS: testability/replay template contract checks (10 groups).");
         DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.Lifecycle();
         DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.MissingConfiguration();
         DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.FaultAndReentry();
