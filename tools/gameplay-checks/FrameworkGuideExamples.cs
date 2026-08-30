@@ -13,6 +13,24 @@ internal static class FrameworkGuideExamples
     {
         MinimalMovement();
         ControlledMovement();
+        MovementDefinitionExample.Verify();
+        GameplaySimulation.Tests.DemoTemplateChecks.Verify();
+        Console.WriteLine("PASS: migrated demo template, legacy gameplay parity and replay frame matrix.");
+        Testability.Tests.TemplateContractChecks.AdmissionAndDiagnostics();
+        Testability.Tests.TemplateContractChecks.OrderingResetAndLimits();
+        Testability.Tests.TemplateContractChecks.ReplayFrameMatrix();
+        Testability.Tests.TemplateContractChecks.FailureReplay();
+        Testability.Tests.TemplateContractChecks.InvariantAndCaptureFailures();
+        Testability.Tests.TemplateContractChecks.DivergenceAndMalformedRecording();
+        Testability.Tests.TemplateContractChecks.ThreadAndReentry();
+        Testability.Tests.TemplateContractChecks.PhaseAndFileBounds();
+        Console.WriteLine("PASS: testability/replay template contract checks (8 groups).");
+        DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.Lifecycle();
+        DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.MissingConfiguration();
+        DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.FaultAndReentry();
+        DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.ResetFailures();
+        DeterministicSimulation.Framework.Tests.SessionTemplateContractChecks.IndependentSessions();
+        Console.WriteLine("PASS: definition/session template contract checks (5 groups).");
         Console.WriteLine("PASS: framework guide examples (minimal composition and controlled movement).");
     }
 

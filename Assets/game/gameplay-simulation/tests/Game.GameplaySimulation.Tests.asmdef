@@ -3,6 +3,7 @@
   "references": [
     "Game.GameplaySimulation",
     "Framework.Testability",
+    "Framework.DeterministicSimulation",
     "Game.CharacterCombat",
     "Game.MovementDemo",
     "Game.CharacterMovement.Domain",

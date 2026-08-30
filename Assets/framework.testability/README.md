@@ -2,6 +2,9 @@
 
 新專案使用方式請先讀 [DDD 遊戲框架開發指引](../../docs/framework-guide/README.md)。
 
+**可繼承模板：** [ReplayableSimulationDefinition 使用指南](../../docs/framework-guide/testability-replay-template.md)。模板提供通用控制面、診斷、記錄、正常／失敗 Replay，Domain 不需繼承框架。
+本 assembly 現在依賴 Framework.DeterministicSimulation（單向）；基本 simulation 不反向依賴 testability。既有 typed ports 與 codec 仍保留。
+
 本框架提供跨專案機制，不提供遊戲規則，也不另建 simulation loop 或 Action dispatcher。
 
 - `src/API`：Session lifecycle、唯讀 observer、IDiagnosticReader。
@@ -24,5 +27,5 @@ StateDigest 只處理 bytes，欄位與排序語意由專案的 hasher 決定。
 ArtifactJson 不擁有 stream，不會關閉呼叫者的 stream；儲存位置、容量與 schema 驗證由呼叫端負責。
 
 Session 與所有 callbacks 採單執行緒；不提供 thread-safety 或對惡意 callback 的強制中斷。
-尚未提供 Protocol、transport、多程序 runner 或通用 snapshot restore。
+本 assembly 不提供 Protocol transport、多程序 runner 或通用 snapshot restore；Protocol 核心位於獨立 framework。
 Observation 目前以 typed port 提供；通用 discovery/ObservationRegistry 等到有多種觀察模型需求再抽取。

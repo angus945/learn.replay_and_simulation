@@ -3,17 +3,17 @@ using CharacterMovement.Domain;
 using CharacterMovement.Integration;
 using GameplaySimulation;
 using Testability;
+using Testability.Templates;
 using TickInputBuffering;
 using TickInputBuffering.Contract;
 
 namespace MovementDemo
 {
     /// <summary>Realtime input/presentation adapter around the same control plane used by tests.</summary>
-    public sealed class MovementDemoSession
+    public sealed class MovementDemoSession : IDisposable
     {
         private readonly TickInputBuffer input = new TickInputBuffer();
-        private readonly GameplaySession gameplay = new GameplaySession(SimulationDriveMode.Realtime);
-        private readonly IRealtimeTickDriver clock;
+        private readonly TestableSimulationSession<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> gameplay;
         private readonly ICharacterMovementView view;
         private readonly GameplayScenario scenario;
         private MovementPosition previous;
@@ -31,8 +31,9 @@ namespace MovementDemo
                 build: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD") ?? "unspecified", respawnEnemies: respawnEnemies,
                 enemyHealthMin: enemyHealthMin, enemyHealthMax: enemyHealthMax, randomRespawnDelay: randomRespawnDelay);
             input.RegisterAxis(0); input.RegisterAxis(1); input.Seal();
-            gameplay.Start(scenario);
-            clock = gameplay.ClaimRealtimeDriver();
+            gameplay = new GameplayDefinition().CreateTestSession(scenario,
+                new TemplateLimits(scenario.MaxTicks, scenario.MaxActions, scenario.TraceCapacity,
+                    maxTotalPayloadBytes: 8388608));
             view.SetPosition(default);
         }
         public MovementPosition CurrentPosition => current;
@@ -40,8 +41,13 @@ namespace MovementDemo
         public float PresentationAlpha => (float)Math.Min(1, Math.Max(0, accumulator / scenario.TickDelta));
         public SessionState State => gameplay.State;
         public GameplayObservation Observe() => gameplay.Observe();
-        public FailureArtifact Failure => gameplay.Failure;
-        public ReplayArtifact CaptureReplay() => gameplay.CaptureReplay();
+        public TemplateFailure Failure => gameplay.Failure;
+        public TemplateRecording CaptureReplay() => gameplay.CaptureRecording();
+        public void Dispose() => gameplay.Dispose();
+        public void ClearInput()
+        {
+            CaptureAxes(0, 0); attackPending = false; attackDown = false;
+        }
         public IDiagnosticReader<GameplayObservation> Diagnostics => gameplay.Diagnostics;
         public void RequestAttack() => attackPending = true;
         public void CaptureAttackButton(bool down)
@@ -64,7 +70,7 @@ namespace MovementDemo
             {
                 if (TickNumber >= (ulong)scenario.MaxTicks) { gameplay.Stop(); break; }
                 TickInputFrame frame = input.ConsumeTick(TickNumber + 1);
-                SubmissionResult move = gameplay.Submit(new GameplayRequest(gameplay.Id, ++sequence, TickNumber + 1,
+                SubmissionResult move = gameplay.Submit(gameplay.Id, ++sequence, TickNumber + 1, new GameplayInput(
                     GameplayActionKind.Move, 1, x: frame.GetAxis(0).Value, y: frame.GetAxis(1).Value));
                 if (!move.Queued) { gameplay.Stop(); break; }
                 if (attackPending)
@@ -72,11 +78,11 @@ namespace MovementDemo
                     ulong target = 2;
                     foreach (ActorObservation actor in gameplay.Observe().Actors)
                         if (actor.Id != 1 && actor.Active) { target = actor.Id; break; }
-                    SubmissionResult attack = gameplay.Submit(new GameplayRequest(gameplay.Id, ++sequence, TickNumber + 1, GameplayActionKind.Attack, 1, target));
+                    SubmissionResult attack = gameplay.Submit(gameplay.Id, ++sequence, TickNumber + 1, new GameplayInput(GameplayActionKind.Attack, 1, target));
                     attackPending = false;
                     if (!attack.Queued) { gameplay.Stop(); break; }
                 }
-                clock.AdvanceTick();
+                gameplay.Simulation.Step();
                 previous = current;
                 ActorObservation player = gameplay.Observe().Actors[0];
                 current = new MovementPosition(player.X, player.Y);

@@ -1,18 +1,19 @@
 using System;
 using System.IO;
 using GameplaySimulation;
+using Testability.Templates;
 using UnityEngine;
 
 namespace MovementDemo.Unity
 {
     public sealed partial class MovementDemoHost
     {
-        private ReplayPlayback replay;
+        private TemplateReplay<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> replay;
         private string replayPath = string.Empty;
         private string replayMessage = "Recording from tick 0. Save before leaving Play Mode.";
         private bool editingReplayPath;
-        public ReplayPlaybackState? PlaybackState => replay?.State;
-        public RerunDifference ReplayDifference => replay?.FirstDifference;
+        public TemplateReplayState? PlaybackState => replay?.State;
+        public TemplateDifference ReplayDifference => replay?.FirstDifference;
 
         public string SaveRecording()
         {
@@ -20,7 +21,8 @@ namespace MovementDemo.Unity
             string directory = Path.Combine(Application.persistentDataPath, "Replays");
             Directory.CreateDirectory(directory);
             string path = Path.Combine(directory, "replay-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N") + ".json");
-            ReplayFile.SaveNew(path, session.CaptureReplay());
+            using (FileStream stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
+                TemplateRecordingIO.Write(stream, session.CaptureReplay());
             replayPath = path;
             replayMessage = "Saved " + Path.GetFileName(path);
             Debug.Log("Replay saved: " + path);
@@ -28,8 +30,11 @@ namespace MovementDemo.Unity
         }
         public void LoadReplay(string path)
         {
-            ReplayPlayback next = new ReplayPlayback(ReplayFile.Load(path), currentBuild: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD"));
-            session.CaptureAxes(0, 0); session.CaptureAttackButton(false);
+            TemplateRecording recording;
+            using (FileStream stream = File.OpenRead(path)) recording = TemplateRecordingIO.Read(stream);
+            TemplateReplay<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> next = new GameplayDefinition().CreateReplay(recording);
+            session.ClearInput();
+            replay?.Dispose();
             replay = next; replayPath = path;
             if (overlay != null) overlay.Bind(replay.Diagnostics);
             replayMessage = next.Warnings.Count == 0 ? "Loaded; paused at tick 0." : "Loaded: " + string.Join(", ", next.Warnings);
@@ -47,6 +52,7 @@ namespace MovementDemo.Unity
         {
             if (replay == null) return;
             // Resume the original recording, not the replay's state. Playback never advances this session.
+            replay.Dispose();
             replay = null;
             if (overlay != null) overlay.Bind(session.Diagnostics);
             replayMessage = "Resumed live recording (playback time excluded).";
@@ -72,10 +78,10 @@ namespace MovementDemo.Unity
             replayPath = GUILayout.TextField(replayPath);
             editingReplayPath = GUI.GetNameOfFocusedControl() == "ReplayFilePath";
             GUILayout.BeginHorizontal();
-            GUI.enabled = replay != null && replay.State == ReplayPlaybackState.Paused;
+            GUI.enabled = replay != null && replay.State == TemplateReplayState.Paused;
             if (GUILayout.Button("Play")) PlayReplay();
             if (GUILayout.Button("Step")) TryReplayAction(StepReplay);
-            GUI.enabled = replay != null && replay.State == ReplayPlaybackState.Playing;
+            GUI.enabled = replay != null && replay.State == TemplateReplayState.Playing;
             if (GUILayout.Button("Pause")) PauseReplay();
             GUI.enabled = replay != null;
             if (GUILayout.Button("Restart")) TryReplayAction(RestartReplay);

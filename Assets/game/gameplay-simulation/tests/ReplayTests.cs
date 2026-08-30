@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Testability;
+using Testability.Templates;
 
 namespace GameplaySimulation.Tests
 {
@@ -19,11 +20,11 @@ namespace GameplaySimulation.Tests
             MovementDemo.MovementDemoSession live = new MovementDemo.MovementDemoSession(new View(), 4, .125f, true);
             live.RequestAttack(); live.AdvanceTime(.125f);
             live.CaptureAxes(1, 0); live.AdvanceTime(.5f);
-            ReplayPlayback replay = new ReplayPlayback(live.CaptureReplay());
+            using TemplateReplay<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> replay = new GameplayDefinition().CreateReplay(live.CaptureReplay());
             ulong liveTick = live.TickNumber;
             live.CaptureAxes(-1, 0); // Live input cannot enter the separate replay.
             replay.Play(); replay.AdvanceTime(2);
-            Assert.That(replay.State, Is.EqualTo(ReplayPlaybackState.Completed));
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Completed));
             Assert.That(replay.Observe().Actors[0].X, Is.EqualTo(live.CurrentPosition.X));
             Assert.That(live.TickNumber, Is.EqualTo(liveTick));
         }

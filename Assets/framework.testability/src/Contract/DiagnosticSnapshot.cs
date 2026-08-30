@@ -20,13 +20,14 @@ namespace Testability
     public sealed class DiagnosticSnapshot<TObservation>
     {
         public DiagnosticSnapshot(string sessionId, SessionState state, ulong tick, TObservation observation,
-            InvariantReport invariants, string faultCode)
-        { SessionId = sessionId; State = state; Tick = tick; Observation = observation; Invariants = invariants; FaultCode = faultCode; }
+            InvariantReport invariants, string faultCode, ulong? observationTick = null)
+        { SessionId = sessionId; State = state; Tick = tick; Observation = observation; Invariants = invariants; FaultCode = faultCode; ObservationTick = observationTick ?? tick; }
         public string SessionId { get; }
         public SessionState State { get; }
         public ulong Tick { get; }
         public TObservation Observation { get; }
         public InvariantReport Invariants { get; }
         public string FaultCode { get; }
+        public ulong ObservationTick { get; }
     }
 }

@@ -104,6 +104,8 @@ namespace MovementDemo.Unity
 
         private void OnDestroy()
         {
+            replay?.Dispose();
+            session?.Dispose();
             if (enemyView != null) Destroy(enemyView.gameObject);
             if (overlay != null) Destroy(overlay.gameObject);
         }

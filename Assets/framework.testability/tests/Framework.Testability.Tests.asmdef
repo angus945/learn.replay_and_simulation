@@ -1,6 +1,8 @@
 {
   "name": "Framework.Testability.Tests",
   "references": [
+    "Framework.DeterministicSimulation",
+    "Module.SimulationPrimitives",
     "Framework.Testability",
     "Module.InvariantChecks",
     "Module.TraceBuffer"

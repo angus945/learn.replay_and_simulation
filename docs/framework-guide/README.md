@@ -5,6 +5,10 @@
 
 ## 建議閱讀順序
 
+**想直接繼承並讓編譯器指出必填責任：先讀 [Definition／Session 模板](definition-template.md)。** 已提供實際 abstract class、組裝 builder 與契約檢查。
+
+需要正式控制面、診斷、錄製與失敗重現：使用 [Testability／Replay 模板](testability-replay-template.md)，不必自行重寫 session 流程。
+
 1. [入門與可執行範例](getting-started.md)：先跑最小移動，再看正式控制面。
 2. [架構、DDD 邊界與組裝](architecture.md)：決定程式放哪裡、依賴誰。
 3. [契約與專案策略](contracts.md)：哪些不可違反，哪些只是 Demo 的選擇。

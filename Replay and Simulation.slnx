@@ -1,5 +1,7 @@
 ﻿<Solution>
   <Project Path="Game.GameplaySimulation.csproj" />
+  <Project Path="Game.GameplaySimulation.Tests.csproj" />
+  <Project Path="Framework.Testability.Tests.csproj" />
   <Project Path="Module.SimulationObjectRegistry.csproj" />
   <Project Path="Module.SeededRandom.csproj" />
   <Project Path="Game.CharacterMovement.Integration.csproj" />
@@ -14,7 +16,6 @@
   <Project Path="Module.TickInputBuffer.csproj" />
   <Project Path="Game.DebugOverlay.Model.csproj" />
   <Project Path="Game.MovementDemo.Unity.csproj" />
-  <Project Path="Game.GameplaySimulation.Tests.csproj" />
   <Project Path="Game.CharacterMovement.Domain.csproj" />
   <Project Path="Game.CharacterMovement.Application.csproj" />
   <Project Path="Module.WaveDispatcher.csproj" />
@@ -30,7 +31,6 @@
   <Project Path="Game.DebugOverlay.Tests.csproj" />
   <Project Path="Module.SeededRandom.Tests.csproj" />
   <Project Path="Game.CharacterMovement.Tests.csproj" />
-  <Project Path="Framework.Testability.Tests.csproj" />
   <Project Path="Game.GameplayProtocol.Tests.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Game.MovementDemo.csproj" />
