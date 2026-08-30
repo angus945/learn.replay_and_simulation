@@ -1,5 +1,7 @@
 # Testability：in-process 基礎
 
+新專案使用方式請先讀 [DDD 遊戲框架開發指引](../../docs/framework-guide/README.md)。
+
 本框架提供跨專案機制，不提供遊戲規則，也不另建 simulation loop 或 Action dispatcher。
 
 - `src/API`：Session lifecycle、唯讀 observer、IDiagnosticReader。
@@ -11,8 +13,8 @@
 
 SubmissionResult.Queued 只表示已排隊；ActionResult 才描述執行時的 Accepted／Rejected／InvalidRequest／Failed。
 Gameplay 拒絕不視為 exception，InvariantViolation 與 exception 分開保存。
-InvariantRegistry／IInvariant／InvariantViolation 已抽到 module.invariant（Invariants namespace）。
-TraceRecorder 組合 module.diagnostic-trace 的 TraceBuffer<TraceEntry>，不再自行維護 ring buffer。
+InvariantRegistry／IInvariant／InvariantViolation 已抽到 module.invariant-checks（InvariantChecks namespace）。
+TraceRecorder 組合 module.trace-buffer 的 TraceBuffer<TraceEntry>，不再自行維護 ring buffer。
 TraceRecorder.Reader 與 Writer 是不同 facade；Snapshot 為 artifact 相容性保留，工具應用 Reader 的增量 Read。
 TraceEntry 提供 session、tick、sequence、stage、type、code、wave、actor、target；未適用的 identity 為零。
 TraceEntry.Sequence 是 action correlation；TraceRecord.Sequence 才是增量讀取位置，兩者不能混用。

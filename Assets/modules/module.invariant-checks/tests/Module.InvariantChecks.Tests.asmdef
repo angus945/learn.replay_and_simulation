@@ -1,0 +1,6 @@
+{
+  "name": "Module.InvariantChecks.Tests",
+  "references": ["Module.InvariantChecks"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

@@ -8,17 +8,18 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="FrameworkGuideExamples.cs" />
     <Compile Include="../../Assets/modules/module.seeded-random/src/**/*.cs" />
     <Compile Include="../../Assets/framework.gameplay-protocol/src/**/*.cs" />
     <Compile Include="../../Assets/game/gameplay-protocol/src/**/*.cs" />
     <Compile Include="../../Assets/framework.testability/src/**/*.cs" />
-    <Compile Include="../../Assets/modules/module.diagnostic-trace/src/**/*.cs" />
-    <Compile Include="../../Assets/modules/module.invariant/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.trace-buffer/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.invariant-checks/src/**/*.cs" />
     <Compile Include="../../Assets/framework.deterministic-simulation/src/**/*.cs" />
     <Compile Include="../../Assets/modules/module.simulation-primitives/src/**/*.cs" />
-    <Compile Include="../../Assets/modules/module.waved-dispatcher/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.wave-dispatcher/src/**/*.cs" />
     <Compile Include="../../Assets/modules/module.simulation-object-registry/src/**/*.cs" />
-    <Compile Include="../../Assets/modules/module.tick-input/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.tick-input-buffer/src/**/*.cs" />
     <Compile Include="../../Assets/game/character-movement/src/**/*.cs" />
     <Compile Include="../../Assets/game/character-combat/src/**/*.cs" />
     <Compile Include="../../Assets/game/gameplay-simulation/src/**/*.cs" />

@@ -31,6 +31,7 @@ internal static class Program
             if (args.Length > 0 && !(args.Length == 2 && args[0] == "capture"))
                 throw new ArgumentException("Usage: [capture <new-artifact.json> | rerun <artifact.json>]");
             CheckProtocol();
+            FrameworkGuideExamples.Run();
             CheckLifecycle();
             GameplayScenario scenario = new GameplayScenario(tickDelta: .25f);
             GameplayRequest[] actions = {

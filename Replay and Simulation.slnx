@@ -1,33 +1,32 @@
 ﻿<Solution>
   <Project Path="Game.GameplaySimulation.csproj" />
-  <Project Path="Module.TickInput.Tests.csproj" />
   <Project Path="Module.SimulationObjectRegistry.csproj" />
   <Project Path="Module.SeededRandom.csproj" />
   <Project Path="Game.CharacterMovement.Integration.csproj" />
+  <Project Path="Module.InvariantChecks.csproj" />
   <Project Path="Framework.DeterministicSimulation.Tests.csproj" />
   <Project Path="Framework.DeterministicSimulation.csproj" />
   <Project Path="Game.CharacterCombat.csproj" />
   <Project Path="Game.DebugOverlay.Unity.csproj" />
   <Project Path="Game.CharacterCombat.Tests.csproj" />
-  <Project Path="Module.DiagnosticTrace.csproj" />
   <Project Path="Game.GameplayProtocol.csproj" />
+  <Project Path="Module.TraceBuffer.csproj" />
+  <Project Path="Module.TickInputBuffer.csproj" />
   <Project Path="Game.DebugOverlay.Model.csproj" />
   <Project Path="Game.MovementDemo.Unity.csproj" />
   <Project Path="Game.GameplaySimulation.Tests.csproj" />
   <Project Path="Game.CharacterMovement.Domain.csproj" />
   <Project Path="Game.CharacterMovement.Application.csproj" />
-  <Project Path="Module.Invariant.Tests.csproj" />
-  <Project Path="Module.WavedDispatcher.csproj" />
+  <Project Path="Module.WaveDispatcher.csproj" />
+  <Project Path="Module.TickInputBuffer.Tests.csproj" />
   <Project Path="Framework.Testability.csproj" />
-  <Project Path="Module.WavedDispatcher.Tests.csproj" />
   <Project Path="Module.SimulationObjectRegistry.Tests.csproj" />
-  <Project Path="Module.TickInput.csproj" />
   <Project Path="Game.MovementDemo.Tests.csproj" />
-  <Project Path="Module.DiagnosticTrace.Tests.csproj" />
-  <Project Path="Module.Invariant.csproj" />
+  <Project Path="Module.WaveDispatcher.Tests.csproj" />
   <Project Path="Game.MovementDemo.Editor.csproj" />
   <Project Path="Framework.GameplayProtocol.csproj" />
   <Project Path="Module.SimulationPrimitives.csproj" />
+  <Project Path="Module.InvariantChecks.Tests.csproj" />
   <Project Path="Game.DebugOverlay.Tests.csproj" />
   <Project Path="Module.SeededRandom.Tests.csproj" />
   <Project Path="Game.CharacterMovement.Tests.csproj" />
@@ -35,5 +34,6 @@
   <Project Path="Game.GameplayProtocol.Tests.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Game.MovementDemo.csproj" />
+  <Project Path="Module.TraceBuffer.Tests.csproj" />
   <Project Path="Framework.GameplayProtocol.Tests.csproj" />
 </Solution>

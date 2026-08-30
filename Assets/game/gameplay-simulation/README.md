@@ -1,5 +1,7 @@
 # Gameplay Simulation：步驟 1–3
 
+新專案使用方式請先讀 [DDD 遊戲框架開發指引](../../../docs/framework-guide/README.md)，區分最小範例與本專案完整組裝。
+
 以既有 Movement 切片加入正式控制面、固定傷害戰鬥、diagnostics；不做 test-protocol。
 
 ## 使用
@@ -24,9 +26,9 @@ Admin composition 才持有完整 GameplaySession，透過 scenario 建立條件
 
 ## 行為目錄
 
-| 行為 | 參數 | 成功 | 業務拒絕 |
-|---|---|---|---|
-| Move | actor、x、y | `move.applied`：更新持續移動方向 | `actor.unknown`、`actor.dead` |
+| 行為   | 參數          | 成功                               | 業務拒絕                                                                                             |
+| ------ | ------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Move   | actor、x、y   | `move.applied`：更新持續移動方向   | `actor.unknown`、`actor.dead`                                                                        |
 | Attack | actor、target | `attack.applied`：立即套用固定傷害 | `actor.unknown`、`actor.dead`、`target.self`、`target.unknown`、`target.dead`、`target.out_of_range` |
 
 未知種類為 InvalidRequest `action.unknown`；actor=0 或非有限軸值為 `parameters.invalid`。

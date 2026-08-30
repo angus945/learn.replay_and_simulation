@@ -4,8 +4,8 @@
 
 ## 決策
 
-- module.diagnostic-trace 提供泛型 bounded journal 與分離的 reader/writer；simulation TraceEntry 仍留在 framework。
-- module.invariant 擁有規則契約與註冊／評估機制；遊戲規則留在 game，評估時機與 Faulted 政策留在 Session。
+- module.trace-buffer 提供泛型 bounded journal 與分離的 reader/writer；simulation TraceEntry 仍留在 framework。
+- module.invariant-checks 擁有規則契約與註冊／評估機制；遊戲規則留在 game，評估時機與 Faulted 政策留在 Session。
 - framework.testability 新增 IDiagnosticReader<T> 與 immutable DiagnosticSnapshot；只讀取快取 invariant report，不重新評估。
 - GameplaySession 提供獨立 readonly facade，Reset 後 facade 可繼續讀到新 session，但 trace stream identity 改變。
 - Overlay 是第一個真實 consumer，暫不抽 observation registry 或 metadata/schema 系統。

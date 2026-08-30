@@ -1,4 +1,4 @@
-using DiagnosticTrace;
+using TraceBuffering;
 
 namespace Testability
 {

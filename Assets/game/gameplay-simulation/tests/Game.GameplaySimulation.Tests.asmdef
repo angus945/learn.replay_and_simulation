@@ -7,8 +7,8 @@
     "Game.MovementDemo",
     "Game.CharacterMovement.Domain",
     "Game.CharacterMovement.Integration",
-    "Module.Invariant",
-    "Module.DiagnosticTrace"
+    "Module.InvariantChecks",
+    "Module.TraceBuffer"
   ],
   "includePlatforms": [
     "Editor"

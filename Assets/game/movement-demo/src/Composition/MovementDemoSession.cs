@@ -3,8 +3,8 @@ using CharacterMovement.Domain;
 using CharacterMovement.Integration;
 using GameplaySimulation;
 using Testability;
-using TickInput;
-using TickInput.Contract;
+using TickInputBuffering;
+using TickInputBuffering.Contract;
 
 namespace MovementDemo
 {

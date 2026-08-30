@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Invariants;
+using InvariantChecks;
 
 namespace Testability
 {

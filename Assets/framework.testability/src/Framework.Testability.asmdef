@@ -1,8 +1,8 @@
 {
   "name": "Framework.Testability",
   "references": [
-    "Module.DiagnosticTrace",
-    "Module.Invariant"
+    "Module.TraceBuffer",
+    "Module.InvariantChecks"
   ],
   "noEngineReferences": true
 }

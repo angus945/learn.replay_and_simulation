@@ -6,7 +6,7 @@
     "Game.CharacterMovement.Application",
     "Framework.DeterministicSimulation",
     "Module.SimulationPrimitives",
-    "Module.TickInput"
+    "Module.TickInputBuffer"
   ],
   "noEngineReferences": true
 }

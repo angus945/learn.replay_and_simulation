@@ -1,6 +1,6 @@
 using System;
-using Invariants;
-using DiagnosticTrace;
+using InvariantChecks;
+using TraceBuffering;
 using System.Collections.Generic;
 using CharacterCombat;
 using CharacterMovement.Application;

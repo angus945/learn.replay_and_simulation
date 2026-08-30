@@ -3,7 +3,7 @@ using CharacterMovement.Application;
 using CharacterMovement.Domain;
 using DeterministicSimulation;
 using DeterministicSimulation.Framework;
-using TickInput;
+using TickInputBuffering;
 
 namespace CharacterMovement.Integration
 {

@@ -1,5 +1,5 @@
 {
   "name": "Game.GameplayProtocol",
-  "references": ["Framework.GameplayProtocol", "Game.GameplaySimulation", "Framework.Testability", "Module.DiagnosticTrace", "Module.Invariant"],
+  "references": ["Framework.GameplayProtocol", "Game.GameplaySimulation", "Framework.Testability", "Module.TraceBuffer", "Module.InvariantChecks"],
   "noEngineReferences": true
 }

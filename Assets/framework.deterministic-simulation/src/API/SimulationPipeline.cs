@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DeterministicSimulation;
-using WavedDispatcher;
+using WaveDispatching;
 
 namespace DeterministicSimulation.Framework
 {

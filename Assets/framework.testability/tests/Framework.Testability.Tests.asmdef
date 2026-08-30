@@ -2,8 +2,8 @@
   "name": "Framework.Testability.Tests",
   "references": [
     "Framework.Testability",
-    "Module.Invariant",
-    "Module.DiagnosticTrace"
+    "Module.InvariantChecks",
+    "Module.TraceBuffer"
   ],
   "includePlatforms": [
     "Editor"

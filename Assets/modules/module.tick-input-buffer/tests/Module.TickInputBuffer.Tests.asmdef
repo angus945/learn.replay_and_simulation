@@ -1,0 +1,13 @@
+{
+  "name": "Module.TickInputBuffer.Tests",
+  "rootNamespace": "TickInputBuffering.Tests",
+  "references": [
+    "Module.TickInputBuffer"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

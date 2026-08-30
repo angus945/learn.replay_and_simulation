@@ -9,8 +9,8 @@
     "Game.CharacterMovement.Application",
     "Game.CharacterMovement.Integration",
     "Game.CharacterCombat",
-    "Module.Invariant",
-    "Module.DiagnosticTrace",
+    "Module.InvariantChecks",
+    "Module.TraceBuffer",
     "Module.SeededRandom"
   ],
   "noEngineReferences": true

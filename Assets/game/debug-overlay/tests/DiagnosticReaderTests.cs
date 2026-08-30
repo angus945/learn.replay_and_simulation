@@ -1,7 +1,7 @@
 using System;
-using DiagnosticTrace;
+using TraceBuffering;
 using GameplaySimulation;
-using Invariants;
+using InvariantChecks;
 using NUnit.Framework;
 using Testability;
 

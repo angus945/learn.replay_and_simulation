@@ -3,6 +3,6 @@
   "rootNamespace": "DeterministicSimulation.Framework",
   "references": [
     "Module.SimulationPrimitives",
-    "Module.WavedDispatcher"
+    "Module.WaveDispatcher"
   ]
 }

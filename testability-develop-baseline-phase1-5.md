@@ -171,7 +171,7 @@ Testability.Core
 ├─ Sessions
 ├─ Actions
 ├─ Observation
-├─ Invariants
+├─ InvariantChecks
 ├─ Time
 ├─ Random
 ├─ Snapshots
@@ -838,7 +838,7 @@ Scenario：低血量玩家對戰單一敵人
 - player.use_item(item)
 - player.wait(ticks)
 
-Invariants：
+InvariantChecks：
 - Health ∈ [0, MaxHealth]
 - Dead Actor 不可再執行 Attack
 - Inventory Count >= 0

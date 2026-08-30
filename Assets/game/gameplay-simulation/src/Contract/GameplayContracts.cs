@@ -1,5 +1,5 @@
 using System;
-using Invariants;
+using InvariantChecks;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using Testability;
