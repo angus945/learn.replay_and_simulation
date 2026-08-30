@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../Assets/framework.testability/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.diagnostic-trace/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.invariant/src/**/*.cs" />
+    <Compile Include="../../Assets/framework.deterministic-simulation/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.simulation-primitives/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.waved-dispatcher/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.simulation-object-registry/src/**/*.cs" />
+    <Compile Include="../../Assets/modules/module.tick-input/src/**/*.cs" />
+    <Compile Include="../../Assets/game/character-movement/src/**/*.cs" />
+    <Compile Include="../../Assets/game/character-combat/src/**/*.cs" />
+    <Compile Include="../../Assets/game/gameplay-simulation/src/**/*.cs" />
+    <Compile Include="../../Assets/game/debug-overlay/src/Model/**/*.cs" />
+  </ItemGroup>
+</Project>

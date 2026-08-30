@@ -49,6 +49,9 @@
 ExportedObj/
 .consulo/
 *.csproj
+!/tools/gameplay-checks/Gameplay.Checks.csproj
+/tools/gameplay-checks/bin/
+/tools/gameplay-checks/obj/
 *.unityproj
 *.sln
 *.suo

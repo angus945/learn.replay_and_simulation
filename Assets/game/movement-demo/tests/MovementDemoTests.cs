@@ -101,6 +101,26 @@ namespace MovementDemo.Tests
             finally { InputSystem.RemoveDevice(keyboard); }
         }
 
+        [Test]
+        public void SpacePressAttacksOnceAcrossCatchUpTicks()
+        {
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            try
+            {
+                MovementDemoSession session = new MovementDemoSession(new View(), 4, .25f, includeEnemy: true);
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Space));
+                InputSystem.Update();
+                KeyboardMovementInput.Capture(keyboard, true, session);
+                session.AdvanceTime(1);
+                Assert.That(session.Observe().Actors[1].Health, Is.EqualTo(20));
+                InputSystem.Update();
+                KeyboardMovementInput.Capture(keyboard, true, session);
+                session.AdvanceTime(.25f);
+                Assert.That(session.Observe().Actors[1].Health, Is.EqualTo(20));
+            }
+            finally { InputSystem.RemoveDevice(keyboard); }
+        }
+
         private sealed class View : ICharacterMovementView
         {
             public MovementPosition Position;

@@ -1,0 +1,6 @@
+{
+  "name": "Game.CharacterCombat.Tests",
+  "references": ["Game.CharacterCombat"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

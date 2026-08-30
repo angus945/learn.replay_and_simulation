@@ -1,0 +1,5 @@
+{
+  "name": "Game.DebugOverlay.Model",
+  "references": ["Framework.Testability", "Module.DiagnosticTrace"],
+  "noEngineReferences": true
+}

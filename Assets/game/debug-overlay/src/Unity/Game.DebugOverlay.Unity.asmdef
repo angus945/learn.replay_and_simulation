@@ -1,0 +1,4 @@
+{
+  "name": "Game.DebugOverlay.Unity",
+  "references": ["Game.DebugOverlay.Model", "Framework.Testability", "Module.DiagnosticTrace", "Module.Invariant", "Game.GameplaySimulation", "Unity.InputSystem"]
+}

@@ -15,6 +15,7 @@ namespace MovementDemo.Unity
                     - (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed ? 1f : 0f);
             }
             session.CaptureAxes(x, y);
+            session.CaptureAttackButton(focused && keyboard != null && keyboard.spaceKey.isPressed);
         }
     }
 }

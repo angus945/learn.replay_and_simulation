@@ -85,8 +85,9 @@ namespace DeterministicSimulation.Framework
         private readonly WaveDispatcher<MessageEnvelope> internalCommands;
         private readonly WaveDispatcher<MessageEnvelope> domainEvents;
         private readonly int maxReactionCycles;
+        private readonly Action<MessageDispatch> onDispatch;
 
-        internal MessagePipeline(int maxWaves, int maxReactionCycles)
+        internal MessagePipeline(int maxWaves, int maxReactionCycles, Action<MessageDispatch> onDispatch)
         {
             if (maxReactionCycles <= 0)
             {
@@ -97,6 +98,7 @@ namespace DeterministicSimulation.Framework
             internalCommands = new WaveDispatcher<MessageEnvelope>(maxWaves);
             domainEvents = new WaveDispatcher<MessageEnvelope>(maxWaves);
             this.maxReactionCycles = maxReactionCycles;
+            this.onDispatch = onDispatch;
         }
 
         internal bool HasReactions => internalCommands.HasPending || domainEvents.HasPending;
@@ -153,8 +155,9 @@ namespace DeterministicSimulation.Framework
 
         internal void DispatchIntents()
         {
-            intents.DispatchAll((_, envelope) =>
+            intents.DispatchAll((wave, envelope) =>
             {
+                onDispatch?.Invoke(new MessageDispatch(MessageCategory.Intent, envelope.Message, wave));
                 if (!intentHandlers.TryGetValue(envelope.MessageType, out IMessageHandlerInvoker handler))
                 {
                     throw MissingHandler("intent", envelope.MessageType);
@@ -178,8 +181,9 @@ namespace DeterministicSimulation.Framework
                             $"Maximum command/event reaction cycle count ({maxReactionCycles}) was exceeded.");
                     }
 
-                    internalCommands.DispatchAll((_, envelope) =>
+                    internalCommands.DispatchAll((wave, envelope) =>
                     {
+                        onDispatch?.Invoke(new MessageDispatch(MessageCategory.InternalCommand, envelope.Message, wave));
                         if (!internalCommandHandlers.TryGetValue(
                                 envelope.MessageType,
                                 out IMessageHandlerInvoker handler))
@@ -190,8 +194,9 @@ namespace DeterministicSimulation.Framework
                         handler.Invoke(envelope.Message);
                     });
 
-                    domainEvents.DispatchAll((_, envelope) =>
+                    domainEvents.DispatchAll((wave, envelope) =>
                     {
+                        onDispatch?.Invoke(new MessageDispatch(MessageCategory.DomainEvent, envelope.Message, wave));
                         if (!domainEventHandlers.TryGetValue(
                                 envelope.MessageType,
                                 out List<IMessageHandlerInvoker> handlers))

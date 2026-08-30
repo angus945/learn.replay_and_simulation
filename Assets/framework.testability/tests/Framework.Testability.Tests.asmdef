@@ -1,0 +1,14 @@
+{
+  "name": "Framework.Testability.Tests",
+  "references": [
+    "Framework.Testability",
+    "Module.Invariant",
+    "Module.DiagnosticTrace"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

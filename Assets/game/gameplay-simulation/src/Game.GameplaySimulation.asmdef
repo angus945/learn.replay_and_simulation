@@ -1,0 +1,16 @@
+{
+  "name": "Game.GameplaySimulation",
+  "references": [
+    "Framework.Testability",
+    "Framework.DeterministicSimulation",
+    "Module.SimulationPrimitives",
+    "Module.SimulationObjectRegistry",
+    "Game.CharacterMovement.Domain",
+    "Game.CharacterMovement.Application",
+    "Game.CharacterMovement.Integration",
+    "Game.CharacterCombat",
+    "Module.Invariant",
+    "Module.DiagnosticTrace"
+  ],
+  "noEngineReferences": true
+}

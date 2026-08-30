@@ -22,6 +22,9 @@ namespace CharacterMovement.Application
         public bool TryGet(CharacterId id, out MovementAggregate character) =>
             characters.TryGetValue(id, out character);
 
+        /// <summary>Composition applies committed destruction; tombstones belong to diagnostic observations.</summary>
+        public bool Remove(CharacterId id) => characters.Remove(id);
+
         public IReadOnlyList<MovementAggregate> GetActiveOrdered() =>
             new List<MovementAggregate>(characters.Values).AsReadOnly();
     }

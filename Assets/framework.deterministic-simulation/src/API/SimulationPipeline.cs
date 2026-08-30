@@ -15,9 +15,10 @@ namespace DeterministicSimulation.Framework
         private readonly List<IStructuralCommitParticipant> structuralCommitParticipants = new List<IStructuralCommitParticipant>();
         private readonly List<IPresentationParticipant> presentationParticipants = new List<IPresentationParticipant>();
 
-        public SimulationPipeline(int maxMessageWaves = 32, int maxReactionCycles = 32)
+        public SimulationPipeline(int maxMessageWaves = 32, int maxReactionCycles = 32,
+            Action<MessageDispatch> onDispatch = null)
         {
-            messages = new MessagePipeline(maxMessageWaves, maxReactionCycles);
+            messages = new MessagePipeline(maxMessageWaves, maxReactionCycles, onDispatch);
         }
 
         public bool IsSealed { get; private set; }

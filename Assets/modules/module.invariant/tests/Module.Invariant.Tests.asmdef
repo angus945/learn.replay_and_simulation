@@ -1,0 +1,6 @@
+{
+  "name": "Module.Invariant.Tests",
+  "references": ["Module.Invariant"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

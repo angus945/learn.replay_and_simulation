@@ -1,0 +1,6 @@
+{
+  "name": "Module.DiagnosticTrace.Tests",
+  "references": ["Module.DiagnosticTrace"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

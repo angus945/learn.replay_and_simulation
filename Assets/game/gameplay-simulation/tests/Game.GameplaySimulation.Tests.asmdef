@@ -1,0 +1,19 @@
+{
+  "name": "Game.GameplaySimulation.Tests",
+  "references": [
+    "Game.GameplaySimulation",
+    "Framework.Testability",
+    "Game.CharacterCombat",
+    "Game.MovementDemo",
+    "Game.CharacterMovement.Domain",
+    "Game.CharacterMovement.Integration",
+    "Module.Invariant",
+    "Module.DiagnosticTrace"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
