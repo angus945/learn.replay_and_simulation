@@ -1,0 +1,6 @@
+{
+  "name": "Game.Arena.Editor",
+  "rootNamespace": "Arena.Unity.Editor",
+  "references": ["Game.Arena.Unity"],
+  "includePlatforms": ["Editor"]
+}

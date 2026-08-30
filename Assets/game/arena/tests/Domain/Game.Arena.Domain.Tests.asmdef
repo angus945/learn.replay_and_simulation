@@ -1,0 +1,8 @@
+{
+  "name": "Game.Arena.Domain.Tests",
+  "rootNamespace": "Arena.Domain.Tests",
+  "references": ["Game.Arena.Domain"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "noEngineReferences": true
+}

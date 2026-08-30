@@ -1,6 +1,0 @@
-{
-  "name": "Game.DebugOverlay.Tests",
-  "references": ["Game.DebugOverlay.Model", "Game.GameplaySimulation", "Framework.Testability", "Framework.DeterministicSimulation", "Module.TraceBuffer", "Module.InvariantChecks"],
-  "includePlatforms": ["Editor"],
-  "optionalUnityReferences": ["TestAssemblies"]
-}

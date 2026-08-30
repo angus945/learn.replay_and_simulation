@@ -1,5 +1,0 @@
-{
-  "name": "Game.MovementDemo",
-  "references": ["Game.CharacterMovement.Domain", "Game.CharacterMovement.Application", "Game.CharacterMovement.Integration", "Framework.DeterministicSimulation", "Module.SimulationPrimitives", "Module.TickInputBuffer", "Game.GameplaySimulation", "Framework.Testability"],
-  "noEngineReferences": true
-}

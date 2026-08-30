@@ -16,12 +16,12 @@ Engine- and framework-independent, single-threaded input capture.
 ## Minimal usage
 
 ```csharp
-var input = new TickInputBuffering.TickInputBuffer();
+TickInputBuffering.TickInputBuffer input = new TickInputBuffering.TickInputBuffer();
 input.RegisterButton(0); // jump
 input.RegisterAxis(0);   // horizontal
 input.Seal();
 input.CaptureButton(0, true);
 input.CaptureAxis(0, 0.5f);
-var frame = input.ConsumeTick(1);
+TickInputBuffering.Contract.TickInputFrame frame = input.ConsumeTick(1);
 // Host integration maps frame.GetButton(0) / frame.GetAxis(0) to game intents.
 ```

@@ -1,0 +1,6 @@
+{
+  "name": "Game.Arena.Domain",
+  "rootNamespace": "Arena.Domain",
+  "references": [],
+  "noEngineReferences": true
+}

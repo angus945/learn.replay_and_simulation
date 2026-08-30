@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>Game.Arena.Infrastructure</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/game/arena/src/Infrastructure/**/*.cs" />
+    <ProjectReference Include="../Game.Arena.Domain/Game.Arena.Domain.csproj" />
+    <ProjectReference Include="../Game.Arena.Application/Game.Arena.Application.csproj" />
+    <ProjectReference Include="../Module.SeededRandom/Module.SeededRandom.csproj" />
+    <ProjectReference Include="../Module.SimulationObjectRegistry/Module.SimulationObjectRegistry.csproj" />
+  </ItemGroup>
+</Project>

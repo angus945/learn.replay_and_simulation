@@ -1,0 +1,16 @@
+{
+  "name": "Game.Arena.Unity",
+  "rootNamespace": "Arena.Unity",
+  "references": [
+    "Game.Arena.Composition",
+    "Game.Arena.Integration",
+    "Framework.Testability",
+    "Framework.DeterministicSimulation",
+    "Framework.DeterministicSimulation.Unity",
+    "Module.SimulationPrimitives",
+    "Module.SimulationObjectRegistry",
+    "Module.TraceBuffer",
+    "Module.InvariantChecks",
+    "Unity.InputSystem"
+  ]
+}

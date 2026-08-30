@@ -1,5 +1,0 @@
-{
-  "name": "Game.MovementDemo.Editor",
-  "references": ["Game.MovementDemo.Unity"],
-  "includePlatforms": ["Editor"]
-}

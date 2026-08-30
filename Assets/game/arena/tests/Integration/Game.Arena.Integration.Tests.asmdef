@@ -1,0 +1,7 @@
+{
+  "name": "Game.Arena.Integration.Tests",
+  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Infrastructure", "Game.Arena.Integration", "Game.Arena.Composition", "Framework.DeterministicSimulation", "Framework.Testability", "Module.TraceBuffer", "Module.InvariantChecks"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": ["Editor"],
+  "noEngineReferences": true
+}

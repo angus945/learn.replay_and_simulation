@@ -1,0 +1,14 @@
+{
+  "name": "Game.Arena.PlayMode.Tests",
+  "rootNamespace": "Arena.Tests.PlayMode",
+  "references": [
+    "Game.Arena.Unity",
+    "Game.Arena.Composition",
+    "Game.Arena.Integration",
+    "Game.Arena.Application",
+    "Framework.Testability",
+    "Framework.DeterministicSimulation",
+    "Framework.DeterministicSimulation.Unity"
+  ],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

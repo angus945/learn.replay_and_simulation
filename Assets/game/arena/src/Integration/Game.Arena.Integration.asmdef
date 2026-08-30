@@ -1,0 +1,5 @@
+{
+  "name": "Game.Arena.Integration",
+  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Infrastructure", "Framework.DeterministicSimulation", "Framework.Testability", "Module.SimulationPrimitives", "Module.InvariantChecks"],
+  "noEngineReferences": true
+}

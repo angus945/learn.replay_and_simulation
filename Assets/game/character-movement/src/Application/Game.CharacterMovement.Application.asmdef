@@ -1,8 +1,0 @@
-{
-  "name": "Game.CharacterMovement.Application",
-  "rootNamespace": "CharacterMovement.Application",
-  "references": [
-    "Game.CharacterMovement.Domain"
-  ],
-  "noEngineReferences": true
-}

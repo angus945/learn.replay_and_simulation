@@ -21,8 +21,8 @@ Algorithm reference: https://prng.di.unimi.it/splitmix64.c (Sebastiano Vigna, pu
 ## Minimal usage
 
 ```csharp
-var random = SeededRandom.SplitMix64Random.FromStream(seed: 123, streamId: 1);
-var checkpoint = random.CaptureState();
+SeededRandom.SplitMix64Random random = SeededRandom.SplitMix64Random.FromStream(seed: 123, streamId: 1);
+SeededRandom.Contract.RandomState checkpoint = random.CaptureState();
 int roll = random.NextInt(1, 7);
 random.RestoreState(checkpoint);
 int repeatedRoll = random.NextInt(1, 7); // identical

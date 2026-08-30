@@ -1,4 +1,0 @@
-{
-  "name": "Game.DebugOverlay.Unity",
-  "references": ["Game.DebugOverlay.Model", "Framework.Testability", "Module.TraceBuffer", "Module.InvariantChecks", "Game.GameplaySimulation", "Unity.InputSystem"]
-}

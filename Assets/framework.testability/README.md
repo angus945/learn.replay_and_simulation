@@ -1,8 +1,8 @@
 # Testability：in-process 基礎
 
-新專案使用方式請先讀 [DDD 遊戲框架開發指引](../../docs/framework-guide/README.md)。
+新專案使用方式請先讀 [Arena DDD／Clean Architecture 教材](../../docs/arena-guide/README.md)。
 
-**可繼承模板：** [ReplayableSimulationDefinition 使用指南](../../docs/framework-guide/testability-replay-template.md)。模板提供通用控制面、診斷、記錄、正常／失敗 Replay，Domain 不需繼承框架。
+**可繼承模板：** [ReplayableSimulationDefinition 接線](../../docs/arena-guide/04-input.md)。模板提供通用控制面、診斷、記錄、正常／失敗 Replay，Domain 不需繼承框架。
 本 assembly 依賴 Framework.DeterministicSimulation（單向）；基本 simulation 不反向依賴 testability。正式工具使用 ITemplateGameplay／ITemplateSimulation／ITemplateAdmin／ITemplateResults 與 IDiagnosticReader。
 
 本框架提供跨專案機制，不提供遊戲規則，也不另建 simulation loop 或 Action dispatcher。
@@ -56,7 +56,7 @@ afterIndex 是已讀結果筆數，不是 action sequence；單頁 1–1024 筆�
 Reset 清除結果並更換 session ID；舊 cursor 明確拒絕。Stop／Fault 的未來輸入保持 Cancelled，不偽造 completed result。
 
 PolicyId 必須包含 gameplay／codec／hash／invariant composition 版本。Replay 逐字比較 PolicyId，policy 不符時停在 tick 0；Runtime 不同只給 warning。
-TemplateRecording 的 schema 1 是現行格式；trace metadata 是診斷內容，不構成新的 executable schema。不能只看數字 1 就把其他 artifact 當作此格式。範例 game 已移除舊 ReplayArtifact／FailureArtifact reader，歷史格式處理見 [退休政策](../../docs/legacy-compatibility-retirement.md)。ArtifactJson 是通用 stream codec，並不是舊格式自動轉換器。
+TemplateRecording 的 schema 1 是現行格式；trace metadata 是診斷內容，不構成新的 executable schema。不能只看數字 1 就把其他 artifact 當作此格式。Arena 不相容舊 game recording；ArtifactJson 是通用 stream codec，並不是舊格式自動轉換器。
 
 ## 契約驗證
 

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings><Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../arena-build/Framework.Testability/Framework.Testability.csproj" />
+    <Compile Include="../../Assets/framework.testability/tests/TemplateContractChecks.cs" Link="TemplateContractChecks.cs" />
+    <Compile Include="../../Assets/framework.deterministic-simulation/tests/SessionTemplateContractChecks.cs" Link="SessionTemplateContractChecks.cs" />
+    <Compile Include="../../Assets/framework.deterministic-simulation/tests/CoreHardeningContractChecks.cs" Link="CoreHardeningContractChecks.cs" />
+    <Compile Include="../../Assets/modules/module.wave-dispatcher/tests/WaveDispatcherContractChecks.cs" Link="WaveDispatcherContractChecks.cs" />
+  </ItemGroup>
+</Project>

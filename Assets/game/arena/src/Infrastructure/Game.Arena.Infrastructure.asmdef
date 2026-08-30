@@ -1,0 +1,5 @@
+{
+  "name": "Game.Arena.Infrastructure",
+  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Module.SeededRandom", "Module.SimulationObjectRegistry"],
+  "noEngineReferences": true
+}

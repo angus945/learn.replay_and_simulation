@@ -1,0 +1,5 @@
+{
+  "name": "Game.Arena.Composition",
+  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Integration", "Framework.DeterministicSimulation", "Framework.Testability", "Module.SimulationPrimitives", "Module.InvariantChecks", "Module.TickInputBuffer"],
+  "noEngineReferences": true
+}

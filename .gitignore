@@ -49,9 +49,11 @@
 ExportedObj/
 .consulo/
 *.csproj
-!/tools/gameplay-checks/Gameplay.Checks.csproj
-/tools/gameplay-checks/bin/
-/tools/gameplay-checks/obj/
+!/tools/arena-build/**/*.csproj
+!/tools/arena-checks/Arena.Checks.csproj
+!/tools/framework-checks/Framework.Checks.csproj
+/tools/**/bin/
+/tools/**/obj/
 *.unityproj
 *.sln
 *.suo

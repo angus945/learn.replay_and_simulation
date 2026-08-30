@@ -1,6 +1,0 @@
-{
-  "name": "Game.MovementDemo.Tests",
-  "references": ["Game.MovementDemo", "Game.MovementDemo.Unity", "Game.CharacterMovement.Domain", "Game.CharacterMovement.Integration", "Unity.InputSystem", "Game.GameplaySimulation"],
-  "includePlatforms": ["Editor"],
-  "optionalUnityReferences": ["TestAssemblies"]
-}

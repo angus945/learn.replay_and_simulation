@@ -60,3 +60,27 @@ foreach ($source in $activeSources) {
     if ((Get-Content -LiteralPath $source -Raw) -match $retiredApi) { throw "Active source references retired API: $source ($($Matches[0]))" }
 }
 Write-Output "PASS: $($activeSources.Count) active source/project/assembly files contain no retired gameplay API or Old_Simulation reference."
+
+# The reference application has real compiler boundaries, not only folder names.
+$arenaAllowed = @{
+    'Game.Arena.Domain' = @()
+    'Game.Arena.Application' = @('Game.Arena.Domain')
+    'Game.Arena.Infrastructure' = @('Game.Arena.Domain','Game.Arena.Application','Module.SeededRandom','Module.SimulationObjectRegistry')
+    'Game.Arena.Integration' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Infrastructure','Framework.DeterministicSimulation','Framework.Testability','Module.SimulationPrimitives','Module.InvariantChecks')
+    'Game.Arena.Composition' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Integration','Framework.DeterministicSimulation','Framework.Testability','Module.SimulationPrimitives','Module.InvariantChecks','Module.TickInputBuffer')
+}
+foreach ($arenaName in $arenaAllowed.Keys) {
+    if (-not $definitions.ContainsKey($arenaName)) { throw "Missing Arena assembly: $arenaName" }
+    foreach ($arenaReference in $definitions[$arenaName].references) {
+        if ($arenaReference -notin $arenaAllowed[$arenaName]) { throw "Arena dependency points outward: $arenaName -> $arenaReference" }
+    }
+    $arenaProject = Join-Path $projectRoot "tools/arena-build/$arenaName/$arenaName.csproj"
+    [xml]$arenaProjectXml = Get-Content -LiteralPath $arenaProject -Raw
+    $arenaProjectRefs = @($arenaProjectXml.Project.ItemGroup.ProjectReference | Where-Object { $_ -and $_.Include } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.Include) })
+    $arenaAssemblyRefs = @($definitions[$arenaName].references | Where-Object { $_ })
+    if (($arenaProjectRefs | Sort-Object) -join ',' -cne (($arenaAssemblyRefs | Sort-Object) -join ',')) { throw "Headless/Unity dependency mismatch: $arenaName" }
+}
+foreach ($arenaFile in (& rg --files (Join-Path $projectRoot 'Assets/game/arena') (Join-Path $projectRoot 'tools/arena-checks') -g '*.cs' -g '!**/obj/**' -g '!**/bin/**')) {
+    if ((Get-Content -LiteralPath $arenaFile -Raw) -match '\bvar\s+\w+\s*(=|in\b)') { throw "Arena C# requires explicit variable types: $arenaFile" }
+}
+Write-Output 'PASS: Arena inner-layer allowlist, matching Unity/headless project references, explicit C# variable types.'

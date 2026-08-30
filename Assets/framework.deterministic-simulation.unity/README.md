@@ -15,7 +15,7 @@ Presentation 複製並驗證來源 snapshots，插值 position 與 rotation。�
 
 ## 獨立 3D sensor scene
 
-這是可選的整合，不是讓 movement/combat 範例依賴 PhysX 的要求。
+這是可選的整合；[Arena](../game/arena/README.md) 沒有接物理 gameplay，不需要依賴 PhysX。
 
 ```csharp
 UnityActorPool proxies = new UnityActorPool("Logical physics proxies");

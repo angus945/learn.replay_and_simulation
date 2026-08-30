@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>Framework.Testability</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/framework.testability/src/**/*.cs" />
+    <ProjectReference Include="../Framework.DeterministicSimulation/Framework.DeterministicSimulation.csproj" />
+    <ProjectReference Include="../Module.SimulationPrimitives/Module.SimulationPrimitives.csproj" />
+    <ProjectReference Include="../Module.TraceBuffer/Module.TraceBuffer.csproj" />
+    <ProjectReference Include="../Module.InvariantChecks/Module.InvariantChecks.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>Game.Arena.Integration</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/game/arena/src/Integration/**/*.cs" />
+    <ProjectReference Include="../Game.Arena.Domain/Game.Arena.Domain.csproj" />
+    <ProjectReference Include="../Game.Arena.Application/Game.Arena.Application.csproj" />
+    <ProjectReference Include="../Game.Arena.Infrastructure/Game.Arena.Infrastructure.csproj" />
+    <ProjectReference Include="../Framework.DeterministicSimulation/Framework.DeterministicSimulation.csproj" />
+    <ProjectReference Include="../Framework.Testability/Framework.Testability.csproj" />
+    <ProjectReference Include="../Module.SimulationPrimitives/Module.SimulationPrimitives.csproj" />
+    <ProjectReference Include="../Module.InvariantChecks/Module.InvariantChecks.csproj" />
+  </ItemGroup>
+</Project>

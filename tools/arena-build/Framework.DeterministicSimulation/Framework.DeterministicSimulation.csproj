@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>Framework.DeterministicSimulation</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/framework.deterministic-simulation/src/**/*.cs" />
+    <ProjectReference Include="../Module.SimulationPrimitives/Module.SimulationPrimitives.csproj" />
+    <ProjectReference Include="../Module.WaveDispatcher/Module.WaveDispatcher.csproj" />
+  </ItemGroup>
+</Project>

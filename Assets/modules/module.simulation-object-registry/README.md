@@ -25,11 +25,11 @@ Single-threaded, framework/engine-independent identity and structural lifecycle.
 ## Minimal usage
 
 ```csharp
-var objects = new SimulationObjects.SimulationObjectRegistry();
-var pending = objects.RequestSpawn();
-var born = objects.Commit(); // host chooses the structural boundary
+SimulationObjects.SimulationObjectRegistry objects = new SimulationObjects.SimulationObjectRegistry();
+SimulationObjects.Contract.SimulationObjectRecord pending = objects.RequestSpawn();
+SimulationObjects.Contract.StructuralCommitResult born = objects.Commit(); // host chooses the structural boundary
 // Host adapters create/bind presentation instances for born.Spawned.
 objects.RequestDestroy(pending.Handle);
-var removed = objects.Commit();
+SimulationObjects.Contract.StructuralCommitResult removed = objects.Commit();
 // Host adapters unbind removed.Destroyed; the old handle is now invalid.
 ```
