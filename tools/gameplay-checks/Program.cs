@@ -31,6 +31,7 @@ internal static class Program
             if (args.Length > 0 && !(args.Length == 2 && args[0] == "capture"))
                 throw new ArgumentException("Usage: [capture <new-artifact.json> | rerun <artifact.json>]");
             CheckProtocol();
+            CheckLifecycle();
             GameplayScenario scenario = new GameplayScenario(tickDelta: .25f);
             GameplayRequest[] actions = {
                 new GameplayRequest("source", 1, 1, GameplayActionKind.Attack, 1, 2),
@@ -112,6 +113,24 @@ internal static class Program
         Require(first.Success && SendProtocol(adapter, client, step).PayloadJson == first.PayloadJson && target.CurrentTick == 1, "protocol retry advanced twice");
         Require(target.Observe().Actors[0].X == 1, "protocol movement mismatch");
         Console.WriteLine("PASS: protocol JSON round trip, control authority, queued dispatch and idempotent Step.");
+    }
+    private static void CheckLifecycle()
+    {
+        GameplaySession session = new GameplaySession();
+        session.Start(new GameplayScenario(tickDelta: .125f, damage: 100, respawnEnemies: true, enemyHealthMin: 20, enemyHealthMax: 40));
+        for (ulong tick = 1; tick <= 8; tick++)
+        {
+            session.Submit(new GameplayRequest(session.Id, tick, tick, GameplayActionKind.Attack, 1, tick + 1)); session.Step();
+        }
+        Require(session.ObserveLifecycle().EnemiesSpawned == 9 && session.ObserveLifecycle().Active == 2, "lifecycle mismatch");
+        using (MemoryStream bytes = new MemoryStream())
+        {
+            ArtifactJson.Write(bytes, session.CaptureReplay()); bytes.Position = 0;
+            ReplayPlayback playback = new ReplayPlayback(ArtifactJson.Read<ReplayArtifact>(bytes)); playback.Play();
+            for (int frame = 0; frame < 1000 && playback.State == ReplayPlaybackState.Playing; frame++) playback.AdvanceTime(1f / 144);
+            Require(playback.State == ReplayPlaybackState.Completed, "random respawn replay diverged");
+        }
+        Console.WriteLine("PASS: runtime respawn, lifecycle consistency, seeded enemy health and replay.");
     }
     private static ProtocolResponse SendProtocol(GameplayProtocolAdapter adapter, ProtocolClient client, ProtocolRequest request)
     {

@@ -10,7 +10,8 @@
     "Game.CharacterMovement.Integration",
     "Game.CharacterCombat",
     "Module.Invariant",
-    "Module.DiagnosticTrace"
+    "Module.DiagnosticTrace",
+    "Module.SeededRandom"
   ],
   "noEngineReferences": true
 }

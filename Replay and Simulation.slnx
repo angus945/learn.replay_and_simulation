@@ -13,6 +13,7 @@
   <Project Path="Game.GameplayProtocol.csproj" />
   <Project Path="Game.DebugOverlay.Model.csproj" />
   <Project Path="Game.MovementDemo.Unity.csproj" />
+  <Project Path="Game.GameplaySimulation.Tests.csproj" />
   <Project Path="Game.CharacterMovement.Domain.csproj" />
   <Project Path="Game.CharacterMovement.Application.csproj" />
   <Project Path="Module.Invariant.Tests.csproj" />
@@ -24,7 +25,6 @@
   <Project Path="Game.MovementDemo.Tests.csproj" />
   <Project Path="Module.DiagnosticTrace.Tests.csproj" />
   <Project Path="Module.Invariant.csproj" />
-  <Project Path="Game.GameplaySimulation.Tests.csproj" />
   <Project Path="Game.MovementDemo.Editor.csproj" />
   <Project Path="Framework.GameplayProtocol.csproj" />
   <Project Path="Module.SimulationPrimitives.csproj" />

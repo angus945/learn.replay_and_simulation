@@ -54,8 +54,9 @@ Attack 的 x/y 不参与戰鬥，但仍必須是有限值。第一版沒有 cool
 6. StructuralCommit 使 destroy 正式生效；唯讀 observation 保留 tombstone（Active=false），方便診斷死亡原因。
 7. Tick 結束建立 state hash、評估 invariants、保存 trace；沒有 Physics adapter。
 
-初始 player=1，enemy=2（可關閉），都由 registry 配發 ID；敵人在 (1,0)。Spawn 僅發生在初始化。
-預設 Health=30、Damage=10、Range=2；沒有 RNG draw，Seed 僅保留在 scenario，沒有偽造隨機消耗。
+初始 player=1，enemy=2（可關閉），都由 registry 配發 ID；敵人在 (1,0)。啟用 RespawnEnemies 後，死亡在 StructuralCommit 移除並生成新 ID 的敵人，下一 tick 才能操作。
+預設 Health=30、Damage=10、Range=2；預設不抽亂數。設定 EnemyHealthMin/Max 後只在敵人出生時抽取血量，player 血量不變。Demo 啟用重生、20–40 敵人血量與 RandomRespawnDelay（死亡後 1–3 simulation 秒重生，以 tick 精度抽取；獨立 RNG stream）。
+生命週期上限、phase/failure 語義及 RNG/hash 相容性詳見 [三階段說明](../../../docs/testability/simulation-lifecycle-phase-random.md)。
 Frame adapter 持續輸入 Move，測試可只改一次方向，後續 tick 沿用。短按 Attack 以一次 pending intent 消耗，不在補跑 tick 重複攻擊。
 
 ## Session／錯誤

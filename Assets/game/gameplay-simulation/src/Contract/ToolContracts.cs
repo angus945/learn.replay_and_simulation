@@ -8,9 +8,10 @@ namespace GameplaySimulation
 
     public sealed class ActionLookup
     {
-        public ActionLookup(ActionLookupState state, ActionResult result = null) { State = state; Result = result; }
+        public ActionLookup(ActionLookupState state, ActionResult result = null, string cancellationReason = null) { State = state; Result = result; CancellationReason = cancellationReason; }
         public ActionLookupState State { get; }
         public ActionResult Result { get; }
+        public string CancellationReason { get; }
     }
 
     public sealed class ActionResultPage

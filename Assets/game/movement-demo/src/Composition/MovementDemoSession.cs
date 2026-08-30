@@ -23,11 +23,13 @@ namespace MovementDemo
         private bool attackPending;
         private bool attackDown;
 
-        public MovementDemoSession(ICharacterMovementView view, float speed = 4f, float tickDeltaTime = 1f / 60f, bool includeEnemy = false)
+        public MovementDemoSession(ICharacterMovementView view, float speed = 4f, float tickDeltaTime = 1f / 60f, bool includeEnemy = false,
+            bool respawnEnemies = false, int enemyHealthMin = 0, int enemyHealthMax = 0, bool randomRespawnDelay = false)
         {
             this.view = view ?? throw new ArgumentNullException(nameof(view));
             scenario = new GameplayScenario(tickDelta: tickDeltaTime, speed: speed, includeEnemy: includeEnemy,
-                build: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD") ?? "unspecified");
+                build: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD") ?? "unspecified", respawnEnemies: respawnEnemies,
+                enemyHealthMin: enemyHealthMin, enemyHealthMax: enemyHealthMax, randomRespawnDelay: randomRespawnDelay);
             input.RegisterAxis(0); input.RegisterAxis(1); input.Seal();
             gameplay.Start(scenario);
             clock = gameplay.ClaimRealtimeDriver();
@@ -67,7 +69,10 @@ namespace MovementDemo
                 if (!move.Queued) { gameplay.Stop(); break; }
                 if (attackPending)
                 {
-                    SubmissionResult attack = gameplay.Submit(new GameplayRequest(gameplay.Id, ++sequence, TickNumber + 1, GameplayActionKind.Attack, 1, 2));
+                    ulong target = 2;
+                    foreach (ActorObservation actor in gameplay.Observe().Actors)
+                        if (actor.Id != 1 && actor.Active) { target = actor.Id; break; }
+                    SubmissionResult attack = gameplay.Submit(new GameplayRequest(gameplay.Id, ++sequence, TickNumber + 1, GameplayActionKind.Attack, 1, target));
                     attackPending = false;
                     if (!attack.Queued) { gameplay.Stop(); break; }
                 }

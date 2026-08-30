@@ -8,6 +8,7 @@ namespace DeterministicSimulation.Framework
     public sealed class SimulationPipeline : ISimulationPipeline
     {
         private readonly MessagePipeline messages;
+        private readonly Action<SimulationPhase, bool> onPhase;
         private readonly List<IIntentSource> intentSources = new List<IIntentSource>();
         private readonly List<IPrePhysicsParticipant> prePhysicsParticipants = new List<IPrePhysicsParticipant>();
         private readonly List<IPhysicsParticipant> physicsParticipants = new List<IPhysicsParticipant>();
@@ -16,9 +17,10 @@ namespace DeterministicSimulation.Framework
         private readonly List<IPresentationParticipant> presentationParticipants = new List<IPresentationParticipant>();
 
         public SimulationPipeline(int maxMessageWaves = 32, int maxReactionCycles = 32,
-            Action<MessageDispatch> onDispatch = null)
+            Action<MessageDispatch> onDispatch = null, Action<SimulationPhase, bool> onPhase = null)
         {
             messages = new MessagePipeline(maxMessageWaves, maxReactionCycles, onDispatch);
+            this.onPhase = onPhase;
         }
 
         public bool IsSealed { get; private set; }
@@ -81,13 +83,17 @@ namespace DeterministicSimulation.Framework
             EnsureSealed();
 
             SimulationContext context = new SimulationContext(tick, SimulationPhase.IntentAcquisition);
+            onPhase?.Invoke(SimulationPhase.IntentAcquisition, true);
             for (int i = 0; i < intentSources.Count; i++)
             {
                 intentSources[i].AcquireIntents(context, this);
             }
 
+            onPhase?.Invoke(SimulationPhase.IntentAcquisition, false);
+            onPhase?.Invoke(SimulationPhase.IntentHandling, true);
             messages.DispatchIntents();
             messages.DrainReactions();
+            onPhase?.Invoke(SimulationPhase.IntentHandling, false);
 
             ExecutePhase(prePhysicsParticipants, tick, SimulationPhase.PrePhysics,
                 (participant, phaseContext) => participant.Tick(phaseContext));
@@ -102,10 +108,12 @@ namespace DeterministicSimulation.Framework
                 (participant, phaseContext) => participant.Commit(phaseContext));
 
             context = new SimulationContext(tick, SimulationPhase.PresentationCapture);
+            onPhase?.Invoke(SimulationPhase.PresentationCapture, true);
             for (int i = 0; i < presentationParticipants.Count; i++)
             {
                 presentationParticipants[i].CaptureTickState(context);
             }
+            onPhase?.Invoke(SimulationPhase.PresentationCapture, false);
         }
 
         internal void Render(SimulationTick tick, float interpolationAlpha)
@@ -122,12 +130,14 @@ namespace DeterministicSimulation.Framework
         private void ExecutePhase<TParticipant>(IReadOnlyList<TParticipant> participants, SimulationTick tick, SimulationPhase phase, Action<TParticipant, SimulationContext> execute)
         {
             SimulationContext context = new SimulationContext(tick, phase);
+            onPhase?.Invoke(phase, true);
             for (int i = 0; i < participants.Count; i++)
             {
                 execute(participants[i], context);
             }
 
             messages.DrainReactions();
+            onPhase?.Invoke(phase, false);
         }
 
         private void AddParticipant<TParticipant>(ICollection<TParticipant> participants, TParticipant participant) where TParticipant : class

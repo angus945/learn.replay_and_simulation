@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../../Assets/modules/module.seeded-random/src/**/*.cs" />
     <Compile Include="../../Assets/framework.gameplay-protocol/src/**/*.cs" />
     <Compile Include="../../Assets/game/gameplay-protocol/src/**/*.cs" />
     <Compile Include="../../Assets/framework.testability/src/**/*.cs" />

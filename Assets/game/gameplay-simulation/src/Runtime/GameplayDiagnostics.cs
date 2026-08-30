@@ -40,11 +40,23 @@ namespace GameplaySimulation
             {
                 using (BinaryWriter writer = new BinaryWriter(bytes, Encoding.UTF8, true))
                 {
-                    writer.Write(1); // Canonical gameplay schema version; BinaryWriter uses little endian.
+                    writer.Write(scenario.RandomRespawnDelay ? 3 : scenario.ExtendedLifecycle ? 2 : 1); // Preserve legacy layouts.
                     writer.Write(state.Tick); WriteFloat(writer, scenario.TickDelta); WriteFloat(writer, scenario.Speed);
                     writer.Write(scenario.Health); writer.Write(scenario.Damage); WriteFloat(writer, scenario.AttackRange);
                     writer.Write(scenario.IncludeEnemy); writer.Write(scenario.Seed);
+                    if (scenario.ExtendedLifecycle)
+                    {
+                        writer.Write(scenario.RespawnEnemies); writer.Write(scenario.EnemyHealthMin); writer.Write(scenario.EnemyHealthMax);
+                        writer.Write(scenario.MaxEnemySpawns); writer.Write(SeededRandom.SplitMix64Random.AlgorithmVersion);
+                        writer.Write(state.EnemyRandomState); writer.Write(state.EnemiesSpawned);
+                    }
                     List<ActorObservation> actors = new List<ActorObservation>(state.Actors);
+                    if (scenario.RandomRespawnDelay)
+                    {
+                        writer.Write(state.RespawnRandomState);
+                        writer.Write(state.PendingRespawnTicks.Count);
+                        foreach (ulong due in state.PendingRespawnTicks) writer.Write(due);
+                    }
                     actors.Sort((left, right) => left.Id.CompareTo(right.Id));
                     writer.Write(actors.Count);
                     foreach (ActorObservation actor in actors)

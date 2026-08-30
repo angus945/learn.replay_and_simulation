@@ -12,13 +12,14 @@ using SimulationObjects;
 using SimulationObjects.Contract;
 using Testability;
 using MovementAggregate = CharacterMovement.Domain.CharacterMovement;
+using SeededRandom;
 
 namespace GameplaySimulation
 {
     /// <summary>Single-threaded project composition. Only Step advances authoritative state.</summary>
     public sealed partial class GameplaySession : ITestSession<GameplayScenario>, IGameplayControl,
         IIntentHandler<GameplaySession.RequestIntent>, IInternalCommandHandler<GameplaySession.ExecuteAction>,
-        IDomainEventHandler<GameplaySession.ActorDied>, IPrePhysicsParticipant, IStructuralCommitParticipant
+        IDomainEventHandler<GameplaySession.ActorDied>, IInternalCommandHandler<GameplaySession.SpawnEnemy>, IPrePhysicsParticipant, IStructuralCommitParticipant
     {
         private sealed class Actor
         {
@@ -48,6 +49,21 @@ namespace GameplaySimulation
             internal ActorDied(ulong sequence, ulong target) { Sequence = sequence; Target = target; }
             internal ulong Sequence { get; }
             internal ulong Target { get; }
+        }
+        internal readonly struct SpawnEnemy : IInternalCommand { }
+        private SplitMix64Random enemyRandom;
+        private SplitMix64Random respawnRandom;
+        private readonly List<ulong> pendingRespawnTicks = new List<ulong>();
+        private int enemiesSpawned;
+        private int pendingEnemySpawns;
+        private string currentStage;
+        private string cancellationReason;
+        public ulong LastCompletedTick { get; private set; }
+        public LifecycleSnapshot ObserveLifecycle()
+        {
+            if (stepping || objects == null) throw new InvalidOperationException("Observe lifecycle between initialized ticks.");
+            return new LifecycleSnapshot(objects.GetActiveOrdered().Count, movements.GetActiveOrdered().Count,
+                actors.Count, enemiesSpawned, pendingEnemySpawns + pendingRespawnTicks.Count);
         }
 
         private GameplayScenario scenario;
@@ -114,6 +130,7 @@ namespace GameplaySimulation
         {
             if (stepping) throw new InvalidOperationException("Cannot stop during a tick.");
             pending.Clear();
+            if (State != SessionState.Faulted) cancellationReason = "session.stopped";
             if (State != SessionState.Faulted) State = SessionState.Stopped;
         }
 
@@ -132,23 +149,29 @@ namespace GameplaySimulation
             }
             nextChecks.Seal();
             policyCodes.Sort(StringComparer.Ordinal);
-            DiagnosticPolicy = policyRevision + ":" + string.Join("|", policyCodes);
+            DiagnosticPolicy = policyRevision + (initial.RandomRespawnDelay ? "/lifecycle-v3" : initial.ExtendedLifecycle ? "/lifecycle-v2" : "") + ":" + string.Join("|", policyCodes);
             invariants = nextChecks;
             invariantReport = new InvariantReport(false, 0, invariants.Count, Array.Empty<InvariantViolation>());
             scenario = initial;
             Id = Guid.NewGuid().ToString("N"); // Diagnostic/session identity only; excluded from state hash.
             actors.Clear(); pending.Clear(); sequences.Clear(); history.Clear(); resultHistory.Clear(); hashHistory.Clear(); tickResults.Clear();
             Failure = null; executingSequence = 0;
+            LastCompletedTick = 0; currentStage = "Initialize"; cancellationReason = null;
+            enemiesSpawned = 0; pendingEnemySpawns = 0;
+            enemyRandom = SplitMix64Random.FromStream(initial.Seed, 1);
+            respawnRandom = SplitMix64Random.FromStream(initial.Seed, 2);
+            pendingRespawnTicks.Clear();
             trace = new TraceRecorder(initial.TraceCapacity);
             objects = new SimulationObjectRegistry();
             movements = new CharacterMovementRepository();
             movementApplication = new MovementApplication(movements);
-            Spawn(default);
-            if (initial.IncludeEnemy) Spawn(new MovementPosition(1, 0));
+            Spawn(default, false);
+            if (initial.IncludeEnemy) Spawn(new MovementPosition(1, 0), true);
             objects.Commit();
-            pipeline = new SimulationPipeline(onDispatch: RecordDispatch);
+            pipeline = new SimulationPipeline(onDispatch: RecordDispatch, onPhase: RecordPhase);
             pipeline.RegisterIntentHandler<RequestIntent>(this);
             pipeline.RegisterInternalCommandHandler<ExecuteAction>(this);
+            pipeline.RegisterInternalCommandHandler<SpawnEnemy>(this);
             pipeline.RegisterDomainEventHandler<ActorDied>(this);
             pipeline.RegisterPrePhysicsParticipant(this);
             pipeline.RegisterStructuralCommitParticipant(this);
@@ -158,12 +181,14 @@ namespace GameplaySimulation
             hashHistory.Add(new HashCheckpoint(0, GameplayStateHasher.Compute(Observe(), scenario)));
         }
 
-        private void Spawn(MovementPosition position)
+        private void Spawn(MovementPosition position, bool enemy)
         {
             SimulationObjectRecord identity = objects.RequestSpawn();
             MovementAggregate movement = new MovementAggregate(new CharacterId(identity.Id.Value), position, scenario.Speed);
             movements.Add(movement);
-            actors.Add(identity.Id.Value, new Actor { Identity = identity, Movement = movement, Combat = new Combatant(scenario.Health) });
+            int health = enemy && scenario.RandomEnemyHealth ? enemyRandom.NextInt(scenario.EnemyHealthMin, scenario.EnemyHealthMax + 1) : scenario.Health;
+            if (enemy) enemiesSpawned++;
+            actors.Add(identity.Id.Value, new Actor { Identity = identity, Movement = movement, Combat = new Combatant(health) });
         }
 
         public SubmissionResult Submit(GameplayRequest request)
@@ -198,7 +223,7 @@ namespace GameplaySimulation
         private TickReport StepCore()
         {
             if (State != SessionState.Running || stepping) throw new InvalidOperationException("Session cannot step.");
-            if (CurrentTick >= (ulong)scenario.MaxTicks) { Stop(); throw new InvalidOperationException("Tick budget exhausted."); }
+            if (CurrentTick >= (ulong)scenario.MaxTicks) { Stop(); cancellationReason = "tick.budget"; throw new InvalidOperationException("Tick budget exhausted."); }
             stepping = true;
             tickResults.Clear(); executingSequence = 0;
             ulong nextTick = CurrentTick + 1;
@@ -219,14 +244,18 @@ namespace GameplaySimulation
                 runner.AdvanceTick();
                 executingSequence = 0; // Tick-level failures must not be falsely attributed to the last action.
                 GameplayObservation observation = Observe();
+                currentStage = "StateHash";
                 hash = GameplayStateHasher.Compute(observation, scenario);
                 hashHistory.Add(new HashCheckpoint(CurrentTick, hash));
                 trace.Record(new TraceEntry(Id, CurrentTick, 0, "StateHash", "Gameplay", hash));
+                currentStage = "Invariant";
+                ValidateLifecycle();
                 failures = invariants.Evaluate(observation);
                 invariantReport = new InvariantReport(true, CurrentTick, invariants.Count, failures);
                 foreach (InvariantViolation failure in failures)
                     trace.Record(new TraceEntry(Id, CurrentTick, 0, "Invariant", failure.Code, failure.Detail));
                 if (failures.Count > 0) CaptureFailure(failures[0].Code, null);
+                else LastCompletedTick = CurrentTick;
             }
             catch (Exception exception)
             {
@@ -244,10 +273,13 @@ namespace GameplaySimulation
 
         private void CaptureFailure(string code, Exception exception)
         {
+            if (Failure != null) return;
             State = SessionState.Faulted;
+            cancellationReason = "session.faulted";
+            pending.Clear();
             // No rollback is claimed. Retain partial state and prohibit further stepping until Reset.
             Failure = new FailureArtifact(Id, scenario, CurrentTick, executingSequence, code, exception?.ToString(),
-                history, resultHistory, hashHistory, trace.Snapshot(), trace.DroppedCount, Observe(), exception?.GetType().FullName, DiagnosticPolicy);
+                history, resultHistory, hashHistory, trace.Snapshot(), trace.DroppedCount, Observe(), exception?.GetType().FullName, DiagnosticPolicy, currentStage, LastCompletedTick);
         }
 
         public GameplayObservation Observe()
@@ -261,7 +293,8 @@ namespace GameplaySimulation
                     actor.Movement.DesiredDirection.X, actor.Movement.DesiredDirection.Y, actor.Movement.Speed,
                     actor.Combat.Health, actor.Combat.MaxHealth, active));
             }
-            return new GameplayObservation(CurrentTick, snapshot);
+            return new GameplayObservation(CurrentTick, snapshot, enemyRandom == null ? 0 : enemyRandom.CaptureState().Value, enemiesSpawned,
+                respawnRandom == null ? 0 : respawnRandom.CaptureState().Value, pendingRespawnTicks);
         }
 
         void IIntentHandler<RequestIntent>.Handle(RequestIntent intent)
@@ -308,7 +341,11 @@ namespace GameplaySimulation
         }
 
         void IDomainEventHandler<ActorDied>.Handle(ActorDied death)
-            => objects.RequestDestroy(actors[death.Target].Identity.Handle);
+        {
+            bool requested = objects.RequestDestroy(actors[death.Target].Identity.Handle);
+            if (requested && death.Target != 1 && scenario.RespawnEnemies) pipeline.EnqueueInternalCommand(new SpawnEnemy());
+        }
+        void IInternalCommandHandler<SpawnEnemy>.Handle(SpawnEnemy command) { pendingEnemySpawns++; }
 
         void IPrePhysicsParticipant.Tick(SimulationContext context)
         {
@@ -325,6 +362,50 @@ namespace GameplaySimulation
                 movements.Remove(new CharacterId(destroyed.Id.Value));
                 trace.Record(new TraceEntry(Id, CurrentTick, 0, "StructuralCommit", "Destroyed", destroyed.Id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             }
+            while (pendingEnemySpawns > 0)
+            {
+                pendingEnemySpawns--;
+                if (enemiesSpawned + pendingRespawnTicks.Count >= scenario.MaxEnemySpawns)
+                { trace.Record(new TraceEntry(Id, CurrentTick, 0, "StructuralCommit", "SpawnSkipped", "spawn.budget")); continue; }
+                if (scenario.RandomRespawnDelay)
+                {
+                    int minTicks = (int)Math.Ceiling(1d / scenario.TickDelta);
+                    int maxTicks = (int)Math.Floor(3d / scenario.TickDelta);
+                    ulong due = checked(CurrentTick + (ulong)respawnRandom.NextInt(minTicks, maxTicks + 1));
+                    pendingRespawnTicks.Add(due);
+                    pendingRespawnTicks.Sort();
+                    trace.Record(new TraceEntry(Id, CurrentTick, 0, "StructuralCommit", "RespawnScheduled", due.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                }
+                else Spawn(new MovementPosition(1, 0), true);
+            }
+            while (pendingRespawnTicks.Count > 0 && pendingRespawnTicks[0] <= CurrentTick)
+            {
+                pendingRespawnTicks.RemoveAt(0);
+                Spawn(new MovementPosition(1, 0), true);
+            }
+            StructuralCommitResult created = objects.Commit();
+            foreach (SimulationObjectRecord spawned in created.Spawned)
+                trace.Record(new TraceEntry(Id, CurrentTick, 0, "StructuralCommit", "Spawned", spawned.Id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        private void ValidateLifecycle()
+        {
+            int active = 0;
+            foreach (Actor actor in actors.Values)
+            {
+                bool registered = objects.TryGet(actor.Identity.Handle, out SimulationObjectRecord record) && record.IsActive;
+                bool inRepository = movements.TryGet(actor.Movement.Id, out MovementAggregate ignored);
+                if (registered != inRepository || registered == actor.Combat.IsDead) throw new InvalidOperationException("Registry/repository/domain lifetime disagreement.");
+                if (registered) active++;
+            }
+            if (active != objects.GetActiveOrdered().Count) throw new InvalidOperationException("Unowned registry object.");
+            if (active != movements.GetActiveOrdered().Count) throw new InvalidOperationException("Unowned movement repository object.");
+        }
+
+        private void RecordPhase(SimulationPhase phase, bool entering)
+        {
+            currentStage = phase.ToString(); executingSequence = 0;
+            trace.Record(new TraceEntry(Id, CurrentTick, 0, "Phase", currentStage, entering ? "begin" : "end"));
         }
 
         private sealed class DiagnosticsPort : IDiagnosticReader<GameplayObservation>

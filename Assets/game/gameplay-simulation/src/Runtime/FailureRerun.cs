@@ -44,6 +44,11 @@ namespace GameplaySimulation
                 Add(differences, "failure.exception_type", failureTick, artifact.ExceptionType, actual?.ExceptionType);
                 Add(differences, "failure.tick", failureTick, artifact.FailureTick.ToString(), actual?.FailureTick.ToString());
                 Add(differences, "failure.action", failureTick, artifact.ActionSequence.ToString(), actual?.ActionSequence.ToString());
+                if (artifact.FailureStage != null)
+                {
+                    Add(differences, "failure.stage", failureTick, artifact.FailureStage, actual?.FailureStage);
+                    Add(differences, "failure.last_completed_tick", failureTick, artifact.LastCompletedTick.ToString(), actual?.LastCompletedTick.ToString());
+                }
                 ActionResultPage results = session.Results.Read(session.Id, 0, 1024);
                 List<ActionResult> all = new List<ActionResult>(results.Items);
                 while (results.HasMore)

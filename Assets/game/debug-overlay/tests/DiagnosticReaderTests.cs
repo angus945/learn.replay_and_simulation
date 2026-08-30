@@ -61,13 +61,15 @@ namespace DebugOverlay.Tests
             ReadOnlyDiagnosticsModel<GameplayObservation> model = new ReadOnlyDiagnosticsModel<GameplayObservation>(session.Diagnostics, 1, 1);
             model.Poll();
             for (int i = 0; i < 5; i++) session.Step();
+            long missed = session.Diagnostics.ReadTrace(default(TraceCursor), 1).MissedCount;
+            Assert.That(missed, Is.GreaterThan(0));
             model.Poll();
-            Assert.That(model.MissedCount, Is.EqualTo(3));
+            Assert.That(model.MissedCount, Is.EqualTo(missed));
             Assert.That(model.HasMore, Is.True);
             model.Poll();
             Assert.That(model.History.Count, Is.EqualTo(1));
             Assert.That(model.LocalEvictedCount, Is.EqualTo(1));
-            Assert.That(model.MissedCount, Is.EqualTo(3));
+            Assert.That(model.MissedCount, Is.EqualTo(missed));
             Assert.That(model.HasMore, Is.False);
         }
 

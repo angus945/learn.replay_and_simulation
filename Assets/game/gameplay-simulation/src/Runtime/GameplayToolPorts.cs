@@ -75,7 +75,8 @@ namespace GameplaySimulation
                 ActionResult result = owner.resultHistory.Find(item => item.Sequence == sequence);
                 if (result != null) return new ActionLookup(ActionLookupState.Completed, result);
                 if (!owner.sequences.Contains(sequence)) return new ActionLookup(ActionLookupState.Unknown);
-                return new ActionLookup(owner.State == SessionState.Running ? ActionLookupState.Pending : ActionLookupState.Cancelled);
+                return new ActionLookup(owner.State == SessionState.Running ? ActionLookupState.Pending : ActionLookupState.Cancelled,
+                    cancellationReason: owner.State == SessionState.Running ? null : owner.cancellationReason);
             }
             public ActionResultPage Read(string sessionId, int afterIndex, int maxItems)
             {

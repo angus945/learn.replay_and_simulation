@@ -29,7 +29,8 @@ namespace MovementDemo.Unity
                 enabled = false;
                 return;
             }
-            session = new MovementDemoSession(new TransformView(characterView), speed, 1f / ticksPerSecond, includeEnemy: true);
+            session = new MovementDemoSession(new TransformView(characterView), speed, 1f / ticksPerSecond, includeEnemy: true,
+                respawnEnemies: true, enemyHealthMin: 20, enemyHealthMax: 40, randomRespawnDelay: true);
             if (Debug.isDebugBuild)
             {
                 overlay = new GameObject("Read Only Diagnostics Overlay").AddComponent<GameplayDebugOverlay>();
@@ -64,9 +65,14 @@ namespace MovementDemo.Unity
             GameplayObservation observation = replay == null ? session.Observe() : replay.Observe();
             if (enemyView != null && observation.Actors.Count > 1)
             {
-                ActorObservation enemy = observation.Actors[1];
-                enemyView.enabled = enemy.Active;
-                enemyView.transform.position = new Vector3(enemy.X, enemy.Y, 0f);
+                enemyView.enabled = false;
+                foreach (ActorObservation enemy in observation.Actors)
+                    if (enemy.Id != 1 && enemy.Active)
+                    {
+                        enemyView.enabled = true;
+                        enemyView.transform.position = new Vector3(enemy.X, enemy.Y, 0f);
+                        break;
+                    }
             }
             Vector3 position = characterView.position;
             viewCamera.transform.position = new Vector3(position.x, position.y, -10f);
@@ -91,8 +97,9 @@ namespace MovementDemo.Unity
             GUI.Label(new Rect(30, 75, 370, 25), $"Tick {session.TickNumber} @ {ticksPerSecond} Hz | alpha {session.PresentationAlpha:F2}");
             GUI.Label(new Rect(30, 98, 370, 25), $"Domain position: {session.CurrentPosition.X:F2}, {session.CurrentPosition.Y:F2}");
             GameplayObservation observation = session.Observe();
-            if (observation.Actors.Count > 1)
-                GUI.Label(new Rect(30, 123, 420, 25), $"Enemy HP: {observation.Actors[1].Health} | Session: {session.State}");
+            foreach (ActorObservation enemy in observation.Actors)
+                if (enemy.Id != 1 && enemy.Active)
+                { GUI.Label(new Rect(30, 123, 420, 25), $"Enemy #{enemy.Id} HP: {enemy.Health}/{enemy.MaxHealth} | Session: {session.State}"); break; }
         }
 
         private void OnDestroy()
