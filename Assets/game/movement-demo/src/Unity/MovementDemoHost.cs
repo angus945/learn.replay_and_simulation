@@ -7,7 +7,7 @@ using DebugOverlay.Unity;
 
 namespace MovementDemo.Unity
 {
-    public sealed class MovementDemoHost : MonoBehaviour
+    public sealed partial class MovementDemoHost : MonoBehaviour
     {
         [SerializeField] private Transform characterView;
         [SerializeField] private Camera viewCamera;
@@ -18,8 +18,8 @@ namespace MovementDemo.Unity
         private SpriteRenderer enemyView;
         private GameplayDebugOverlay overlay;
 
-        public MovementPosition CurrentPosition => session.CurrentPosition;
-        public ulong TickNumber => session.TickNumber;
+        public MovementPosition CurrentPosition => replay == null ? session.CurrentPosition : new MovementPosition(replay.Observe().Actors[0].X, replay.Observe().Actors[0].Y);
+        public ulong TickNumber => replay == null ? session.TickNumber : replay.Observe().Tick;
 
         private void Awake()
         {
@@ -47,14 +47,21 @@ namespace MovementDemo.Unity
 
         private void Update()
         {
-            KeyboardMovementInput.Capture(Keyboard.current, Application.isFocused, session);
+            if (replay != null) { replay.AdvanceTime(Time.deltaTime); return; }
+            KeyboardMovementInput.Capture(Keyboard.current, Application.isFocused && !editingReplayPath, session);
             session.AdvanceTime(Time.deltaTime);
         }
 
         private void LateUpdate()
         {
-            session.UpdatePresentation();
-            GameplayObservation observation = session.Observe();
+            if (replay == null) session.UpdatePresentation();
+            else
+            {
+                ActorObservation before = replay.PreviousObservation.Actors[0];
+                ActorObservation after = replay.Observe().Actors[0];
+                characterView.position = Vector3.Lerp(new Vector3(before.X, before.Y, 0), new Vector3(after.X, after.Y, 0), replay.PresentationAlpha);
+            }
+            GameplayObservation observation = replay == null ? session.Observe() : replay.Observe();
             if (enemyView != null && observation.Actors.Count > 1)
             {
                 ActorObservation enemy = observation.Actors[1];
@@ -75,6 +82,8 @@ namespace MovementDemo.Unity
 
         private void OnGUI()
         {
+            if (session != null) DrawReplayControls();
+            if (replay != null) return;
             if (session == null || (overlay != null && overlay.IsVisible)) return;
             GUI.Box(new Rect(16, 16, 440, 140), GUIContent.none);
             GUI.Label(new Rect(30, 25, 370, 25), "CHARACTER MOVEMENT / FIXED TICK");

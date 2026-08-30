@@ -106,7 +106,7 @@ namespace GameplaySimulation
         public FailureArtifact(string session, GameplayScenario scenario, ulong tick, ulong sequence, string code,
             string exception, IEnumerable<GameplayRequest> actions, IEnumerable<ActionResult> results,
             IEnumerable<HashCheckpoint> hashes, IEnumerable<TraceEntry> trace, long dropped,
-            GameplayObservation observation = null, string exceptionType = null)
+            GameplayObservation observation = null, string exceptionType = null, string diagnosticPolicy = null)
         {
             SchemaVersion = 1; SessionId = session; Scenario = scenario; FailureTick = tick; ActionSequence = sequence;
             Code = code; Exception = exception; Runtime = Environment.Version + " / " + Environment.OSVersion;
@@ -114,6 +114,7 @@ namespace GameplaySimulation
             this.hashes = new List<HashCheckpoint>(hashes).ToArray(); this.trace = new List<TraceEntry>(trace).ToArray(); DroppedTraceEntries = dropped;
             actors = observation == null ? Array.Empty<ActorObservation>() : new List<ActorObservation>(observation.Actors).ToArray();
             ExceptionType = exceptionType;
+            DiagnosticPolicy = diagnosticPolicy;
         }
         [DataMember(Order = 1)] public int SchemaVersion { get; private set; }
         [DataMember(Order = 2)] public string SessionId { get; private set; }
@@ -130,6 +131,7 @@ namespace GameplaySimulation
         [DataMember(Order = 13)] public long DroppedTraceEntries { get; private set; }
         [DataMember(Order = 14)] private ActorObservation[] actors;
         [DataMember(Order = 15)] public string ExceptionType { get; private set; }
+        [DataMember(Order = 16, EmitDefaultValue = false)] public string DiagnosticPolicy { get; private set; }
         public IReadOnlyList<GameplayRequest> Actions => Array.AsReadOnly(actions);
         public IReadOnlyList<ActionResult> Results => Array.AsReadOnly(results);
         public IReadOnlyList<HashCheckpoint> Hashes => Array.AsReadOnly(hashes);

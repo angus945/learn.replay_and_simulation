@@ -12,7 +12,8 @@ namespace MovementDemo
     public sealed class MovementDemoSession
     {
         private readonly TickInputBuffer input = new TickInputBuffer();
-        private readonly GameplaySession gameplay = new GameplaySession();
+        private readonly GameplaySession gameplay = new GameplaySession(SimulationDriveMode.Realtime);
+        private readonly IRealtimeTickDriver clock;
         private readonly ICharacterMovementView view;
         private readonly GameplayScenario scenario;
         private MovementPosition previous;
@@ -25,9 +26,11 @@ namespace MovementDemo
         public MovementDemoSession(ICharacterMovementView view, float speed = 4f, float tickDeltaTime = 1f / 60f, bool includeEnemy = false)
         {
             this.view = view ?? throw new ArgumentNullException(nameof(view));
-            scenario = new GameplayScenario(tickDelta: tickDeltaTime, speed: speed, includeEnemy: includeEnemy);
+            scenario = new GameplayScenario(tickDelta: tickDeltaTime, speed: speed, includeEnemy: includeEnemy,
+                build: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD") ?? "unspecified");
             input.RegisterAxis(0); input.RegisterAxis(1); input.Seal();
             gameplay.Start(scenario);
+            clock = gameplay.ClaimRealtimeDriver();
             view.SetPosition(default);
         }
         public MovementPosition CurrentPosition => current;
@@ -36,6 +39,7 @@ namespace MovementDemo
         public SessionState State => gameplay.State;
         public GameplayObservation Observe() => gameplay.Observe();
         public FailureArtifact Failure => gameplay.Failure;
+        public ReplayArtifact CaptureReplay() => gameplay.CaptureReplay();
         public IDiagnosticReader<GameplayObservation> Diagnostics => gameplay.Diagnostics;
         public void RequestAttack() => attackPending = true;
         public void CaptureAttackButton(bool down)
@@ -67,7 +71,7 @@ namespace MovementDemo
                     attackPending = false;
                     if (!attack.Queued) { gameplay.Stop(); break; }
                 }
-                gameplay.Step();
+                clock.AdvanceTick();
                 previous = current;
                 ActorObservation player = gameplay.Observe().Actors[0];
                 current = new MovementPosition(player.X, player.Y);

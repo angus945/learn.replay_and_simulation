@@ -12,6 +12,22 @@ internal static class Program
     {
         try
         {
+            if (args.Length > 0 && args[0] == "rerun")
+            {
+                if (args.Length != 2) throw new ArgumentException("Usage: rerun <artifact.json>");
+                using (FileStream input = File.OpenRead(Path.GetFullPath(args[1])))
+                {
+                    if (input.Length > 32 * 1024 * 1024) throw new ArgumentException("Artifact exceeds 32 MiB CLI limit.");
+                    FailureArtifact saved = ArtifactJson.Read<FailureArtifact>(input);
+                    if (saved.FailureTick > 1000000 || saved.Actions.Count > 1000000)
+                        throw new ArgumentException("CLI rerun budget is 1,000,000 ticks/actions.");
+                    RerunReport report = FailureRerun.Compare(saved, currentBuild: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD"));
+                    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                    return report.Matches ? 0 : 2;
+                }
+            }
+            if (args.Length > 0 && !(args.Length == 2 && args[0] == "capture"))
+                throw new ArgumentException("Usage: [capture <new-artifact.json> | rerun <artifact.json>]");
             GameplayScenario scenario = new GameplayScenario(tickDelta: .25f);
             GameplayRequest[] actions = {
                 new GameplayRequest("source", 1, 1, GameplayActionKind.Attack, 1, 2),
@@ -31,6 +47,15 @@ internal static class Program
             panel.Poll();
             Require(first.CurrentTick == 8 && panel.History.Count == cached, "diagnostic polling altered state or duplicated entries");
             Require(!(first.Diagnostics is IGameplayControl), "diagnostics exposed gameplay control");
+            ReplayArtifact recording = first.CaptureReplay();
+            using (MemoryStream replayBytes = new MemoryStream())
+            {
+                ArtifactJson.Write(replayBytes, recording); replayBytes.Position = 0;
+                ReplayPlayback playback = new ReplayPlayback(ArtifactJson.Read<ReplayArtifact>(replayBytes));
+                playback.Play();
+                for (int frame = 0; frame < 1000 && playback.State == ReplayPlaybackState.Playing; frame++) playback.AdvanceTime(1f / 144);
+                Require(playback.State == ReplayPlaybackState.Completed && playback.FirstDifference == null, "normal replay mismatch");
+            }
 
             GameplaySession failed = new GameplaySession();
             failed.Start(new GameplayScenario(tickDelta: 2, speed: float.MaxValue,
@@ -46,7 +71,7 @@ internal static class Program
                 Require(ScenarioRerun.VerifyFailure(artifact), "artifact does not reproduce failure/results/hashes");
                 if (args.Length > 0)
                 {
-                    string path = Path.GetFullPath(args[0]);
+                    string path = Path.GetFullPath(args[1]);
                     Directory.CreateDirectory(Path.GetDirectoryName(path));
                     using (FileStream output = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
                         ArtifactJson.Write(output, artifact);
@@ -57,7 +82,7 @@ internal static class Program
             if (File.Exists(previousArtifact))
                 using (FileStream input = File.OpenRead(previousArtifact))
                     Require(ScenarioRerun.VerifyFailure(ArtifactJson.Read<FailureArtifact>(input)), "previous artifact compatibility failed");
-            Console.WriteLine("PASS: headless gameplay, ordered hashes, artifact rerun/compatibility, read-only diagnostic consumer. No Unity assemblies.");
+            Console.WriteLine("PASS: headless gameplay, ordered hashes, artifact rerun/compatibility, normal replay, read-only diagnostic consumer. No Unity assemblies.");
             return 0;
         }
         catch (Exception exception)

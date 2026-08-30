@@ -6,14 +6,16 @@
 
 ```csharp
 GameplaySession session = new GameplaySession();
-session.Start(new GameplayScenario(tickDelta: .25f));
-SubmissionResult queued = session.Submit(new GameplayRequest(
+session.Admin.Start(new GameplayScenario(tickDelta: .25f));
+SubmissionResult queued = session.Gameplay.Submit(new GameplayRequest(
     session.Id, sequence: 1, targetTick: 1, GameplayActionKind.Move, actor: 1, x: 1));
-TickReport report = session.Step();
-GameplayObservation state = session.Observe();
+TickReport report = session.Simulation.Step();
+GameplayObservation state = session.Gameplay.Observe();
+ActionLookup result = session.Results.Find(session.Id, 1);
 ```
 
-玩家 adapter 和測試都呼叫 Submit，再由同一個 Step/pipeline 執行；測試不需要鍵盤或 Unity。
+玩家 adapter 和測試都呼叫 Submit，再由同一個 tick pipeline 執行；測試不需要鍵盤或 Unity。
+玩家使用 Realtime clock authority，測試使用 Manual Simulation.Step；同一 session 不允許混用兩個時鐘。
 `session.Diagnostics` 提供獨立唯讀 facade，供 Overlay／工具取得 immutable DiagnosticSnapshot 與 cursor-based trace。
 Facade 不能直接 cast 成 GameplaySession／IGameplayControl；讀取不重新評估 invariant，也不記錄新 trace。
 Session reset 後同一 facade 指向新 session，trace stream identity 更新，consumer 必須清掉舊 stream cache。
@@ -92,5 +94,7 @@ dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj
 ```
 
 需要 .NET 9 SDK 或相容 SDK，無 NuGet package 或 Unity assembly 依賴。
-額外傳一個新檔案路徑會輸出 JSON failure example（CreateNew，不覆寫舊檔）。
+傳入 `capture <new-artifact.json>` 會輸出 JSON failure example（CreateNew，不覆寫舊檔）。
+傳入 `rerun <artifact.json>` 會輸出結構化 JSON 比較報告。
+控制 facade、clock ownership、結果查詢與重跑契約詳見 `docs/testability/control-and-rerun.md`。
 Unity EditMode tests 位於 `tests/`；原 Movement demo 也已改用此控制面。

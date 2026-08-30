@@ -16,7 +16,7 @@ using MovementAggregate = CharacterMovement.Domain.CharacterMovement;
 namespace GameplaySimulation
 {
     /// <summary>Single-threaded project composition. Only Step advances authoritative state.</summary>
-    public sealed class GameplaySession : ITestSession<GameplayScenario>, IGameplayControl,
+    public sealed partial class GameplaySession : ITestSession<GameplayScenario>, IGameplayControl,
         IIntentHandler<GameplaySession.RequestIntent>, IInternalCommandHandler<GameplaySession.ExecuteAction>,
         IDomainEventHandler<GameplaySession.ActorDied>, IPrePhysicsParticipant, IStructuralCommitParticipant
     {
@@ -70,13 +70,24 @@ namespace GameplaySimulation
         private bool stepping;
         private InvariantReport invariantReport = new InvariantReport(false, 0, 0, Array.Empty<InvariantViolation>());
 
-        public GameplaySession() { Diagnostics = new DiagnosticsPort(this); }
+        private readonly string policyRevision;
+        public GameplaySession(SimulationDriveMode driveMode = SimulationDriveMode.Manual, string policyRevision = "v1")
+        {
+            if (!Enum.IsDefined(typeof(SimulationDriveMode), driveMode)) throw new ArgumentOutOfRangeException(nameof(driveMode));
+            if (string.IsNullOrWhiteSpace(policyRevision)) throw new ArgumentException("Policy revision is required.", nameof(policyRevision));
+            this.policyRevision = policyRevision;
+            DriveMode = driveMode;
+            Diagnostics = new DiagnosticsPort(this);
+            Gameplay = new GameplayPort(this); Simulation = new SimulationPort(this);
+            Admin = new AdminPort(this); Results = new ResultsPort(this); Capabilities = new CapabilitiesPort(this);
+        }
         public IDiagnosticReader<GameplayObservation> Diagnostics { get; }
 
         public string Id { get; private set; } = string.Empty;
         public SessionState State { get; private set; } = SessionState.Created;
         public ulong CurrentTick => runner == null ? 0 : runner.TickNumber;
         public FailureArtifact Failure { get; private set; }
+        public string DiagnosticPolicy { get; private set; }
         public IReadOnlyList<TraceEntry> ReadTrace() => trace == null ? Array.Empty<TraceEntry>() : trace.Snapshot();
         public IReadOnlyList<GameplayRequest> ActionHistory => new List<GameplayRequest>(history).AsReadOnly();
         public IReadOnlyList<HashCheckpoint> HashHistory => new List<HashCheckpoint>(hashHistory).AsReadOnly();
@@ -112,8 +123,16 @@ namespace GameplaySimulation
             initial.Validate();
             InvariantRegistry<GameplayObservation> nextChecks = new InvariantRegistry<GameplayObservation>();
             nextChecks.Register(new GameplayInvariant());
-            foreach (Func<IInvariant<GameplayObservation>> factory in extraInvariants) nextChecks.Register(factory());
+            List<string> policyCodes = new List<string> { "gameplay.valid_state" };
+            foreach (Func<IInvariant<GameplayObservation>> factory in extraInvariants)
+            {
+                IInvariant<GameplayObservation> check = factory();
+                nextChecks.Register(check);
+                policyCodes.Add(check.Code);
+            }
             nextChecks.Seal();
+            policyCodes.Sort(StringComparer.Ordinal);
+            DiagnosticPolicy = policyRevision + ":" + string.Join("|", policyCodes);
             invariants = nextChecks;
             invariantReport = new InvariantReport(false, 0, invariants.Count, Array.Empty<InvariantViolation>());
             scenario = initial;
@@ -172,6 +191,12 @@ namespace GameplaySimulation
 
         public TickReport Step()
         {
+            if (DriveMode != SimulationDriveMode.Manual) throw new InvalidOperationException("Realtime driver owns this session clock.");
+            return StepCore();
+        }
+
+        private TickReport StepCore()
+        {
             if (State != SessionState.Running || stepping) throw new InvalidOperationException("Session cannot step.");
             if (CurrentTick >= (ulong)scenario.MaxTicks) { Stop(); throw new InvalidOperationException("Tick budget exhausted."); }
             stepping = true;
@@ -222,7 +247,7 @@ namespace GameplaySimulation
             State = SessionState.Faulted;
             // No rollback is claimed. Retain partial state and prohibit further stepping until Reset.
             Failure = new FailureArtifact(Id, scenario, CurrentTick, executingSequence, code, exception?.ToString(),
-                history, resultHistory, hashHistory, trace.Snapshot(), trace.DroppedCount, Observe(), exception?.GetType().FullName);
+                history, resultHistory, hashHistory, trace.Snapshot(), trace.DroppedCount, Observe(), exception?.GetType().FullName, DiagnosticPolicy);
         }
 
         public GameplayObservation Observe()

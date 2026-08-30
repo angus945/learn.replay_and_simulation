@@ -70,19 +70,7 @@ namespace GameplaySimulation
         public static bool VerifyFailure(FailureArtifact artifact, GameplaySession freshSession = null)
         {
             if (artifact == null || artifact.SchemaVersion != 1) throw new ArgumentException("Unsupported failure artifact schema.");
-            GameplaySession session = freshSession ?? new GameplaySession();
-            Run(artifact.Scenario, artifact.Actions, checked((int)artifact.FailureTick), session);
-            FailureArtifact actual = session.Failure;
-            if (actual == null || actual.Code != artifact.Code || actual.ExceptionType != artifact.ExceptionType || actual.FailureTick != artifact.FailureTick ||
-                actual.Results.Count != artifact.Results.Count || actual.Hashes.Count != artifact.Hashes.Count) return false;
-            for (int i = 0; i < actual.Results.Count; i++)
-            {
-                ActionResult left = actual.Results[i]; ActionResult right = artifact.Results[i];
-                if (left.Sequence != right.Sequence || left.Tick != right.Tick || left.Code != right.Code || left.Status != right.Status) return false;
-            }
-            for (int i = 0; i < actual.Hashes.Count; i++)
-                if (actual.Hashes[i].Tick != artifact.Hashes[i].Tick || actual.Hashes[i].Hash != artifact.Hashes[i].Hash) return false;
-            return true;
+            return FailureRerun.Compare(artifact, freshSession).Matches;
         }
 
         public static IReadOnlyList<TickReport> Run(GameplayScenario scenario, IEnumerable<GameplayRequest> actions,
@@ -90,14 +78,14 @@ namespace GameplaySimulation
         {
             if (ticks < 0 || ticks > scenario.MaxTicks) throw new ArgumentOutOfRangeException(nameof(ticks));
             GameplaySession target = session ?? new GameplaySession();
-            target.Start(scenario);
+            target.Admin.Start(scenario);
             foreach (GameplayRequest action in actions)
             {
-                SubmissionResult submission = target.Submit(action.InSession(target.Id));
+                SubmissionResult submission = target.Gameplay.Submit(action.InSession(target.Id));
                 if (!submission.Queued) throw new InvalidOperationException(submission.Code);
             }
             List<TickReport> reports = new List<TickReport>();
-            for (int i = 0; i < ticks && target.State == SessionState.Running; i++) reports.Add(target.Step());
+            for (int i = 0; i < ticks && target.State == SessionState.Running; i++) reports.Add(target.Simulation.Step());
             return reports.AsReadOnly();
         }
     }
