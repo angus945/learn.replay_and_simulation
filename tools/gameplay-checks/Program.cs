@@ -5,6 +5,8 @@ using System.Linq;
 using GameplaySimulation;
 using Testability;
 using DebugOverlay;
+using GameplayProtocol;
+using GameplayProtocol.Game;
 
 internal static class Program
 {
@@ -28,6 +30,7 @@ internal static class Program
             }
             if (args.Length > 0 && !(args.Length == 2 && args[0] == "capture"))
                 throw new ArgumentException("Usage: [capture <new-artifact.json> | rerun <artifact.json>]");
+            CheckProtocol();
             GameplayScenario scenario = new GameplayScenario(tickDelta: .25f);
             GameplayRequest[] actions = {
                 new GameplayRequest("source", 1, 1, GameplayActionKind.Attack, 1, 2),
@@ -94,5 +97,28 @@ internal static class Program
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
+    }
+
+    private static void CheckProtocol()
+    {
+        GameplaySession target = new GameplaySession(); target.Start(new GameplayScenario(tickDelta: .25f));
+        GameplayProtocolAdapter adapter = new GameplayProtocolAdapter(target);
+        ProtocolClient client = new ProtocolClient("headless", ProtocolPermission.Observe | ProtocolPermission.Act | ProtocolPermission.Drive);
+        Require(SendProtocol(adapter, client, new ProtocolRequest(1, "claim", target.Id, "control.acquire")).Success, "protocol claim failed");
+        string action = ProtocolJson.Write(new ActionDto { Sequence = "1", TargetTick = "1", Kind = "Move", Actor = "1", X = 1 });
+        Require(SendProtocol(adapter, client, new ProtocolRequest(1, "move", target.Id, "action.submit", action)).Success, "protocol submit failed");
+        ProtocolRequest step = new ProtocolRequest(1, "step", target.Id, "simulation.step");
+        ProtocolResponse first = SendProtocol(adapter, client, step);
+        Require(first.Success && SendProtocol(adapter, client, step).PayloadJson == first.PayloadJson && target.CurrentTick == 1, "protocol retry advanced twice");
+        Require(target.Observe().Actors[0].X == 1, "protocol movement mismatch");
+        Console.WriteLine("PASS: protocol JSON round trip, control authority, queued dispatch and idempotent Step.");
+    }
+    private static ProtocolResponse SendProtocol(GameplayProtocolAdapter adapter, ProtocolClient client, ProtocolRequest request)
+    {
+        ProtocolRequest decoded = ProtocolJson.Read<ProtocolRequest>(ProtocolJson.Write(request));
+        System.Threading.Tasks.Task<ProtocolResponse> response = adapter.Endpoint.Enqueue(client, decoded);
+        Require(!response.IsCompleted, "protocol executed before owner pump");
+        adapter.Endpoint.Drain(1);
+        return ProtocolJson.Read<ProtocolResponse>(ProtocolJson.Write(response.Result));
     }
 }

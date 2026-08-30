@@ -1,0 +1,6 @@
+{
+  "name": "Framework.GameplayProtocol.Tests",
+  "references": ["Framework.GameplayProtocol"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}
