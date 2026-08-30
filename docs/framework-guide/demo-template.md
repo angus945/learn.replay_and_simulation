@@ -21,9 +21,9 @@ Overlay 仍只依賴 `IDiagnosticReader<GameplayObservation>`。切換 replay �
 
 開啟 [CharacterMovementDemo](../../Assets/game/movement-demo/scenes/CharacterMovementDemo.unity)，Play Mode 中移動、Space 攻擊，按 Save recording 保存，Load path 載入後可 Play／Pause／Step／Restart／Return live。敵人血量 20～40，重生延遲 1～3 秒。Build Settings 已改用此 Demo；舊 SampleScene／Player／Coin／Enemy 資產封存於 [Old_Simulation/LegacyUnityAssets](../../Old_Simulation/LegacyUnityAssets/README.md)，不由 Assets 編譯或載入。
 
-Demo 保存 `TemplateRecording`；舊 ReplayArtifact JSON 不自動轉換，應由相容 reader 處理，或用 Demo 重新錄製。[GameplaySession](../../Assets/game/gameplay-simulation/src/Runtime/GameplaySession.cs)已改為同一 GameplayDefinition → TestableSimulationSession runtime 的 facade，只轉接舊 ports／artifact/hash。ReplayPlayback 透過這個 facade 讀舊格式，不另實作遊戲規則。
+Demo 只保存及讀取 `TemplateRecording`，正常與失敗錄製共用此格式。舊 ReplayArtifact／FailureArtifact reader、GameplaySession 與 ReplayPlayback 已退役；舊 JSON 不自動轉換，請保留原檔並依 [退休政策](../legacy-compatibility-retirement.md)使用歷史基準工具，或以現行 Demo 重新錄製。
 
-玩法只修改 GameplayActions／GameplayWorld；再驗證現行與相容入口的行為、舊格式投影與 PolicyId。Protocol **Deferred**，不擴充協定、不要求先遷移 adapter 才能完成 Demo；現行 Demo 不經過 Protocol 或相容 facade。
+玩法只修改 GameplayActions／GameplayWorld，再驗證 manual／Demo 的相同行為、現行 hash 與 PolicyId。Protocol adapter 已使用相同 ports；game payload v2、envelope v1，transport 仍 Deferred。Demo 不經過 Protocol，不因這次遷移增加第二個 session 或輸入來源。
 
 ## 驗證入口
 
@@ -35,7 +35,7 @@ dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj
 ```
 
 - [Stage05](../../tools/gameplay-lessons/Stage05Replay.cs)：三筆外部輸入涵蓋非零移動、攻擊／死亡、seeded 血量及延遲重生；JSON round trip、不同 frame 排程、首次分歧與 invariant failure 重現。
-- [DemoTemplateChecks](../../Assets/game/gameplay-simulation/tests/DemoTemplateChecks.cs)：160 ticks 的相容 ports／Demo 比較，包含攻擊與多次 RNG／重生；其移動輸入為零，不拿這項宣稱已覆蓋非零位移。
+- [DemoTemplateChecks](../../Assets/game/gameplay-simulation/tests/DemoTemplateChecks.cs)：manual template session／Demo 比較，包含攻擊與多次 RNG／重生；非零位移另由 ModernGameplayContractChecks 驗證。
 - [ModernGameplayContractChecks](../../Assets/game/gameplay-simulation/tests/ModernGameplayContractChecks.cs)：非零／斜向移動與 stop、frame 分割、事件因果、policy／invariant 隔離及預算。
 - [GameplayPresentationTests](../../Assets/game/movement-demo/tests/PlayMode/GameplayPresentationTests.cs)：Unity actor binding、死亡／重生與呈現。純 .NET 成功不能取代這批 Unity 驗證。
 

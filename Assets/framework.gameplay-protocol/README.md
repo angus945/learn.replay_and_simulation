@@ -1,6 +1,6 @@
 # Gameplay Protocol Framework — v1 core
 
-> **Deferred（暫緩）**：先完成 deterministic-simulation、testability 與 game／教學接線的穩定化，再處理 Protocol。本輪保留既有程式與相容契約，不擴充協定、不接 transport；Protocol 遷移不列為其他階段的完成阻擋。最新範圍見 [分階段實作進度](../../docs/implementation-progress.md)。
+> **Transport：Deferred（暫緩）**。核心 envelope 維持 v1；範例 game adapter 已改接現行 testability ports，game payload 為 v2，不再經過 GameplaySession。這次不增加 transport、外部 client 或連線管理。最新範圍見 [分階段實作進度](../../docs/implementation-progress.md)。
 
 供 External Debug Overlay、Fuzzer、AI Test 共用的 transport-neutral 協定執行核心。
 純 C#、noEngineReferences；不依賴 GameplayObservation、Unity、HTTP 或特定 client。
@@ -19,6 +19,8 @@ Envelope version 1：Version、RequestId、SessionId、Operation、PayloadJson�
 Response：Version、RequestId、SessionId、Code、PayloadJson；Code=ok 才是 protocol operation 成功。
 PayloadJson 是 JSON **字串**，不是 polymorphic object；外層序列化會跳脫，避免依賴遊戲型別。
 Gameplay admission 與執行成功仍由 payload／ActionResult 判定，不能把 protocol ok 當成攻擊成功。
+
+Envelope 版本與 game payload 版本分開：本核心不認識遊戲型別；[專案 adapter](../game/gameplay-protocol/README.md)定義 payload v2 的欄位、hash／policy 與 admission 語義。舊 game payload v1 不因外層仍為 envelope v1 就自動相容。舊 facade／artifact 的退休範圍見 [退休政策](../../docs/legacy-compatibility-retirement.md)。
 
 權限 Observe／Act／Drive／Admin 彼此獨立。ProtocolClient 由伺服端可信 composition 建立，
 **不是** wire DTO，不接受 client 自報權限。Id 是顯示識別，真正 scope 是 server-held client instance。
@@ -52,13 +54,13 @@ Transport 還必須在反序列化前限制整個 frame 大小，補上 authenti
 
 ## 既有實作範圍
 
-已有核心與 `Assets/game/gameplay-protocol` adapter、JSON round trip／主執行緒／去重測試來源；這不代表外部協定服務已完成。
+已有核心與 `Assets/game/gameplay-protocol` adapter、JSON round trip／主執行緒／去重測試來源。adapter 透過現行 ports 提交 GameplayInput、讀取 TemplateTick／diagnostics；這不代表外部協定服務已完成。
 尚未開啟任何 socket 或修改 Demo 場景；沒有外部 client、Unity pump MonoBehaviour、HTTP/WebSocket。
-Replay/failure 分頁下載、建立測試 session 的 factory route、連線關閉／重連與權限撤銷均屬暫緩範圍，待核心 framework 穩定後再安排。
+Replay/failure 分頁下載、建立測試 session 的 factory route、連線關閉／重連與權限撤銷均屬暫緩範圍，不由 adapter 遷移推定完成。
 
 ## 歷史驗證紀錄
 
-以下是既有實作時留下的紀錄，不是本輪暫緩標記的測試結果，也不代表目前全部測試數量。
+以下是 game payload v1 時期留下的紀錄，可在歷史基準 `22f6966` 查閱；不是本輪 payload v2 遷移的測試結果。當次結果見 [實作進度](../../docs/implementation-progress.md)。
 
 2026-08-30：Unity 編譯無錯誤，EditMode **123/123 通過**（framework 10、adapter 6 項新增測試）。
 包含背景 ingress／owner-thread pump、pending/completed 重試、request conflict、權限／控制權、

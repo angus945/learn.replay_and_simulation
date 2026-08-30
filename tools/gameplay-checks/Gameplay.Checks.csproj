@@ -15,6 +15,7 @@
     <Compile Include="../../Assets/game/movement-demo/src/Composition/MovementDemoSession.cs" />
     <Compile Include="../../Assets/game/gameplay-simulation/tests/DemoTemplateChecks.cs" />
     <Compile Include="../../Assets/game/gameplay-simulation/tests/ModernGameplayContractChecks.cs" />
+    <Compile Include="../../Assets/game/gameplay-protocol/tests/GameplayProtocolContractChecks.cs" />
     <Compile Include="../../Assets/framework.testability/tests/TemplateContractChecks.cs" />
     <Compile Include="../../Assets/framework.deterministic-simulation/tests/SessionTemplateContractChecks.cs" />
     <Compile Include="../../Assets/framework.deterministic-simulation/tests/CoreHardeningContractChecks.cs" />

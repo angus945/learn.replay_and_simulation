@@ -53,6 +53,8 @@ namespace Testability.Templates
         public TemplateFailure Failure { get; private set; }
         public string Policy => policy;
         public TemplateLimits Limits => limits;
+        /// <summary>Live clock ownership, not a caller-provided session mode.</summary>
+        public bool HasRealtimeDriver { get { EnsureIdle(); return drive.HasRealtimeDriver; } }
         public InvariantReport InvariantReport => report;
         public IDiagnosticReader<TObservation> Diagnostics { get; }
         public ITemplateGameplay<TInput, TObservation> Gameplay { get; }

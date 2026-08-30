@@ -9,11 +9,11 @@
 1. 先寫 domain 規則與測試：成功會改哪些狀態？失敗會不會改狀態？
 2. 在 GameplayInput 定義玩法資料，不傳 aggregate 或 Unity object 引用；session ID／sequence／target tick 是框架 envelope。
 3. 把 session／sequence／tick 驗證放 admission；把目標活性、距離、資源等放執行時驗證。
-4. 在 GameplayActions 實作使用案例，回傳 GameplayOutcome；GameplayWorld.Execute 映射成 InputOutcome。模板已有 InputIntent → InputCommand → ExecuteInput → ActionResult 橋接，不需在相容 facade 再註冊一套 handler。
+4. 在 GameplayActions 實作使用案例，回傳 GameplayOutcome；GameplayWorld.Execute 映射成 InputOutcome。模板已有 InputIntent → InputCommand → ExecuteInput → ActionResult 橋接，不需再註冊一套控制層 handler。
 5. 只有發生需要其他流程反應的事實才由 GameplayWorld 發 event；GameplayDefinition 提供其 trace metadata，Domain 不依賴 dispatcher。
-6. 更新 GameplayInput codec、必要的 observation／canonical bytes 與 replay 驗證，決定 PolicyId 相容策略。Protocol 暫緩，新 action 不自動成為協定 API；需要擴充外部協定時另行處理 catalog／DTO 與相容性。
+6. 更新 GameplayInput codec、必要的 observation／canonical bytes 與 replay 驗證，決定 PolicyId 相容策略。若要透過現有 Protocol adapter 提供新 action，再更新 game payload v2 的 catalog／DTO 與驗證；transport 仍暫緩，action 不自動成為網路 API。
 
-依序參考 [GameplayActions](../../Assets/game/gameplay-simulation/src/Runtime/GameplayActions.cs)、[GameplayWorld](../../Assets/game/gameplay-simulation/src/Runtime/GameplayWorld.cs)、[GameplayDefinition](../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)與[現行操作驗證](../../Assets/game/gameplay-simulation/tests/ModernGameplayContractChecks.cs)。[第 4 章](../../tools/gameplay-lessons/lessons/04-testability.md)是可執行的最小正式入口；GameplaySessionTests 另外驗證相容 ports，並非另一份玩法。
+依序參考 [GameplayActions](../../Assets/game/gameplay-simulation/src/Runtime/GameplayActions.cs)、[GameplayWorld](../../Assets/game/gameplay-simulation/src/Runtime/GameplayWorld.cs)、[GameplayDefinition](../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)與[現行操作驗證](../../Assets/game/gameplay-simulation/tests/ModernGameplayContractChecks.cs)。[第 4 章](../../tools/gameplay-lessons/lessons/04-testability.md)是可執行的最小正式入口；[game 行為測試](../../Assets/game/gameplay-simulation/tests/)也使用同一套 ports。
 最低驗收：成功、非法參數、業務拒絕、重複 sequence、舊 session、同 tick 順序。
 常見錯誤：Submit 就扣血；測試直接呼叫 setter 繞過正式操作；把業務拒絕當 exception。
 
@@ -41,7 +41,7 @@
 5. Unity view 依已提交 observation 綁定／解除綁定，不讓 Destroy(GameObject) 代表 domain 已死亡。
 6. 設定 active／保留資料的容量與清理策略；generation 重用不代表 gameplay ID 重用。
 
-實際接點是 [GameplayWorld.Commit／ValidateLifecycle](../../Assets/game/gameplay-simulation/src/Runtime/GameplayWorld.cs)；參考 [registry 契約](../../Assets/modules/module.simulation-object-registry/README.md)及[生命週期相容測試](../../Assets/game/gameplay-simulation/tests/LifecycleAndRandomTests.cs)。現行入口的完整重生閉環可直接執行[第 5 章](../../tools/gameplay-lessons/lessons/05-replay.md)。
+實際接點是 [GameplayWorld.Commit／ValidateLifecycle](../../Assets/game/gameplay-simulation/src/Runtime/GameplayWorld.cs)；參考 [registry 契約](../../Assets/modules/module.simulation-object-registry/README.md)及[生命週期測試](../../Assets/game/gameplay-simulation/tests/LifecycleAndRandomTests.cs)。現行入口的完整重生閉環可直接執行[第 5 章](../../tools/gameplay-lessons/lessons/05-replay.md)。
 最低驗收：出生前不可操作、死亡後不可操作、重複 destroy、slot 重用、repository 一致性、預算耗盡。
 常見錯誤：假設兩次 Commit 是原子交易；把 tombstone 當 active entity。
 
@@ -73,7 +73,7 @@ Bounded integer 的 rejection sampling 可能消耗多個原始 RNG draw，不�
 5. 規則／trace 有容量上限，工具顯示 gap、stale、not evaluated，不以缺少資料冒充成功。
 
 參考 [Testability](../../Assets/framework.testability/README.md)、[自訂 invariant 與 causation 驗證](../../Assets/game/gameplay-simulation/tests/ModernGameplayContractChecks.cs)與[Overlay tests](../../Assets/game/debug-overlay/tests/DiagnosticReaderTests.cs)。
-最低驗收：多次 Poll 不改 hash/tick、不增加 trace；Reset stream 切換；旧 snapshot 不隨世界改變。
+最低驗收：多次 Poll 不改 hash/tick、不增加 trace；Reset stream 切換；舊 snapshot 不隨世界改變。
 
 ## 6. Unity 呈現 adapter
 

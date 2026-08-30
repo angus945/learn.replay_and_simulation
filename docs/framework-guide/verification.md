@@ -27,11 +27,15 @@
 ## 建議驗證順序
 
 1. 跑純 .NET：`dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj`。
-2. 在 Unity Test Runner 執行 EditMode 全部測試；CLI／CI 流程依專案環境配置。
-3. 最後手測視覺與輸入；手測成功不能替代時序、RNG 與 Replay 測試。
+2. 跑五章：`dotnet run --project tools/gameplay-lessons -- all`，並確認各章可單獨執行。
+3. 執行 `tools/verify-architecture.ps1`，檢查 assembly 方向、GUID 與退役 API 不回流；歷史文件不在 active source gate 中。
+4. 在 Unity Test Runner 執行 EditMode 與 PlayMode 全部測試；CLI／CI 流程依專案環境配置。
+5. 檢查正式 Demo 的錄製／載入／回放／返回 live；涉及 assembly、資產或 build 範圍時，再驗證 Player build／啟動。
 
 純 .NET 檢查不驗證 Unity assembly import、場景綁定或畫面；EditMode 全通過也不代表已量測效能。
 測試數量會變動，以當次報告為準，不把文件中的過往數字當成這輪已跑。
+
+舊 API 退役不等於丟掉玩法測試。移除相容層前，要將必要行為移到現行 ports；舊 hash、舊格式 reader 等專屬契約才隨功能停止。資料政策與基準版本見 [退役說明](../legacy-compatibility-retirement.md)。
 
 ## Replay 失敗時依序排查
 

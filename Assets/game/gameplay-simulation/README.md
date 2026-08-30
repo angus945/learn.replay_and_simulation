@@ -1,8 +1,8 @@
 # Gameplay Simulation
 
-現行入口是 `GameplayDefinition.CreateTestSession`。同一份 `GameplayWorld` / `GameplayActions` 提供 Demo、headless、錄製與重播的玩法；`GameplaySession` 只保留舊控制面與 schema-1 artifact 轉接，不再擁有第二份 actor、queue、RNG 或 tick runtime。
+現行入口是 `GameplayDefinition.CreateTestSession`。同一份 `GameplayWorld`／`GameplayActions` 提供 Demo、headless、錄製與重播的玩法；舊 GameplaySession facade、舊 ports 與舊 artifact API 已移除。
 
-從 [累積教學](../../../docs/framework-guide/learning-path.md) 開始；實際驗收見 [實作進度](../../../docs/implementation-progress.md)。Protocol 暫緩，保留相容入口不代表仍使用舊遊戲 runtime。
+從 [累積教學](../../../docs/framework-guide/learning-path.md)開始；實際驗收見 [實作進度](../../../docs/implementation-progress.md)。Protocol adapter 已改接現行 ports，transport 仍暫緩；舊檔支援截止與歷史基準見 [退休政策](../../../docs/legacy-compatibility-retirement.md)。
 
 ## 最小接線
 
@@ -15,7 +15,7 @@ GameplayDefinition definition = new GameplayDefinition();
 using (TestableSimulationSession<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> session =
     definition.CreateTestSession(new GameplayScenario(tickDelta: .25f)))
 {
-    ulong player = session.Observe().PlayerId;
+    ulong player = session.Gameplay.Observe().PlayerId;
     SubmissionResult queued = session.Gameplay.Submit(session.Id, 1, 1,
         new GameplayInput(GameplayActionKind.Move, player, x: 1));
     TemplateTick report = session.Simulation.Step();
@@ -36,7 +36,6 @@ using (TestableSimulationSession<GameplayWorld, GameplayScenario, GameplayInput,
 | GameplayWorld | project composition、registry/repository lifecycle、RNG streams、死亡後重生 |
 | GameplayDefinition | 組裝、codec、canonical state、invariants、診斷 metadata |
 | TestableSimulationSession | 外部輸入排序、tick、limits、結果、失敗與 recording |
-| GameplaySession | 舊 ports / artifact projection；供保留的 consumer 過渡 |
 
 每 tick：外部 input → Intent → InternalCommand → GameplayActions → DomainEvent reactions → PrePhysics 位移 → StructuralCommit → observation / hash / invariant。攻擊使用本 tick 位移前的位置；同 tick 先 Move 只更新方向。
 
@@ -53,7 +52,7 @@ using (TestableSimulationSession<GameplayWorld, GameplayScenario, GameplayInput,
 
 scenario 預設 36,000 ticks / 40,000 inputs / 512 trace entries，是未指定 limits 時的唯一來源。上限各為 100,000 ticks / 100,000 inputs / 65,536 trace entries；超限配置直接拒絕。顯式傳入 `TemplateLimits` 是刻意覆寫執行預算，會一併錄製；不改 gameplay 規則。
 
-Sequence 非零且 session 內唯一，同 tick 依 sequence 排序。TargetTick 必須大於 CurrentTick 且不超過 limits。一般入口回傳 `sequence.invalid_or_duplicate` / `input.capacity`；舊 facade 為保留 consumer 格式才映射為 `sequence.invalid`、`sequence.duplicate` / `action.capacity`。
+Sequence 非零且 session 內唯一，同 tick 依 sequence 排序。TargetTick 必須大於 CurrentTick 且不超過 limits。現行入口回傳 `sequence.invalid_or_duplicate` / `input.capacity`，Protocol adapter 保留這些原始代碼；不再映射舊 facade 的 admission 代碼。
 
 Stop/Fault 取消未執行輸入；Reset 產生新 world、session ID、trace stream 與獨立 invariant 實例。失敗不 rollback，禁止繼續 Step。例外時 Observe 保留最近成功捕捉的 snapshot；用 Diagnostics 的 ObservationTick 區別失敗 tick，不能把它當失敗中途的完整世界。
 
@@ -61,11 +60,11 @@ Stop/Fault 取消未執行輸入；Reset 產生新 world、session ID、trace st
 
 敵人血量與延遲重生使用不同 SplitMix64 stream。延遲為 1–3 simulation 秒（tick 精度），spawn budget 有界。DomainEvent trace 保留外部 sequence、actor、target；lifecycle notices 反映 commit，無外部原因者 sequence=0。Phase trace 為 `Stage=Phase, Type=phase, Code=begin/end`；wave 是單次 drain 的區域索引。
 
-自訂 invariant 透過 `new GameplayDefinition(factories, policyId)` 組裝；factory 每 session / Reset 產生新實例，必須給明確 policyId。Replay 不載入 artifact 指定的任意程式，也不忽略 policy 不符。
+內建 [GameplayInvariant](src/Runtime/GameplayInvariant.cs)檢查身分、血量、位移與死亡狀態。自訂 invariant 透過 `new GameplayDefinition(factories, policyId)` 組裝；factory 每 session / Reset 產生新實例，必須給明確 policyId。Replay 不載入 artifact 指定的任意程式，也不忽略 policy 不符。
 
 現行 `TemplateRecording` 記錄 scenario、limits、外部 inputs、逐 tick results/hash、首次 failure 與有界 trace。Command / Event 是診斷，不是重播輸入。Canonical state 包含有序 actor、RNG 與 pending respawn；只承諾相同 runtime / 規則下的邏輯重現，不是跨平台 bitwise、snapshot restore 或 rollback。
 
-`ReplayArtifact` / `FailureArtifact` 舊格式仍透過 facade 投影原本 hash schema；兩套格式不能互讀。CLI `capture` / `capture-success` / `rerun` 使用現行格式，`legacy-rerun` 明確讀舊 failure。既有 sample 的 legacy regression 仍保留；超過現行上限的舊 scenario 不支援。詳見 [CLI 與相容契約](../../../docs/testability/control-and-rerun.md)。
+CLI `capture`／`capture-success`／`rerun` 只使用現行 TemplateRecording，正常與失敗錄製使用同一格式。舊 ReplayArtifact／FailureArtifact 不再由目前版本讀取，也不自動轉換或改寫；`legacy-rerun` 已移除。舊 failure-example.json 原樣保留作歷史證據，需要原工具時使用基準 `22f6966`。詳見 [CLI 契約](../../../docs/testability/control-and-rerun.md)與[退休政策](../../../docs/legacy-compatibility-retirement.md)。
 
 ```text
 dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj

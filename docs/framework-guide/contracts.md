@@ -41,7 +41,7 @@ PresentationRender 不屬於權威 tick。StructuralCommit 之後不應再改變
 - Diagnostics 讀取不重新 Evaluate、不 Step、不寫 trace；snapshot 為唯讀複本。
 - InvariantReport 帶評估 tick，consumer 要區分尚未評估與舊結果。
 
-這些能力由 [TestableSimulationSession](../../Assets/framework.testability/src/API/TestableSimulationSession.cs)提供，不是低階 Pipeline 自帶功能。GameplaySession 只轉接既有 ports／回傳型別，不再持有第二份 queue 或世界規則。現行使用方式見[第 4 章](../../tools/gameplay-lessons/lessons/04-testability.md)。
+這些能力由 [TestableSimulationSession](../../Assets/framework.testability/src/API/TestableSimulationSession.cs)提供，不是低階 Pipeline 自帶功能。工具直接使用模板 ports，已沒有 GameplaySession 舊 ports 轉接層。現行使用方式見[第 4 章](../../tools/gameplay-lessons/lessons/04-testability.md)。
 
 ## 本專案的選擇，不是框架硬規定
 
@@ -56,9 +56,9 @@ PresentationRender 不屬於權威 tick。StructuralCommit 之後不應再改變
 
 現行 TemplateReplay 重建 scenario／seed，重送外部輸入，不把內部 command/event 當錄製輸入。[GameplayDefinition.EncodeCanonicalState](../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)固定寫入其 schema marker、tick、兩條 RNG state、出生數、待重生 ticks 及依 ID 排序的 actor state；PolicyId 識別規則／codec／hash／invariant 政策。
 
-舊 GameplayStateHasher 的 schema 1／2／3 是相容 ReplayArtifact 使用的另一種 hash layout，依 scenario 功能選擇。GameplaySession 從共用 world 的 observation 投影該格式，沒有因此重跑第二份模擬。兩種 recording／hash 不直接互換，也不把字串不同視為玩法不同。
+舊 GameplayStateHasher 的 hash layout 1／2／3 與 ReplayArtifact／FailureArtifact reader 已退役；TemplateRecording 不接受這些舊格式，也不自動重新計算舊 hash 來冒充相容。原始歷史檔案與工具基準見 [退休政策](../legacy-compatibility-retirement.md)。
 Hash 不含 session GUID、畫面插值、trace 或未來外部 request queue，因此不是完整 runtime snapshot。
 目前只以相同 runtime／規則比較；SHA-256 不會讓浮點或 Unity physics 自動跨平台決定性。
 更動規則需評估 policy/schema/build 相容性，不可只更新預期 hash 就宣稱舊 replay 相容。
 
-Protocol **Deferred**，保留相容邊界但不阻擋本輪 framework／教學驗收。既有核心只提供 in-process JSON boundary；沒有 transport、認證實作、durable exactly-once 或外部 client。不要把 protocol ok 當作 action 成功。
+Protocol 核心 envelope v1 與 game adapter payload v2 是不同契約；adapter 直接映射現行 ports／結果，不保留 v1 game payload 投影。**Transport 仍 Deferred**：只有 in-process JSON boundary，沒有認證實作、durable exactly-once 或外部 client。不要把 protocol ok 當作 action 成功。

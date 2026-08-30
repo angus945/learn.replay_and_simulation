@@ -43,11 +43,11 @@ Manual 測試直接使用 GameplayDefinition.CreateTestSession；TemplateReplay 
 目前是 constructor injection 與明確 new／Register，不需要 DI container 或全域 singleton。
 擴大專案時可把註冊拆成 composition helper，但 helper 不應在不明確的時機偷偷改寫 domain。
 
-## 相容 facade 的界線
+## 對外入口與退休邊界
 
-[GameplaySession](../../Assets/game/gameplay-simulation/src/Runtime/GameplaySession.cs)現在只把舊 request／ports／artifact 接到 GameplayDefinition → TestableSimulationSession，並投影既有 hash 格式。它沒有自己的 actor collection、RNG、移動／攻擊規則或另一條 pipeline。
+對工具只分發所需的 ITemplateGameplay／ITemplateSimulation／ITemplateAdmin／ITemplateResults／IDiagnosticReader；不提供任意 world setter。Protocol adapter 同樣接這些正式能力，game payload v2 與 envelope v1 分開版本管理。
 
-玩法改動應進入 GameplayActions／GameplayWorld，接線與序列化改動進入 GameplayDefinition，再驗證現行與相容入口。Protocol **Deferred**；保留 facade 是為了既有 consumer，不要求先遷移 Protocol 才能完成新玩法或教學，也不在 facade 補寫第二份規則。
+玩法改動進入 GameplayActions／GameplayWorld，接線與序列化改動進入 GameplayDefinition。舊 GameplaySession facade、舊 ports／artifact 已退役；沒有新增 legacy assembly 或第二個 runtime。舊工具與檔案保存在歷史基準 `22f6966`，見 [退休政策](../legacy-compatibility-retirement.md)。**Transport 仍 Deferred**，adapter 的 in-process 接線不等於網路服務已完成。
 
 ## 新專案建議骨架（示意，不是已存在的檔案）
 

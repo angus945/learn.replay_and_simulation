@@ -1,5 +1,7 @@
 # Trace／Invariant 模組化與唯讀 Overlay
 
+> **歷史紀錄**：本文保留基準 `22f6966` 之前的 module 抽取決策與測試證據。文中的 GameplaySession 是當時 API，現已退役；目前由 TestableSimulationSession.Diagnostics 提供相同唯讀 consumer 邊界，見 [Testability](../../Assets/framework.testability/README.md)與[退休政策](../legacy-compatibility-retirement.md)。
+
 日期：2026-08-30。
 
 ## 決策

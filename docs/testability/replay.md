@@ -1,59 +1,50 @@
-# 最小 Replay 錄製／播放
+# TemplateRecording：錄製與播放
 
-專案整合層功能，未抽成 module，未增加 Protocol。既有 diagnostics Overlay 保持原樣。
+Demo、CLI 與測試共用 GameplayDefinition／TestableSimulationSession／TemplateReplay。正常與失敗保存同一種 TemplateRecording；舊格式停止支援的範圍見 [退休政策](../legacy-compatibility-retirement.md)。
 
 ## Unity 使用
 
-開啟 CharacterMovementDemo，進入 Play Mode；左下角是 Replay 控制區。
+開啟 [CharacterMovementDemo](../../Assets/game/movement-demo/scenes/CharacterMovementDemo.unity)，進入 Play Mode；左下角是 Replay 控制區。
 
-1. 正常 WASD／方向鍵移動、Space 攻擊；session 從 tick 0 自動保留已接收輸入。
-2. **Save recording** 保存到按下時的成功 tick。即時遊玩繼續，新檔名不覆寫舊檔。
-3. 路徑自動填入文字框，按 **Load path** 載入；也可貼上以前的 replay JSON 完整路徑。
-4. 載入後在 tick 0 暫停；用 **Play / Pause / Step / Restart** 控制播放。
-5. **Return live** 返回原本的即時 session；播放期間它沒有推進，錄製不包含播放所花的時間。
+1. WASD／方向鍵移動、Space 攻擊；從 tick 0 保留已接收的外部輸入。
+2. **Save recording** 保存目前已完成的 recording boundary；即時遊玩繼續，產生新檔名而不覆寫。
+3. **Load path** 載入目前格式的 JSON；正常錄製從 tick 0 暫停。舊 ReplayArtifact／FailureArtifact 不可直接載入。
+4. 用 **Play／Pause／Step／Restart** 控制播放。正常重現為 Completed；重現記錄中的失敗為 ReproducedFailure；不一致為 Diverged。
+5. **Return live** 返回原來的即時 session；播放期間不推進 live，呈現明確 Snap，不把 replay 狀態寫回 live。
 
-路徑為 `Application.persistentDataPath/Replays/replay-<UTC>-<guid>.json`，完整路徑也印到 Console。
-必須在離開 Play Mode 前存檔；沒有自動存檔、檔案瀏覽器、倒帶或任意 seek。
-輸入路徑時暫停玩家鍵盤輸入。播放期間完全不呼叫即時輸入 adapter。
-舊 failure artifact 不是 replay artifact，不可混用；failure 繼續走原本 rerun CLI。
-Overlay 仍有已知文字繪製長幀問題；可按 F3 隱藏，本輪沒有修正它。
+路徑為 `Application.persistentDataPath/Replays/replay-<UTC>-<guid>.json`；離開 Play Mode 前需自行存檔。沒有自動存檔、檔案瀏覽器、倒帶或任意 seek。輸入路徑時暫停玩家鍵盤輸入，播放期間不呼叫 live input adapter。Overlay 只讀 diagnostics，可按 F3 隱藏；其效能不由 replay 一致性保證。
 
 ## API 與資料責任
 
-- `GameplaySession.CaptureReplay()`：成功 tick 邊界的不可變快照，不改變 session、不停止錄製。
-- `ReplayArtifact` schema 1：scenario（包含 seed/build）、runtime、diagnostic policy、EndTick、
-  所有已接收 GameplayRequest、已執行 ActionResult、tick 0 到 EndTick 的完整 hash checkpoints。
-- EndTick 獨立於最後輸入 tick，保留無輸入尾段。已排隊但超過 EndTick 的輸入保存但不執行。
-- 只保存外部輸入；Intent adapter 重新建立 Internal Command／Domain Event。沒有錄製 Unity frame delta。
-- 不保存快照還原資料；每次從 scenario 初始化世界。結束 domain state 由最後 hash 驗證，
-  不把 recorder 的 Running/Stopped 管理狀態當作 gameplay 狀態。
-- Created／Faulted／tick 中不能 CaptureReplay；fault 用 FailureArtifact。Stop 後仍可保存成功錄製。
-- `ReplayFile.SaveNew/Load`：JSON、32 MiB 上限、CreateNew、不覆寫；缺失資料、schema、順序、
-  correlation／數量／tick 邊界錯誤拒絕載入。播放上限 1,000,000 ticks/actions，另受 scenario 預算約束。
+- `session.CaptureRecording()` 取得不可變錄製，不停止 session；可保存正常或已 Faulted 的證據，但不能在 tick callback 中重入。
+- TemplateRecording 保存已編碼 scenario／inputs、Policy、Runtime、TickDelta、實際 Limits、InitialHash、每個 TemplateTick 的 hash／ActionResults、首次 TemplateFailure 與有界 trace。
+- EndTick 由 Ticks.Count 決定，保留無輸入尾段。已排隊但超過 EndTick 的輸入保存但不執行。
+- 只錄製外部輸入；Internal Command／Domain Event／RNG 結果由同一 definition 重新推導，沒有錄製 Unity frame delta。
+- 不保存完整 world restore checkpoint；每次從 scenario／seed 重建。失敗若未成功捕捉 observation，Diagnostics 保留上次 snapshot，附 ObservationTick。
+- `TemplateRecordingIO.Write／Read` 處理 stream；呼叫端負責檔名、不覆寫與檔案容量。IO 預設讀取上限 16 MiB，可調整；Demo／CLI 使用 32 MiB。單筆 payload、總 payload、tick、input 另受 TemplateLimits 約束。
+- 缺欄位、非法 schema／policy、順序、correlation、數量或 tick 邊界不被當作有效錄製。現行 tick／input 硬上限各 100,000，不是舊 reader 的百萬筆上限。
 
 ## 播放契約
 
-`ReplayPlayback : IReplayPlayback` 獨占新 Manual session，不對 caller 暴露 Submit／Admin。
-僅提供唯讀 observation／diagnostics。Single-threaded，呼叫者在 owner thread 驅動。
+`definition.CreateReplay(recording)` 建立獨立 session，對 caller 沒有 Submit／Admin，僅提供唯讀 observation／diagnostics 與播放控制。所有操作在 owner thread。
 
-- 初始 Paused，零長度錄製直接 Completed。
-- Play 後 AdvanceTime 用錄製的 TickDelta 累積時間；每 frame 最多 120 ticks，保留未消耗時間。
-- Step 僅限 Paused；推進恰好一 tick，畫面顯示該 tick 狀態。
-- Pause 清 accumulator 並顯示目前權威狀態；不是保留任意子 tick 畫面時間的精密播放器。
-- Restart 新建 session，回 tick 0、清除差異與計數；自訂 factory 必須每次回傳 fresh Manual session。
-- 達 EndTick 自動 Completed，不額外推進。正常播放有插值，暫停／單步／結束 snap 至權威狀態。
-- 每 tick 比較 ActionResult（tick、sequence、status、code）、state hash；異常或 invariant fault 也停止。
-- 第一個差異設為 FirstDifference（category／tick／expected／actual）並進入 Diverged；不繼續播放。
-- policy 不一致在 tick 0 阻止播放；自訂 invariant 必須由相同 composition/factory 提供。
-- build 未指定／不符、runtime 不符回 Warnings；不宣稱跨 build／平台 bitwise 一致。
-  可用 GAMEPLAY_BUILD 標示目前程式版本，不能把 artifact 內的版本當成目前執行版本。
+- 初始 Paused；零 tick 正常錄製直接 Completed。
+- Play 後 AdvanceTime 用錄製的 TickDelta 累積時間，每 frame 最多 120 ticks，保留 backlog。
+- Step 只限 Paused，恰好一 tick。Pause 清 accumulator；暫停、單步、結束的 alpha 為 1，呈現權威 tick 狀態。
+- Restart 以同一 definition 重建 session、重新提交錄製輸入、清除差異；應重新取得 Diagnostics reader。Dispose 釋放 replay 擁有的 session，不影響 live。
+- 每 tick 比對 ActionResult（tick、sequence、status、code）、hash 與 failure fingerprint。達 EndTick 才是 Completed 或 ReproducedFailure；第一個差異保存為 FirstDifference 並停止。
+- Policy 不同在 tick 0 阻止播放；自訂 invariant 必須由同一個明確 composition 提供，不動態載入 artifact 中的程式。
+- Runtime 不同回 warning；CLI 另用 GAMEPLAY_BUILD 對照 scenario.Build。相同比對結果不是跨 build／平台 bitwise determinism 保證。
 
-## 驗證範圍
+## 可執行教學與驗收
 
-測試涵蓋 30/60/144 FPS、不規則 frame delta、移動、攻擊／死亡、無輸入尾段、
-正常錄製 JSON round trip、不覆寫、零長度、future input、snapshot 獨立性、暫停／單步／重播、
-Realtime Demo 到 Manual Replay、hash/result/policy 分歧與不完整資料拒絕。
-Headless checks 也包含正常 replay round trip，沒有 Unity assembly 依賴。
+先執行 [第 5 章](../../tools/gameplay-lessons/lessons/05-replay.md)：同一 CharacterMovement 加上攻擊、seeded 血量與延遲重生，驗證 JSON round trip、不同 frame 排程、Diverged 及 ReproducedFailure。
+
+驗收仍涵蓋移動／死亡、無輸入尾段、零 tick、future input、snapshot 獨立性、不覆寫、Pause／Step／Restart、live 隔離、hash／result／policy 分歧與不完整資料拒絕。當次執行結果見 [實作進度](../implementation-progress.md)，完整接線見 [Demo 整合](../framework-guide/demo-template.md)。
+
+## 歷史驗證（舊格式，基準 22f6966 前）
+
+以下是原 ReplayArtifact 實驗紀錄，不是目前 TemplateRecording／API 退休後的驗收數字。
 
 2026-08-30：Unity EditMode 107/107 通過（Replay 新增 12 cases），純 .NET checks 通過。
 Unity 現場存檔／載入／播放完成 tick 83、玩家 X=2.00000072，無分歧；Restart 後單步至 tick 1，

@@ -2,7 +2,7 @@
 
 以純 C# domain 與固定 tick simulation 為核心的 Unity 遊戲架構參考專案。目標是讓玩家操作、測試與 Replay 共用正式玩法路徑。
 
-目前 Demo 主線為 `MovementDemoSession → GameplayDefinition → TestableSimulationSession`；`GameplaySession` 已改為同一 template runtime 的相容 facade，供既有工具與舊格式使用，不再另外保存一套玩法／排程實作。其餘驗收與暫緩項目見下方進度清單。
+Demo、工具與測試使用 `GameplayDefinition → TestableSimulationSession`；Unity 經 MovementDemoSession 接入同一份玩法。舊 GameplaySession facade／舊 artifact API 已退役，現行錄製統一為 TemplateRecording。歷史檔案與基準 `22f6966` 的處理方式見 [退休政策](docs/legacy-compatibility-retirement.md)。
 
 ## 開始閱讀
 
@@ -31,10 +31,10 @@ dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj
 
 需要 .NET 9 SDK 或相容 SDK。執行入口列於 [FrameworkGuideExamples.cs](tools/gameplay-checks/FrameworkGuideExamples.cs)，包含指南範例與多組 gameplay／Replay 檢查；不是全部 NUnit、Unity 場景或 Player Build 驗證。當次結果另記於實作進度，不沿用歷史測試數字。
 
-## Protocol：Deferred（暫緩）
+## Protocol adapter 與暫緩範圍
 
-先穩定 deterministic-simulation、testability、game 接線與教學，再處理 Protocol。現有 [核心](Assets/framework.gameplay-protocol/README.md)與[專案 adapter](Assets/game/gameplay-protocol/README.md)保留相容；本輪不擴充協定、不接 transport，也不以 Protocol 遷移完成作為其他階段的退出條件。
+現行 [專案 adapter](Assets/game/gameplay-protocol/README.md)直接接正式 session ports，game payload 契約為 v2；[Protocol 核心](Assets/framework.gameplay-protocol/README.md) envelope 維持 v1。兩個版本描述不同邊界，不代表舊 game payload 可直接沿用。
 
-保留相容不代表 Protocol 已完成：目前只有 in-process 邊界，沒有外部 listener；其必要相容入口在暫緩期間不刪除。這也不代表所有舊 runtime 型別已退役。
+**Transport 仍 Deferred（暫緩）**：目前只有 in-process 邊界，沒有外部 listener、HTTP／WebSocket client 或連線管理。adapter 遷移不增加網路服務，也不再需要保留舊 GameplaySession。教學不以協定為前置條件。
 
 本專案不宣稱跨平台 bitwise determinism、完整 snapshot restore 或 rollback。

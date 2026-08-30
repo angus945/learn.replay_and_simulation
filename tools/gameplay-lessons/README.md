@@ -34,16 +34,16 @@ dotnet run --project tools/gameplay-lessons -- all
 
 第 3 章直接引用既有 [MovementDefinitionExample](../gameplay-checks/MovementDefinitionExample.cs)；沒有另造 Player／CubeActor 世界。第 4–5 章用真實 GameplayDefinition／GameplayWorld，其中仍持有同一 CharacterMovement 型別；開始包含 game 的 HP／生命週期組裝，不改寫移動公式。
 
-因既有 GameplayInvariant 與相容 helper 放在同一來源檔，專案目前編入 gameplay-simulation 的來源集合，包含相容型別。GameplaySession 現已是同一 template runtime 的 facade；教學直接用 GameplayDefinition、不使用相容 API／舊 ReplayArtifact，也不編入或執行 Protocol／Unity 來源。
+教學編入 gameplay-simulation 的現行來源，直接使用 GameplayDefinition／TemplateRecording；舊 GameplaySession、ports 與 artifact API 已移除，也不編入或執行 Protocol／Unity 來源。舊文件與樣本的處理見 [退休政策](../../docs/legacy-compatibility-retirement.md)。
 
 ## Unity 與後續內容
 
 五階段是已可執行的純 C# 路線。Unity 入口連到 [Movement Demo](../../Assets/game/movement-demo/README.md)與[Realtime Runner](../../docs/framework-guide/realtime-runner.md)，不在 CLI 啟動 Editor。
 
-已有 [Unity instance／Physics sensor／presentation adapters](../../Assets/framework.deterministic-simulation.unity/README.md)，Demo 經 [GameplayActorPresentation](../../Assets/game/movement-demo/src/Unity/GameplayActorPresentation.cs)映射 active IDs 並在模式切換時 Snap。當次 Unity EditMode、PlayMode 與 Windows build 已通過；各層證據分別記在 [實作進度](../../docs/implementation-progress.md)，不能以本教學 CLI PASS 代替 Unity 驗收。
+已有 [Unity instance／Physics sensor／presentation adapters](../../Assets/framework.deterministic-simulation.unity/README.md)，Demo 經 [GameplayActorPresentation](../../Assets/game/movement-demo/src/Unity/GameplayActorPresentation.cs)映射 active IDs 並在模式切換時 Snap。Unity EditMode、PlayMode 與 Windows build 的各層證據分別記在 [實作進度](../../docs/implementation-progress.md)，不能以本教學 CLI PASS 代替 Unity 驗收。
 
-第 5 章已在同一 scenario 納入 seeded 血量與延遲重生，驗證 RNG／生命週期由相同輸入重新推導，不另建教學遊戲。Protocol 維持 **Deferred**，不作教學前置條件。
+第 5 章已在同一 scenario 納入 seeded 血量與延遲重生，驗證 RNG／生命週期由相同輸入重新推導，不另建教學遊戲。Protocol adapter 已接現行 ports；transport 維持 **Deferred**，不作教學前置條件。
 
 ## 本輪驗證
 
-2026-08-30：`dotnet run --project tools/gameplay-lessons -- all` 成功，五個階段各自完成斷言。驗證涵蓋正常玩法、拒絕、固定 phase、指定 tick、Reset、現行 JSON round trip、不同回放 frame 排程、第一個差異及 injected invariant failure 重現；不代替全部 NUnit／Unity 驗證。
+`dotnet run --project tools/gameplay-lessons -- all` 依序檢查正常玩法、拒絕、固定 phase、指定 tick、Reset、現行 JSON round trip、不同回放 frame 排程、第一個差異及 injected invariant failure 重現。當次結果見 [實作進度](../../docs/implementation-progress.md)，不代替全部 NUnit／Unity 驗證。

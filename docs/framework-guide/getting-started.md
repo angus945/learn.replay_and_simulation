@@ -57,7 +57,7 @@ EnqueueIntent 本身不移動角色，且角色不包含 Unity Transform。
 
 GameplayDefinition／GameplayWorld／GameplayActions 是本專案的組裝與玩法，framework 不自帶玩家與 Move／Attack。新專案提供自己的 input、application／domain、observation 與 definition；沿用端口分工，不需照抄所有遊戲型別。
 
-FrameworkGuideExamples 的 `ControlledMovement()` 仍驗證 GameplaySession 舊 ports。該 facade 已轉接同一 template runtime，用於相容驗證；不是新功能的推薦起點，也不需要在其中另寫 handlers。
+FrameworkGuideExamples 的 `ControlledMovement()` 也使用 GameplayDefinition／模板 ports：一筆 tick 2 輸入，驗證 Queued 與 Accepted 分開、玩家 X=1 及 Results 查詢。它是較短的補充範例，沒有另一套 facade 或玩法。
 
 ## 再閱讀完整 Demo
 
@@ -70,7 +70,7 @@ FrameworkGuideExamples 的 `ControlledMovement()` 仍驗證 GameplaySession 舊 
 - [TemplateReplay](../../Assets/framework.testability/src/API/TemplateReplay.cs)：依同一 definition 重建獨立 session、重送輸入、逐 tick 比較；可先執行[第 5 章](../../tools/gameplay-lessons/lessons/05-replay.md)。
 
 不要同時把最小範例的 runner 和完整 Demo 的 session 接到同一世界，否則可能重複推進。
-Protocol 暫緩；上述步驟與現行錄製不需要先接協定。舊 GameplaySession／ReplayPlayback 的格式相容責任見 [Demo 整合](demo-template.md)。
+上述步驟與現行錄製不需要先接協定。Protocol adapter 接現行 ports，transport 仍暫緩；舊 GameplaySession／ReplayPlayback 已退役，歷史工具見 [退休政策](../legacy-compatibility-retirement.md)。
 
 ## 第一個功能的完成條件
 

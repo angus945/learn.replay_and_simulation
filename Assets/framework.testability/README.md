@@ -3,7 +3,7 @@
 新專案使用方式請先讀 [DDD 遊戲框架開發指引](../../docs/framework-guide/README.md)。
 
 **可繼承模板：** [ReplayableSimulationDefinition 使用指南](../../docs/framework-guide/testability-replay-template.md)。模板提供通用控制面、診斷、記錄、正常／失敗 Replay，Domain 不需繼承框架。
-本 assembly 現在依賴 Framework.DeterministicSimulation（單向）；基本 simulation 不反向依賴 testability。既有 typed ports 與 codec 仍保留。
+本 assembly 依賴 Framework.DeterministicSimulation（單向）；基本 simulation 不反向依賴 testability。正式工具使用 ITemplateGameplay／ITemplateSimulation／ITemplateAdmin／ITemplateResults 與 IDiagnosticReader。
 
 本框架提供跨專案機制，不提供遊戲規則，也不另建 simulation loop 或 Action dispatcher。
 
@@ -18,7 +18,7 @@ SubmissionResult.Queued 只表示已排隊；ActionResult 才描述執行時的 
 Gameplay 拒絕不視為 exception，InvariantViolation 與 exception 分開保存。
 InvariantRegistry／IInvariant／InvariantViolation 已抽到 module.invariant-checks（InvariantChecks namespace）。
 TraceRecorder 組合 module.trace-buffer 的 TraceBuffer<TraceEntry>，不再自行維護 ring buffer。
-TraceRecorder.Reader 與 Writer 是不同 facade；Snapshot 為 artifact 相容性保留，工具應用 Reader 的增量 Read。
+TraceRecorder.Reader 與 Writer 是不同 facade；Snapshot 用於錄製有限 trace 證據，互動工具應用 Reader 的增量 Read。
 TraceEntry 提供 session、tick、sequence、stage、type、code、wave、actor、target；未適用的 identity 為零。
 TraceEntry.Sequence 是 action correlation；TraceRecord.Sequence 才是增量讀取位置，兩者不能混用。
 IDiagnosticReader 只查詢 snapshot 與 trace，不提供 Evaluate／Step／Submit／Reset。
@@ -56,7 +56,7 @@ afterIndex 是已讀結果筆數，不是 action sequence；單頁 1–1024 筆�
 Reset 清除結果並更換 session ID；舊 cursor 明確拒絕。Stop／Fault 的未來輸入保持 Cancelled，不偽造 completed result。
 
 PolicyId 必須包含 gameplay／codec／hash／invariant composition 版本。Replay 逐字比較 PolicyId，policy 不符時停在 tick 0；Runtime 不同只給 warning。
-Schema 1 與既有 TemplateRecording 格式保留；trace metadata 是診斷內容，不構成新的 executable schema。舊 game-specific artifact 是否相容由專案 codec adapter 決定。
+TemplateRecording 的 schema 1 是現行格式；trace metadata 是診斷內容，不構成新的 executable schema。不能只看數字 1 就把其他 artifact 當作此格式。範例 game 已移除舊 ReplayArtifact／FailureArtifact reader，歷史格式處理見 [退休政策](../../docs/legacy-compatibility-retirement.md)。ArtifactJson 是通用 stream codec，並不是舊格式自動轉換器。
 
 ## 契約驗證
 

@@ -1,7 +1,11 @@
 using System;
 using System.Linq;
+using DeterministicSimulation.Framework;
 using NUnit.Framework;
 using Testability;
+using Testability.Templates;
+using ModernSession = Testability.Templates.TestableSimulationSession<GameplaySimulation.GameplayWorld, GameplaySimulation.GameplayScenario, GameplaySimulation.GameplayInput, GameplaySimulation.GameplayObservation>;
+using ModernReplay = Testability.Templates.TemplateReplay<GameplaySimulation.GameplayWorld, GameplaySimulation.GameplayScenario, GameplaySimulation.GameplayInput, GameplaySimulation.GameplayObservation>;
 
 namespace GameplaySimulation.Tests
 {
@@ -10,61 +14,65 @@ namespace GameplaySimulation.Tests
         [Test]
         public void PortsDoNotExposeEachOthersAuthority()
         {
-            GameplaySession session = new GameplaySession();
-            Assert.That(session.Gameplay, Is.Not.InstanceOf<ITestSession<GameplayScenario>>());
-            Assert.That(session.Gameplay, Is.Not.InstanceOf<ISimulationControl>());
-            Assert.That(session.Simulation, Is.Not.InstanceOf<IGameplayControl>());
-            Assert.That(session.Results, Is.Not.InstanceOf<IGameplayControl>());
-            Assert.That(session.Admin, Is.Not.InstanceOf<ISimulationControl>());
-            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ISimulationControl>());
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario());
+            Assert.That(session.Gameplay, Is.Not.InstanceOf<ITemplateAdmin<GameplayScenario>>());
+            Assert.That(session.Gameplay, Is.Not.InstanceOf<ITemplateSimulation>());
+            Assert.That(session.Simulation, Is.Not.InstanceOf<ITemplateGameplay<GameplayInput, GameplayObservation>>());
+            Assert.That(session.Results, Is.Not.InstanceOf<ITemplateGameplay<GameplayInput, GameplayObservation>>());
+            Assert.That(session.Admin, Is.Not.InstanceOf<ITemplateSimulation>());
+            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ITemplateSimulation>());
+            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ModernSession>());
         }
 
         [Test]
         public void RealtimeClockCannotBeDrivenManuallyOrClaimedTwice()
         {
-            GameplaySession session = new GameplaySession(SimulationDriveMode.Realtime);
-            session.Admin.Start(new GameplayScenario());
-            IRealtimeTickDriver clock = session.ClaimRealtimeDriver();
-            Assert.Throws<InvalidOperationException>(() => session.Step());
-            Assert.Throws<InvalidOperationException>(() => session.Simulation.Step());
-            Assert.Throws<InvalidOperationException>(() => session.ClaimRealtimeDriver());
-            Assert.That(session.CurrentTick, Is.Zero);
-            clock.AdvanceTick();
-            Assert.That(session.CurrentTick, Is.EqualTo(1));
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(tickDelta: .25f));
+            using (RealtimeSimulationRunner clock = session.CreateRealtimeRunner())
+            {
+                Assert.Throws<InvalidOperationException>(() => session.Step());
+                Assert.Throws<InvalidOperationException>(() => session.Simulation.Step());
+                Assert.Throws<InvalidOperationException>(() => session.CreateRealtimeRunner());
+                Assert.Throws<InvalidOperationException>(() => session.Admin.Reset(new GameplayScenario()));
+                Assert.Throws<InvalidOperationException>(() => session.Dispose());
+                Assert.That(session.CurrentTick, Is.Zero);
+                Assert.That(clock.AdvanceTime(.25f), Is.EqualTo(1));
+                Assert.That(session.CurrentTick, Is.EqualTo(1));
+            }
             session.Admin.Reset(new GameplayScenario());
-            Assert.Throws<InvalidOperationException>(() => session.ClaimRealtimeDriver());
-            clock.AdvanceTick();
-            Assert.That(session.CurrentTick, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void ManualClockCannotClaimRealtimeAuthority()
-        {
-            GameplaySession session = new GameplaySession();
-            Assert.Throws<InvalidOperationException>(() => session.ClaimRealtimeDriver());
-            session.Admin.Start(new GameplayScenario());
             session.Simulation.Step();
             Assert.That(session.CurrentTick, Is.EqualTo(1));
         }
 
         [Test]
+        public void ManualSessionCanLeaseRealtimeAndResumeManualAfterRelease()
+        {
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(tickDelta: .25f));
+            session.Simulation.Step();
+            using (RealtimeSimulationRunner clock = session.CreateRealtimeRunner())
+                Assert.That(clock.AdvanceTime(.5f), Is.EqualTo(2));
+            session.Simulation.Step();
+            Assert.That(session.CurrentTick, Is.EqualTo(4));
+        }
+
+        [Test]
         public void ResultsAreQueryableWithoutTraceAndPagesUseCompletionOrder()
         {
-            GameplaySession session = new GameplaySession();
-            session.Admin.Start(new GameplayScenario(traceCapacity: 1));
-            session.Gameplay.Submit(new GameplayRequest(session.Id, 20, 1, GameplayActionKind.Move, 1));
-            session.Gameplay.Submit(new GameplayRequest(session.Id, 10, 2, GameplayActionKind.Move, 1));
-            Assert.That(session.Results.Find(session.Id, 20).State, Is.EqualTo(ActionLookupState.Pending));
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(traceCapacity: 1));
+            session.Gameplay.Submit(session.Id, 20, 1, new GameplayInput(GameplayActionKind.Move, 1));
+            session.Gameplay.Submit(session.Id, 10, 2, new GameplayInput(GameplayActionKind.Move, 1));
+            Assert.That(session.Results.Find(session.Id, 20).State, Is.EqualTo("Pending"));
             session.Simulation.Step(); session.Simulation.Step();
-            ActionResultPage first = session.Results.Read(session.Id, 0, 1);
-            ActionResultPage second = session.Results.Read(session.Id, first.NextIndex, 1);
+            TemplateActionResultPage first = session.Results.Read(session.Id, 0, 1);
+            TemplateActionResultPage second = session.Results.Read(session.Id, first.NextIndex, 1);
             Assert.That(first.Items[0].Sequence, Is.EqualTo(20));
             Assert.That(first.HasMore, Is.True);
             Assert.That(second.Items[0].Sequence, Is.EqualTo(10));
             Assert.That(second.HasMore, Is.False);
             Assert.That(session.Results.Find(session.Id, 20).Result.Code, Is.EqualTo("move.applied"));
-            Assert.That(session.Results.Find(session.Id, 999).State, Is.EqualTo(ActionLookupState.Unknown));
+            Assert.That(session.Results.Find(session.Id, 999).State, Is.EqualTo("Unknown"));
             Assert.That(session.CurrentTick, Is.EqualTo(2));
+            Assert.That(session.CaptureRecording().Trace.Count, Is.EqualTo(1));
             Assert.Throws<ArgumentOutOfRangeException>(() => session.Results.Read(session.Id, 0, 1025));
             Assert.Throws<ArgumentOutOfRangeException>(() => session.Results.Read(session.Id, 3, 1));
         }
@@ -72,91 +80,86 @@ namespace GameplaySimulation.Tests
         [Test]
         public void StopCancelsPendingAndResetInvalidatesResultsAndCursors()
         {
-            GameplaySession session = new GameplaySession();
-            session.Start(new GameplayScenario());
-            string old = session.Id;
-            session.Submit(new GameplayRequest(old, 1, 2, GameplayActionKind.Move, 1));
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario());
+            string oldId = session.Id;
+            session.Gameplay.Submit(oldId, 1, 2, new GameplayInput(GameplayActionKind.Move, 1));
             session.Admin.Stop();
-            Assert.That(session.Results.Find(old, 1).State, Is.EqualTo(ActionLookupState.Cancelled));
+            Assert.That(session.Results.Find(oldId, 1).State, Is.EqualTo("Cancelled"));
             session.Admin.Reset(new GameplayScenario());
-            Assert.That(session.Results.Find(old, 1).State, Is.EqualTo(ActionLookupState.StaleSession));
-            Assert.Throws<InvalidOperationException>(() => session.Results.Read(old, 0, 1));
+            Assert.That(session.Results.Find(oldId, 1).State, Is.EqualTo("StaleSession"));
+            Assert.Throws<ArgumentException>(() => session.Results.Read(oldId, 0, 1));
+        }
+
+        [TestCase("state_hash")]
+        [TestCase("action_result")]
+        [TestCase("failure")]
+        public void ReplayReportsTheFirstChangedEvidence(string category)
+        {
+            TemplateRecording original = RecordFailure();
+            TemplateTick tick = original.Ticks[0];
+            TemplateFailure failure = original.Failure;
+            if (category == "state_hash") tick = new TemplateTick(1, "changed", tick.Results);
+            if (category == "action_result") tick = new TemplateTick(1, tick.Hash, new[] { new ActionResult(1, 1, ActionStatus.Rejected, "changed") });
+            if (category == "failure") failure = new TemplateFailure(failure.Tick, failure.LastCompletedTick, 42,
+                failure.Stage, failure.Code, failure.ExceptionType, failure.Detail);
+            TemplateRecording changed = new TemplateRecording(original.Policy, original.Runtime, original.Scenario, original.TickDelta,
+                original.Limits, original.InitialHash, original.Inputs, new[] { tick }, failure, original.Trace, original.DroppedTraceEntries);
+            using ModernReplay replay = new GameplayDefinition().CreateReplay(changed);
+            replay.Step();
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Diverged));
+            Assert.That(replay.FirstDifference.Tick, Is.EqualTo(1));
+            Assert.That(replay.FirstDifference.Category, Is.EqualTo(category));
         }
 
         [Test]
-        public void CapabilitiesDescribeLifecycleModeAndActionCatalog()
+        public void ReplayDistinguishesPolicyMismatchFromRuntimeWarning()
         {
-            GameplaySession session = new GameplaySession();
-            Assert.That(session.Capabilities.Describe().CanStep, Is.False);
-            session.Start(new GameplayScenario(maxActions: 3));
-            GameplayCapabilities snapshot = session.Capabilities.Describe();
-            Assert.That(snapshot.CanStep, Is.True);
-            Assert.That(snapshot.Scenario.MaxActions, Is.EqualTo(3));
-            Assert.That(snapshot.Actions.Select(item => item.Kind), Is.EqualTo(new[] { GameplayActionKind.Move, GameplayActionKind.Attack }));
-            Assert.That(snapshot.Actions[1].RequiresTarget, Is.True);
-            Assert.That(snapshot.SupportsRemoteProtocol, Is.False);
-            session.Stop();
-            Assert.That(snapshot.CanSubmit, Is.True);
-            Assert.That(session.Capabilities.Describe().CanSubmit, Is.False);
+            TemplateRecording original = RecordFailure();
+            TemplateRecording changedRuntime = new TemplateRecording(original.Policy, "different-runtime", original.Scenario, original.TickDelta,
+                original.Limits, original.InitialHash, original.Inputs, original.Ticks, original.Failure, original.Trace, original.DroppedTraceEntries);
+            using ModernReplay matched = new GameplayDefinition().CreateReplay(changedRuntime);
+            matched.Step();
+            Assert.That(matched.State, Is.EqualTo(TemplateReplayState.ReproducedFailure));
+            Assert.That(matched.Warnings, Does.Contain("runtime.mismatch"));
+            using ModernReplay mismatch = new GameplayDefinition(null, "different-policy").CreateReplay(original);
+            Assert.That(mismatch.State, Is.EqualTo(TemplateReplayState.Diverged));
+            Assert.That(mismatch.FirstDifference.Category, Is.EqualTo("policy"));
+            Assert.That(mismatch.CurrentTick, Is.Zero);
         }
 
         [Test]
-        public void RerunExplainsHashResultAndFailureDifferences()
+        public void ReplayCreatesItsOwnSessionAndRejectsMissingRecording()
         {
-            FailureArtifact original = Capture();
-            FailureArtifact changed = new FailureArtifact(original.SessionId, original.Scenario, original.FailureTick, 42,
-                "changed", null, original.Actions, new[] { new ActionResult(1, 1, ActionStatus.Rejected, "changed") },
-                new[] { new HashCheckpoint(0, "changed") }, original.Trace, 0, diagnosticPolicy: original.DiagnosticPolicy);
-            RerunReport report = FailureRerun.Compare(changed);
-            Assert.That(report.Executed, Is.True);
-            Assert.That(report.Matches, Is.False);
-            Assert.That(report.FirstDivergentTick, Is.EqualTo(0));
-            Assert.That(report.Differences.Select(item => item.Category), Does.Contain("action_result"));
-            Assert.That(report.Differences.Select(item => item.Category), Does.Contain("failure.exception_type"));
-            Assert.That(report.Differences.Select(item => item.Category), Does.Contain("failure.action"));
+            GameplayDefinition definition = new GameplayDefinition();
+            Assert.Throws<ArgumentNullException>(() => definition.CreateReplay(null));
+            using ModernSession live = definition.CreateTestSession(new GameplayScenario());
+            live.Simulation.Step();
+            using ModernReplay replay = definition.CreateReplay(live.CaptureRecording());
+            Assert.That(replay.CurrentTick, Is.Zero);
+            replay.Step();
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Completed));
+            Assert.That(live.CurrentTick, Is.EqualTo(1));
         }
 
         [Test]
-        public void RerunReportsPolicyMismatchAndBuildWarning()
+        public void FaultCancelsFutureInputsButPreservesCompletedResults()
         {
-            FailureArtifact original = Capture();
-            RerunReport matched = FailureRerun.Compare(original, currentBuild: "different-build");
-            Assert.That(matched.Matches, Is.True);
-            Assert.That(matched.Warnings.Any(item => item.StartsWith("build.mismatch")), Is.True);
-            RerunReport mismatch = FailureRerun.Compare(original, new GameplaySession(policyRevision: "v2"));
-            Assert.That(mismatch.Matches, Is.False);
-            Assert.That(mismatch.Differences.Any(item => item.Category == "policy"), Is.True);
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
+            session.Gameplay.Submit(session.Id, 1, 1, new GameplayInput(GameplayActionKind.Move, 1, x: 1));
+            session.Gameplay.Submit(session.Id, 2, 2, new GameplayInput(GameplayActionKind.Move, 1));
+            session.Simulation.Step();
+            Assert.That(session.Results.Find(session.Id, 1).State, Is.EqualTo("Completed"));
+            Assert.That(session.Results.Find(session.Id, 1).Result.Status, Is.EqualTo(ActionStatus.Accepted));
+            Assert.That(session.Results.Find(session.Id, 2).State, Is.EqualTo("Cancelled"));
+            Assert.That(session.Results.Find(session.Id, 2).CancellationReason, Is.EqualTo("session.faulted"));
         }
 
-        [Test]
-        public void RerunRejectsUnsupportedArtifactAndNonFreshSessionWithoutStepping()
+        private static TemplateRecording RecordFailure()
         {
-            Assert.That(FailureRerun.Compare(null).Differences[0].Category, Is.EqualTo("schema"));
-            GameplaySession used = new GameplaySession();
-            used.Start(new GameplayScenario());
-            Assert.That(FailureRerun.Compare(Capture(), used).Executed, Is.False);
-            Assert.That(used.CurrentTick, Is.Zero);
-        }
-
-        [Test]
-        public void FaultCancelsFutureActionsButPreservesCompletedResults()
-        {
-            GameplaySession session = new GameplaySession();
-            session.Start(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
-            session.Submit(new GameplayRequest(session.Id, 1, 1, GameplayActionKind.Move, 1, x: 1));
-            session.Submit(new GameplayRequest(session.Id, 2, 2, GameplayActionKind.Move, 1));
-            session.Step();
-            Assert.That(session.Results.Find(session.Id, 1).State, Is.EqualTo(ActionLookupState.Completed));
-            Assert.That(session.Results.Find(session.Id, 2).State, Is.EqualTo(ActionLookupState.Cancelled));
-        }
-
-        private static FailureArtifact Capture()
-        {
-            GameplaySession session = new GameplaySession();
-            session.Start(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
-            session.Submit(new GameplayRequest(session.Id, 1, 1, GameplayActionKind.Move, 1, x: 1));
-            session.Step();
-            return session.Failure;
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
+            session.Gameplay.Submit(session.Id, 1, 1, new GameplayInput(GameplayActionKind.Move, 1, x: 1));
+            session.Simulation.Step();
+            return session.CaptureRecording();
         }
     }
 }

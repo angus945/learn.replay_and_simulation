@@ -1,5 +1,7 @@
 # 步驟 1–3 驗收紀錄
 
+> **歷史紀錄**：本文保留基準 `22f6966` 之前的決策、API 與測試結果，不是現行入門指南。GameplaySession／舊 artifact 已退役；目前請讀 [五章教學](../framework-guide/learning-path.md)、[控制與 rerun](control-and-rerun.md)及[退休政策](../legacy-compatibility-retirement.md)。failure-example.json 原樣保留，不交給現行 rerun。
+
 日期：2026-08-30。範圍：in-process 單實例，Move → Attack → Damage → Death。
 對照 testability-develop-baseline-phase1-5.md；這不是宣稱 Phase 1–5 全部完成。
 

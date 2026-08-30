@@ -13,7 +13,7 @@ dotnet run --project tools/gameplay-lessons -- testability
 ## 讀來源並跟著接
 
 1. 讀現有 [GameplayDefinition](../../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)、[GameplayInput](../../../Assets/game/gameplay-simulation/src/Contract/GameplayInput.cs) 與 [GameplayWorld](../../../Assets/game/gameplay-simulation/src/Runtime/GameplayWorld.cs)。World 仍使用同一 CharacterMovement；這章改用完整 game 組裝，沒有重寫移動。
-2. [Stage04Testability.cs](../Stage04Testability.cs) 建立無敵人的 scenario，用 `CreateTestSession` 取得正式 template ports，不建立過渡期 GameplaySession。
+2. [Stage04Testability.cs](../Stage04Testability.cs) 建立無敵人的 scenario，用 `CreateTestSession` 取得正式 template ports；建立完成即為 Running，不另呼叫 Start。
 3. GameplayInput 只攜帶玩法資料；session ID、sequence、target tick 是 Submit 的 envelope。Scenario 的 4 tick／4 input 預算由 game Definition 映射。
 4. 故意先提交 sequence 2 的向左，再提交 sequence 1 的向右，兩筆都指定 tick 2；另提交未知角色的 sequence 3。
 5. 三個合法 envelope 都可 queued，但不立即移動。tick 1 無結果；tick 2 依序執行 1、2、3，位置 X=-1。未知角色得到 Rejected／actor.unknown，session 不會 fault。

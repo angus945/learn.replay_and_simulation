@@ -4,6 +4,8 @@ using GameplaySimulation;
 using InvariantChecks;
 using NUnit.Framework;
 using Testability;
+using Testability.Templates;
+using ModernSession = Testability.Templates.TestableSimulationSession<GameplaySimulation.GameplayWorld, GameplaySimulation.GameplayScenario, GameplaySimulation.GameplayInput, GameplaySimulation.GameplayObservation>;
 
 namespace DebugOverlay.Tests
 {
@@ -12,27 +14,28 @@ namespace DebugOverlay.Tests
         [Test]
         public void ReaderCannotBecomeGameplayOrAdminController()
         {
-            GameplaySession session = new GameplaySession();
-            Assert.That(session.Diagnostics, Is.Not.InstanceOf<GameplaySession>());
-            Assert.That(session.Diagnostics, Is.Not.InstanceOf<IGameplayControl>());
-            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ITestSession<GameplayScenario>>());
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario());
+            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ModernSession>());
+            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ITemplateGameplay<GameplayInput, GameplayObservation>>());
+            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ITemplateAdmin<GameplayScenario>>());
+            Assert.That(session.Diagnostics, Is.Not.InstanceOf<ITemplateSimulation>());
         }
 
         [Test]
         public void PollDoesNotAdvanceTickEvaluateRulesOrRecordTrace()
         {
             int calls = 0;
-            GameplaySession session = new GameplaySession();
-            session.RegisterInvariant(() => new CountingCheck(() => calls++));
-            session.Start(new GameplayScenario());
+            GameplayDefinition definition = new GameplayDefinition(new Func<IInvariant<GameplayObservation>>[]
+                { () => new CountingCheck(() => calls++) }, "overlay/counting-v1");
+            using ModernSession session = definition.CreateTestSession(new GameplayScenario());
             Assert.That(session.Diagnostics.ObserveDiagnostics().Invariants.Evaluated, Is.False);
-            session.Step();
-            int traceCount = session.ReadTrace().Count;
+            session.Simulation.Step();
+            int traceCount = session.CaptureRecording().Trace.Count;
             ReadOnlyDiagnosticsModel<GameplayObservation> model = new ReadOnlyDiagnosticsModel<GameplayObservation>(session.Diagnostics);
             for (int i = 0; i < 10; i++) model.Poll();
             Assert.That(calls, Is.EqualTo(1));
             Assert.That(session.CurrentTick, Is.EqualTo(1));
-            Assert.That(session.ReadTrace().Count, Is.EqualTo(traceCount));
+            Assert.That(session.CaptureRecording().Trace.Count, Is.EqualTo(traceCount));
             Assert.That(model.History.Count, Is.EqualTo(traceCount));
             Assert.That(model.Snapshot.Invariants.Evaluated, Is.True);
         }
@@ -40,11 +43,11 @@ namespace DebugOverlay.Tests
         [Test]
         public void ResetChangesStreamClearsPanelAndLeavesOldSnapshotIntact()
         {
-            GameplaySession session = new GameplaySession(); session.Start(new GameplayScenario()); session.Step();
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario()); session.Simulation.Step();
             ReadOnlyDiagnosticsModel<GameplayObservation> model = new ReadOnlyDiagnosticsModel<GameplayObservation>(session.Diagnostics);
             model.Poll();
             DiagnosticSnapshot<GameplayObservation> old = model.Snapshot;
-            session.Reset(new GameplayScenario());
+            session.Admin.Reset(new GameplayScenario());
             model.Poll();
             Assert.That(model.Snapshot.SessionId, Is.Not.EqualTo(old.SessionId));
             Assert.That(model.Snapshot.Tick, Is.Zero);
@@ -57,10 +60,10 @@ namespace DebugOverlay.Tests
         [Test]
         public void PanelHasItsOwnBoundAndReportsSourceGaps()
         {
-            GameplaySession session = new GameplaySession(); session.Start(new GameplayScenario(traceCapacity: 2));
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(traceCapacity: 2));
             ReadOnlyDiagnosticsModel<GameplayObservation> model = new ReadOnlyDiagnosticsModel<GameplayObservation>(session.Diagnostics, 1, 1);
             model.Poll();
-            for (int i = 0; i < 5; i++) session.Step();
+            for (int i = 0; i < 5; i++) session.Simulation.Step();
             long missed = session.Diagnostics.ReadTrace(default(TraceCursor), 1).MissedCount;
             Assert.That(missed, Is.GreaterThan(0));
             model.Poll();
@@ -76,24 +79,26 @@ namespace DebugOverlay.Tests
         [Test]
         public void FailureDisplaysFaultWithoutClaimingRulesPassedAtFailedTick()
         {
-            GameplaySession session = new GameplaySession();
-            session.Start(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
-            session.Step(); // tick 1 succeeds, no movement
-            session.Submit(new GameplayRequest(session.Id, 1, 2, GameplayActionKind.Move, 1, x: 1));
-            session.Step();
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
+            session.Simulation.Step(); // tick 1 succeeds, no movement
+            session.Gameplay.Submit(session.Id, 1, 2, new GameplayInput(GameplayActionKind.Move, 1, x: 1));
+            session.Simulation.Step();
             DiagnosticSnapshot<GameplayObservation> snapshot = session.Diagnostics.ObserveDiagnostics();
             Assert.That(snapshot.State, Is.EqualTo(SessionState.Faulted));
             Assert.That(snapshot.FaultCode, Is.EqualTo("simulation.exception"));
             Assert.That(snapshot.Tick, Is.EqualTo(2));
             Assert.That(snapshot.Invariants.Tick, Is.EqualTo(1));
+            Assert.That(snapshot.ObservationTick, Is.EqualTo(1));
             Assert.That(snapshot.Invariants.Evaluated, Is.True);
         }
 
         [Test]
         public void InvariantViolationsRemainReadableAfterFault()
         {
-            GameplaySession session = new GameplaySession();
-            session.RegisterInvariant(() => new FailingCheck()); session.Start(new GameplayScenario()); session.Step();
+            GameplayDefinition definition = new GameplayDefinition(new Func<IInvariant<GameplayObservation>>[]
+                { () => new FailingCheck() }, "overlay/injected-failure-v1");
+            using ModernSession session = definition.CreateTestSession(new GameplayScenario());
+            session.Simulation.Step();
             ReadOnlyDiagnosticsModel<GameplayObservation> model = new ReadOnlyDiagnosticsModel<GameplayObservation>(session.Diagnostics);
             model.Poll();
             Assert.That(model.Snapshot.Invariants.Violations[0].Code, Is.EqualTo("injected"));

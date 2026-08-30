@@ -316,7 +316,7 @@ Unity adapter 擷取輸入，把 frame 時間交給 session.CreateRealtimeRunner
 基本與延伸模板都不會替你自動取樣鍵盤或產生畫面插值。
 
 目前 Demo 的 [MovementDemoSession.cs](../../Assets/game/movement-demo/src/Composition/MovementDemoSession.cs) 已採用延伸模板；見 [Demo 整合](demo-template.md)。
-舊 GameplaySession 是保留給 Protocol 與舊格式相容的路徑，不是目前 Demo 的核心。
+舊 GameplaySession 與 artifact API 已退役；現行工具及 Protocol adapter 直接使用模板 ports。歷史工具與原始錄製見 [退休政策](../legacy-compatibility-retirement.md)。
 
 ## 執行驗證
 

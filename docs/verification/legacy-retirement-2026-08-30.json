@@ -1,0 +1,1598 @@
+{
+  "subject": "Gameplay compatibility retirement after committed stabilization baseline",
+  "verifiedAtUtc": "2026-08-30T15:58:01.2834201+08:00",
+  "baselineCommit": "22f6966f62a6d8af375b639597eb426ea435105a",
+  "scope": [
+    "modern gameplay API only",
+    "game Protocol payload v2 over envelope v1",
+    "legacy format support removed; original evidence retained",
+    "transport/authentication/pump/reconnect remain deferred"
+  ],
+  "headless": {
+    "protocolContractGroups": 10,
+    "exitCode": 0,
+    "passGroups": 11,
+    "command": "dotnet run --project tools/gameplay-checks/Gameplay.Checks.csproj"
+  },
+  "lessons": {
+    "invalidSelectorExit": 2,
+    "individual": [
+      {
+        "selector": "1",
+        "exitCode": 0,
+        "output": [
+          "  Direction changes first; Advance(.25) moves X: 0 -> 1; stop keeps X=1.",
+          "PASS 01 domain"
+        ]
+      },
+      {
+        "selector": "2",
+        "exitCode": 0,
+        "output": [
+          "  Application selects actor #1; actor #2 stays still; repository order is 1,2.",
+          "PASS 02 application"
+        ]
+      },
+      {
+        "selector": "3",
+        "exitCode": 0,
+        "output": [
+          "  Definition wires intent -> application -> PrePhysics; two ticks yield X=2; Reset yields X=0.",
+          "PASS 03 simulation"
+        ]
+      },
+      {
+        "selector": "4",
+        "exitCode": 0,
+        "output": [
+          "  Queued is not Accepted; tick 2 orders 1,2,3; unknown actor is rejected; Reset rejects old identity.",
+          "PASS 04 testability"
+        ]
+      },
+      {
+        "selector": "5",
+        "exitCode": 0,
+        "output": [
+          "  Seeded health + delayed respawn + JSON + three frame schedules: Completed; changed input: Diverged t1; invariant: ReproducedFailure t2.",
+          "PASS 05 replay"
+        ]
+      }
+    ]
+  },
+  "cli": {
+    "failure": {
+      "Format": "TemplateRecording",
+      "Matches": true,
+      "State": "ReproducedFailure",
+      "CurrentTick": 2,
+      "EndTick": 2,
+      "Policy": "gameplay-template-v1/splitmix64/lifecycle-v3/cli-position-limit-v1",
+      "FirstDifference": null,
+      "ExpectedFailureCode": "cli.position_limit",
+      "ObservedFailureCode": "cli.position_limit",
+      "Warnings": []
+    },
+    "success": {
+      "Format": "TemplateRecording",
+      "Matches": true,
+      "State": "Completed",
+      "CurrentTick": 8,
+      "EndTick": 8,
+      "Policy": "gameplay-template-v1/splitmix64/lifecycle-v3",
+      "FirstDifference": null,
+      "ExpectedFailureCode": null,
+      "ObservedFailureCode": null,
+      "Warnings": []
+    },
+    "noOverwrite": {
+      "exitCode": 1,
+      "sha256Unchanged": true
+    },
+    "changedHash": {
+      "Format": "TemplateRecording",
+      "Matches": false,
+      "State": "Diverged",
+      "CurrentTick": 1,
+      "EndTick": 8,
+      "Policy": "gameplay-template-v1/splitmix64/lifecycle-v3",
+      "FirstDifference": {
+        "Tick": 1,
+        "Category": "state_hash",
+        "Expected": "intentionally-changed",
+        "Actual": "f799f8eab36db152c6c4c949785b2786eb8ff69aa9c606dfaf82b2cc54bda64c"
+      },
+      "ExpectedFailureCode": null,
+      "ObservedFailureCode": null,
+      "Warnings": []
+    },
+    "changedPolicy": {
+      "Format": "TemplateRecording",
+      "Matches": false,
+      "State": "Diverged",
+      "CurrentTick": 0,
+      "EndTick": 8,
+      "Policy": "intentionally-unknown-policy",
+      "FirstDifference": {
+        "Tick": 0,
+        "Category": "policy",
+        "Expected": "intentionally-unknown-policy",
+        "Actual": "gameplay-template-v1/splitmix64/lifecycle-v3"
+      },
+      "ExpectedFailureCode": null,
+      "ObservedFailureCode": null,
+      "Warnings": []
+    },
+    "legacy": {
+      "originalUnchanged": true,
+      "commandRetiredExit": 1,
+      "formatRejectedExit": 1,
+      "sha256": "E7608979B3B6A7DBE959D8ADF1BF9877E5395EA20DD93744214C885B9277464C"
+    }
+  },
+  "editMode": {
+    "status": "completed",
+    "duration": 6.35,
+    "summary": {
+      "total": 186,
+      "passed": 186,
+      "failed": 0,
+      "skipped": 0,
+      "inconclusive": 0
+    },
+    "results": [
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.CoreHardeningTests.LowLevelClockAndFailure",
+        "Status": "Passed",
+        "Duration": 0.0272319,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.CoreHardeningTests.LowLevelReentryAndRenderFailure",
+        "Status": "Passed",
+        "Duration": 0.0025252,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.CoreHardeningTests.ParticipantOrderAndReactionTiming",
+        "Status": "Passed",
+        "Duration": 0.002793,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.CoreHardeningTests.SessionOwnerThread",
+        "Status": "Passed",
+        "Duration": 0.0044467,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.PhaseObservationTests.EmptyPipelineStillReportsEveryAuthoritativePhaseInOrder",
+        "Status": "Passed",
+        "Duration": 0.0150827,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.PhaseObservationTests.FailedPhaseHasBeginButNoEndAndNoLaterPhase(IntentAcquisition)",
+        "Status": "Passed",
+        "Duration": 0.0053876,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.PhaseObservationTests.FailedPhaseHasBeginButNoEndAndNoLaterPhase(PrePhysics)",
+        "Status": "Passed",
+        "Duration": 0.0003412,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.PhaseObservationTests.FailedPhaseHasBeginButNoEndAndNoLaterPhase(Physics)",
+        "Status": "Passed",
+        "Duration": 0.0002363,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.PhaseObservationTests.FailedPhaseHasBeginButNoEndAndNoLaterPhase(PostPhysics)",
+        "Status": "Passed",
+        "Duration": 0.0001606,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.PhaseObservationTests.FailedPhaseHasBeginButNoEndAndNoLaterPhase(StructuralCommit)",
+        "Status": "Passed",
+        "Duration": 0.0002254,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.PhaseObservationTests.FailedPhaseHasBeginButNoEndAndNoLaterPhase(PresentationCapture)",
+        "Status": "Passed",
+        "Duration": 0.0002317,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SessionTemplateTests.FaultAndReentry",
+        "Status": "Passed",
+        "Duration": 0.008451,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SessionTemplateTests.IndependentSessions",
+        "Status": "Passed",
+        "Duration": 0.0003312,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SessionTemplateTests.Lifecycle",
+        "Status": "Passed",
+        "Duration": 0.0006141,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SessionTemplateTests.MissingConfiguration",
+        "Status": "Passed",
+        "Duration": 0.0014704,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SessionTemplateTests.RealtimeFailuresAndReentry",
+        "Status": "Passed",
+        "Duration": 0.0034461,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SessionTemplateTests.RealtimeTimingAndOwnership",
+        "Status": "Passed",
+        "Duration": 0.0014114,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SessionTemplateTests.ResetFailures",
+        "Status": "Passed",
+        "Duration": 0.0006805,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SimulationBoundaryTests.DispatchObserverReportsActualCategoryAndWave",
+        "Status": "Passed",
+        "Duration": 0.0039525,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SimulationBoundaryTests.MissingAndDuplicateIntentHandlersFailExplicitly",
+        "Status": "Passed",
+        "Duration": 0.0007558,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SimulationPipelineTests.AdvanceTime_UsesFixedTicksAndExposesInterpolationAlpha",
+        "Status": "Passed",
+        "Duration": 0.0011859,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SimulationPipelineTests.Tick_DispatchesIntentThenInternalCommandThenDomainEvent",
+        "Status": "Passed",
+        "Duration": 0.0022658,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Framework.Tests.SimulationPipelineTests.Tick_ExecutesFrameworkPhasesInRegistrationOrder",
+        "Status": "Passed",
+        "Duration": 0.001102,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.ActorAdapterTests.AllocationAndReuseKeepObjectIdsSeparateFromInstanceGeneration",
+        "Status": "Passed",
+        "Duration": 0.0442563,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.ActorAdapterTests.CapacityCountsNormalizedContactsAndSnapshotsAreDetached",
+        "Status": "Passed",
+        "Duration": 0.0116366,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.ActorAdapterTests.ExplicitSnapDoesNotInterpolateAcrossSessionsWithAdjacentTicks",
+        "Status": "Passed",
+        "Duration": 0.0072797,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.ActorAdapterTests.InvalidSnapshotIsRejectedBeforeRemovingExistingBindings",
+        "Status": "Passed",
+        "Duration": 0.0025312,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.ActorAdapterTests.PhasePrecedenceIsIndependentOfCallbackOrder",
+        "Status": "Passed",
+        "Duration": 0.002063,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.ActorAdapterTests.PhysicsFactsCanonicalizeMirroredPairsAndSortByIdentityThenKind",
+        "Status": "Passed",
+        "Duration": 0.0012739,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.ActorAdapterTests.PresentationInterpolatesSnapshotsAndSnapsNewOrDiscontinuousObjects",
+        "Status": "Passed",
+        "Duration": 0.0049775,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.BackgroundIngressDoesNotExecuteAndBackgroundDrainFails",
+        "Status": "Passed",
+        "Duration": 0.0537162,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.ControlIsExclusiveAndInvalidatedBySessionChange",
+        "Status": "Passed",
+        "Duration": 0.0048643,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.DuplicatePendingAndCompletedRequestsExecuteOnlyOnce",
+        "Status": "Passed",
+        "Duration": 0.0021811,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.HandlerFailureIsRememberedAndDoesNotLeakExceptionDetails",
+        "Status": "Passed",
+        "Duration": 0.0026086,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.HistoryByteBudgetIsReservedBeforeExecution",
+        "Status": "Passed",
+        "Duration": 0.0009125,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.IngressAndHistoryLimitsNeverSilentlyEvict",
+        "Status": "Passed",
+        "Duration": 0.000906,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.InvalidVersionAndOversizeRequestAreRejectedWithoutQueueing",
+        "Status": "Passed",
+        "Duration": 0.0006182,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.OversizeResponseIsRememberedAfterSideEffects",
+        "Status": "Passed",
+        "Duration": 0.0008462,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.PermissionAndStaleSessionAreCheckedBeforeHandler",
+        "Status": "Passed",
+        "Duration": 0.0007438,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Tests.ProtocolEndpointTests.ReusingRequestIdWithDifferentContentConflicts",
+        "Status": "Passed",
+        "Duration": 0.0008083,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.DiagnosticsTests.ArtifactCodecRoundTripsEscapedTextWithoutClosingStreams",
+        "Status": "Passed",
+        "Duration": 0.114308,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.DiagnosticsTests.InvariantsRequireSealRejectDuplicatesAndUseOrdinalOrder",
+        "Status": "Passed",
+        "Duration": 0.0049302,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.DiagnosticsTests.TraceIsBoundedOrderedAndSnapshotIsOwned",
+        "Status": "Passed",
+        "Duration": 0.0124968,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.AdmissionAndDiagnostics",
+        "Status": "Passed",
+        "Duration": 0.0456573,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.DivergenceAndMalformedRecording",
+        "Status": "Passed",
+        "Duration": 0.0101775,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.FailureReplay",
+        "Status": "Passed",
+        "Duration": 0.0337344,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.InvariantAndCaptureFailures",
+        "Status": "Passed",
+        "Duration": 0.0259133,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.MetadataCausationAndResultPages",
+        "Status": "Passed",
+        "Duration": 0.0225539,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.OrderingResetAndLimits",
+        "Status": "Passed",
+        "Duration": 0.0031822,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.PhaseAndFileBounds",
+        "Status": "Passed",
+        "Duration": 0.006682,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.PolicyAndReplaySetupFailures",
+        "Status": "Passed",
+        "Duration": 0.0076671,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.RealtimeRecordingAndOwnership",
+        "Status": "Passed",
+        "Duration": 0.0038894,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.ReplayFrameMatrix",
+        "Status": "Passed",
+        "Duration": 0.0299903,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "Testability.Tests.TemplateTests.ThreadAndReentry",
+        "Status": "Passed",
+        "Duration": 0.0010634,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterCombat.Tests.CombatantTests.InvalidHealthConfigurationIsRejected",
+        "Status": "Passed",
+        "Duration": 0.0007746,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterCombat.Tests.CombatantTests.ZeroDamagePreservesHealthAndZeroHealthIsTerminal",
+        "Status": "Passed",
+        "Duration": 0.0004096,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterMovement.Tests.CharacterMovementTests.AdvanceUsesSpeedAndElapsedTimeAndZeroDirectionStops",
+        "Status": "Passed",
+        "Duration": 0.0012062,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterMovement.Tests.CharacterMovementTests.DirectionLimitsDiagonalButPreservesAnalogMagnitude",
+        "Status": "Passed",
+        "Duration": 0.0005062,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterMovement.Tests.CharacterMovementTests.InvalidDomainValuesAreRejected",
+        "Status": "Passed",
+        "Duration": 0.0010888,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterMovement.Tests.CharacterMovementTests.PresenterInterpolatesFirstTickWithoutChangingDomain",
+        "Status": "Passed",
+        "Duration": 0.003171,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterMovement.Tests.CharacterMovementTests.PresenterSnapsDiscontinuousTicksAndRejectsNaNAlpha",
+        "Status": "Passed",
+        "Duration": 0.0004061,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterMovement.Tests.CharacterMovementTests.RepositoryUsesStableIdentityOrderAndRejectsDuplicates",
+        "Status": "Passed",
+        "Duration": 0.0018691,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "CharacterMovement.Tests.CharacterMovementTests.UnknownCharacterIntentIsRejectedWithoutAffectingOthers",
+        "Status": "Passed",
+        "Duration": 0.0009765,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DebugOverlay.Tests.DiagnosticReaderTests.FailureDisplaysFaultWithoutClaimingRulesPassedAtFailedTick",
+        "Status": "Passed",
+        "Duration": 0.0921817,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DebugOverlay.Tests.DiagnosticReaderTests.InvariantViolationsRemainReadableAfterFault",
+        "Status": "Passed",
+        "Duration": 0.0113375,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DebugOverlay.Tests.DiagnosticReaderTests.PanelHasItsOwnBoundAndReportsSourceGaps",
+        "Status": "Passed",
+        "Duration": 0.0038214,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DebugOverlay.Tests.DiagnosticReaderTests.PollDoesNotAdvanceTickEvaluateRulesOrRecordTrace",
+        "Status": "Passed",
+        "Duration": 0.0025165,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DebugOverlay.Tests.DiagnosticReaderTests.ReaderCannotBecomeGameplayOrAdminController",
+        "Status": "Passed",
+        "Duration": 0.0090808,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DebugOverlay.Tests.DiagnosticReaderTests.ResetChangesStreamClearsPanelAndLeavesOldSnapshotIntact",
+        "Status": "Passed",
+        "Duration": 0.0058938,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.BadPayloadAndCursorAreStructuredErrors",
+        "Status": "Passed",
+        "Duration": 0.0197709,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.CapabilitiesReportActualLimitsAndModernPolicy",
+        "Status": "Passed",
+        "Duration": 0.0149749,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.JsonProtocolMatchesDirectGameplayAndStepRetryDoesNotAdvance",
+        "Status": "Passed",
+        "Duration": 0.0286951,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.ModernAdmissionCodesAndExecutionResultsRemainDistinct",
+        "Status": "Passed",
+        "Duration": 0.0328863,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.PayloadVersionIsExplicitAndOldClientsCannotMutate",
+        "Status": "Passed",
+        "Duration": 0.0114219,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.ReaderCannotClaimOrMutateButCanDiscoverAndObserve",
+        "Status": "Passed",
+        "Duration": 0.0068492,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.RealtimeSessionIsReadOnlyThroughAdapter",
+        "Status": "Passed",
+        "Duration": 0.0064601,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.ResetRetryReturnsOriginalNewIdentityAndRequiresNewLease",
+        "Status": "Passed",
+        "Duration": 0.0058639,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.ResultsDiagnosticsAndTraceAreMappedToIndependentDtos",
+        "Status": "Passed",
+        "Duration": 0.0141056,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplayProtocol.Game.Tests.GameplayProtocolTests.RuntimeDriveOwnershipChangesAreCheckedAtExecution",
+        "Status": "Passed",
+        "Duration": 0.0211953,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.DemoTemplateTests.DemoUsesTemplateWithGameplayParityAndReplay",
+        "Status": "Passed",
+        "Duration": 1.3000162,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.AttackChecksRangeSelfAndUnknownTargetWithoutDamage",
+        "Status": "Passed",
+        "Duration": 0.0029348,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.AttackDamageDeathAndStructuralCommitOccurOnce",
+        "Status": "Passed",
+        "Duration": 0.0030234,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.CanonicalHashIncludesHealthAndDesiredDirectionWithUnchangedPositions",
+        "Status": "Passed",
+        "Duration": 0.0052442,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.CombatDomainClampsOverkillAndRejectsNegativeDamage",
+        "Status": "Passed",
+        "Duration": 0.0004076,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.DeadActorCannotAttackLaterInSameTick",
+        "Status": "Passed",
+        "Duration": 0.0020634,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.ExceptionFaultsSessionAndRecordsReproducibleInput",
+        "Status": "Passed",
+        "Duration": 0.0014861,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.IdenticalScenarioAndInputsReproduceEveryTickHash",
+        "Status": "Passed",
+        "Duration": 0.0062466,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.InvalidActionsProduceStableResultsAndDoNotMutateActors",
+        "Status": "Passed",
+        "Duration": 0.0028432,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.InvariantFailureCapturesEvidenceAndRequiresReset",
+        "Status": "Passed",
+        "Duration": 0.0029726,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.InvariantRecordingRequiresTheSamePolicyToReproduce",
+        "Status": "Passed",
+        "Duration": 0.0044274,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.LimitsBoundHistoryAndTickExecution",
+        "Status": "Passed",
+        "Duration": 0.0016684,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.ObservationIsOwnedAndSessionsAreIsolated",
+        "Status": "Passed",
+        "Duration": 0.0019467,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.OracleDetectsDeliberatelyMalformedObservationWithoutPrivateStateMutation",
+        "Status": "Passed",
+        "Duration": 0.0007723,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.PlayerAdapterAndFormalDriverProduceIdenticalMovement",
+        "Status": "Passed",
+        "Duration": 0.0029385,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.QueueRejectsDuplicateStaleAndPastTickInputs",
+        "Status": "Passed",
+        "Duration": 0.0014483,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.RecordingRoundTripReproducesFailureAndCompletedResults",
+        "Status": "Passed",
+        "Duration": 0.0073262,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.ResetRebuildsWorldAndInvalidatesOldSessionInputs",
+        "Status": "Passed",
+        "Duration": 0.0031719,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.SameTickUsesSequenceNotSubmissionOrder",
+        "Status": "Passed",
+        "Duration": 0.0044256,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.StopRejectsGameplayAndOnlyAdminCanReset",
+        "Status": "Passed",
+        "Duration": 0.0019273,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.GameplayBehaviorTests.SubmissionIsNotExecutionAndTargetTickIsExact",
+        "Status": "Passed",
+        "Duration": 0.0016201,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.DelayedRespawnIsTickBoundedIndependentAndReplayable(0.03333334f)",
+        "Status": "Passed",
+        "Duration": 0.0777232,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.DelayedRespawnIsTickBoundedIndependentAndReplayable(0.006944444f)",
+        "Status": "Passed",
+        "Duration": 0.0763044,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.DelayedRespawnIsTickBoundedIndependentAndReplayable(0.37f)",
+        "Status": "Passed",
+        "Duration": 0.0761769,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.DifferentSeedsProduceDifferentHealthSequences",
+        "Status": "Passed",
+        "Duration": 0.0099669,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.FailurePreservesFirstEvidenceStageAndCancelsFutureInputs",
+        "Status": "Passed",
+        "Duration": 0.0045063,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.InvalidRandomRangeAndSpawnBudgetFailBeforeWorldReplacement",
+        "Status": "Passed",
+        "Duration": 0.0004834,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.RandomIsConsumedOnlyOnEnemyBirthAndResetRestoresIt",
+        "Status": "Passed",
+        "Duration": 0.00201,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.RepeatedRandomRespawnsReplayAcrossFrameSchedules(0.03333334f)",
+        "Status": "Passed",
+        "Duration": 0.0807051,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.RepeatedRandomRespawnsReplayAcrossFrameSchedules(0.01666667f)",
+        "Status": "Passed",
+        "Duration": 0.0787486,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.RepeatedRandomRespawnsReplayAcrossFrameSchedules(0.006944444f)",
+        "Status": "Passed",
+        "Duration": 0.0790968,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.RepeatedRandomRespawnsReplayAcrossFrameSchedules(0.37f)",
+        "Status": "Passed",
+        "Duration": 0.0781973,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.RespawnCommitsAfterCommandsAndOldIdNeverTargetsReplacement",
+        "Status": "Passed",
+        "Duration": 0.0037653,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.RespawnDelayVariesBySeedAndBudgetDoesNotConsumeRandom",
+        "Status": "Passed",
+        "Duration": 0.0202206,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.SpawnBudgetBoundsTombstonesAndDoesNotFaultSession",
+        "Status": "Passed",
+        "Duration": 0.0027529,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.LifecycleAndRandomTests.StopCancellationReasonIsDistinctFromFault",
+        "Status": "Passed",
+        "Duration": 0.0010537,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ModernGameplayTests.CustomInvariantIsolationAndPolicy",
+        "Status": "Passed",
+        "Duration": 0.0183096,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ModernGameplayTests.DiagonalMovementAndReplay",
+        "Status": "Passed",
+        "Duration": 0.0620683,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ModernGameplayTests.EventCausation",
+        "Status": "Passed",
+        "Duration": 0.0116239,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ModernGameplayTests.ScenarioLimits",
+        "Status": "Passed",
+        "Duration": 0.0234996,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.FirstChangedCheckpointStopsAtExactTick",
+        "Status": "Passed",
+        "Duration": 0.0082807,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.MalformedAndIncompleteHistoryCannotPlay",
+        "Status": "Passed",
+        "Duration": 0.004564,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.PauseStepRestartAndEndDoNotAdvanceUnexpectedly",
+        "Status": "Passed",
+        "Duration": 0.0127546,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.RealtimeDemoRecordingPlaysInSeparateManualSession",
+        "Status": "Passed",
+        "Duration": 0.0075222,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.RecordingCodecRetainsCallerStreamsAndEnforcesReadBounds",
+        "Status": "Passed",
+        "Duration": 0.0752974,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.ReplayMatchesAcrossFrameRatesIncludingDeathAndInputFreeTail(0.03333334f)",
+        "Status": "Passed",
+        "Duration": 0.0087975,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.ReplayMatchesAcrossFrameRatesIncludingDeathAndInputFreeTail(0.01666667f)",
+        "Status": "Passed",
+        "Duration": 0.0081726,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.ReplayMatchesAcrossFrameRatesIncludingDeathAndInputFreeTail(0.006944444f)",
+        "Status": "Passed",
+        "Duration": 0.0080901,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.ReplayMatchesAcrossFrameRatesIncludingDeathAndInputFreeTail(0.37f)",
+        "Status": "Passed",
+        "Duration": 0.0081936,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.ResultAndPolicyDifferencesAreReported",
+        "Status": "Passed",
+        "Duration": 0.0099702,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.SnapshotIsIndependentOfLaterRecordingAndPendingInputs",
+        "Status": "Passed",
+        "Duration": 0.0072316,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ReplayTests.ZeroTickAndFaultedRecordingsAreBothSupported",
+        "Status": "Passed",
+        "Duration": 0.0043022,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.FaultCancelsFutureInputsButPreservesCompletedResults",
+        "Status": "Passed",
+        "Duration": 0.0018366,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.ManualSessionCanLeaseRealtimeAndResumeManualAfterRelease",
+        "Status": "Passed",
+        "Duration": 0.0013255,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.PortsDoNotExposeEachOthersAuthority",
+        "Status": "Passed",
+        "Duration": 0.0010262,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.RealtimeClockCannotBeDrivenManuallyOrClaimedTwice",
+        "Status": "Passed",
+        "Duration": 0.002179,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.ReplayCreatesItsOwnSessionAndRejectsMissingRecording",
+        "Status": "Passed",
+        "Duration": 0.002139,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.ReplayDistinguishesPolicyMismatchFromRuntimeWarning",
+        "Status": "Passed",
+        "Duration": 0.0055569,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.ReplayReportsTheFirstChangedEvidence(\"state_hash\")",
+        "Status": "Passed",
+        "Duration": 0.0031676,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.ReplayReportsTheFirstChangedEvidence(\"action_result\")",
+        "Status": "Passed",
+        "Duration": 0.0024636,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.ReplayReportsTheFirstChangedEvidence(\"failure\")",
+        "Status": "Passed",
+        "Duration": 0.0024126,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.ResultsAreQueryableWithoutTraceAndPagesUseCompletionOrder",
+        "Status": "Passed",
+        "Duration": 0.0023406,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "GameplaySimulation.Tests.ToolControlTests.StopCancelsPendingAndResetInvalidatesResultsAndCursors",
+        "Status": "Passed",
+        "Duration": 0.0018827,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.MovementDemoTests.CatchUpTicksReuseHeldInputAndReleaseStopsNextTick",
+        "Status": "Passed",
+        "Duration": 0.013694,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.MovementDemoTests.InputWaitsForTickThenMovesAndInterpolates",
+        "Status": "Passed",
+        "Duration": 0.0062294,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.MovementDemoTests.KeyboardAdapterSupportsArrowsOppositesAndFocusLoss",
+        "Status": "Passed",
+        "Duration": 0.0336859,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.MovementDemoTests.LastInputBeforeTickWinsAndRenderOnlyDoesNotAdvanceState",
+        "Status": "Passed",
+        "Duration": 0.0028471,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.MovementDemoTests.SameTickInputHasSameStateAcrossRenderSchedules",
+        "Status": "Passed",
+        "Duration": 0.0130751,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.MovementDemoTests.SpacePressAttacksOnceAcrossCatchUpTicks",
+        "Status": "Passed",
+        "Duration": 0.0063001,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "InvariantChecks.Tests.InvariantRegistryTests.PassingChecksReturnEmptyAndFailuresAreOwned",
+        "Status": "Passed",
+        "Duration": 0.0014244,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "InvariantChecks.Tests.InvariantRegistryTests.RegistrationSealsAndChecksUseOrdinalOrder",
+        "Status": "Passed",
+        "Duration": 0.0014787,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "InvariantChecks.Tests.InvariantRegistryTests.RuleExceptionPropagatesForCallerPolicy",
+        "Status": "Passed",
+        "Duration": 0.0007712,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.BoundedDraw_RejectsLowValuesInsteadOfIntroducingModuloBias",
+        "Status": "Passed",
+        "Duration": 0.0003611,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.Bounds_IncludeNegativeAndFullWidthIntRanges",
+        "Status": "Passed",
+        "Duration": 0.0766843,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.FloatConversions_FollowDocumentedBitMapping",
+        "Status": "Passed",
+        "Duration": 0.0011395,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.InvalidRangesAndVersions_DoNotAdvanceState",
+        "Status": "Passed",
+        "Duration": 0.0009784,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.NumericStreams_AreReproducibleAndHaveSeparateState",
+        "Status": "Passed",
+        "Duration": 0.0002812,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.Restore_ResumesExactMixedDrawSequenceInAnotherInstance",
+        "Status": "Passed",
+        "Duration": 0.0003902,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.SameSeedAndCalls_ProduceSameSequence",
+        "Status": "Passed",
+        "Duration": 0.0010146,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SeededRandom.Tests.SplitMix64RandomTests.SeedZero_MatchesPinnedReferenceVector",
+        "Status": "Passed",
+        "Duration": 0.0002156,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.CancelledSpawn_NeverBecomesAliveAndDoesNotConsumeSpawnSequence",
+        "Status": "Passed",
+        "Duration": 0.0015786,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.Capacity_IsNotFreedUntilCommit",
+        "Status": "Passed",
+        "Duration": 0.0004029,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.Destroy_RemainsActiveUntilCommitThenInvalidatesIdAndHandle",
+        "Status": "Passed",
+        "Duration": 0.0008604,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.EmptyCommitAndInvalidIdentities_AreWellDefined",
+        "Status": "Passed",
+        "Duration": 0.000923,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.QueriesAndCommitResults_AreStableReadOnlyCopies",
+        "Status": "Passed",
+        "Duration": 0.0009292,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.Reuse_ChoosesLowestSlotButNeverReusesIdentity",
+        "Status": "Passed",
+        "Duration": 0.0003494,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.SameOperations_ProduceSameIdentityAndOrderingTrace",
+        "Status": "Passed",
+        "Duration": 0.0008311,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.Spawn_IsReservedButNotActiveUntilCommit",
+        "Status": "Passed",
+        "Duration": 0.0003951,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "SimulationObjects.Tests.SimulationObjectRegistryTests.StableOrder_IsNotSlotOrderOrDestroyRequestOrder",
+        "Status": "Passed",
+        "Duration": 0.0004309,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TickInputBuffering.Tests.TickInputBufferTests.Axis_UsesLatestFiniteValueAndPersistsAcrossTicks",
+        "Status": "Passed",
+        "Duration": 0.0019021,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TickInputBuffering.Tests.TickInputBufferTests.HeldButton_DoesNotRepeatPressedAcrossCatchupTicks",
+        "Status": "Passed",
+        "Duration": 0.0011569,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TickInputBuffering.Tests.TickInputBufferTests.InvalidConfigurationAndUnknownInputs_AreRejected",
+        "Status": "Passed",
+        "Duration": 0.0008048,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TickInputBuffering.Tests.TickInputBufferTests.InvalidTick_DoesNotConsumePendingEdges",
+        "Status": "Passed",
+        "Duration": 0.0004222,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TickInputBuffering.Tests.TickInputBufferTests.QuickTap_PreservesBothEdgesUntilConsumed",
+        "Status": "Passed",
+        "Duration": 0.0002337,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TickInputBuffering.Tests.TickInputBufferTests.RegistrationOrder_DoesNotChangeSnapshotOrder",
+        "Status": "Passed",
+        "Duration": 0.0005874,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TickInputBuffering.Tests.TickInputBufferTests.Snapshot_IsNotChangedByLaterCapturesOrConsumes",
+        "Status": "Passed",
+        "Duration": 0.0004953,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TraceBuffering.Tests.TraceBufferTests.EmptyStreamHasStableCursorAndNoFalseGap",
+        "Status": "Passed",
+        "Duration": 0.0021703,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TraceBuffering.Tests.TraceBufferTests.InvalidReadsDoNotConsumeAnything",
+        "Status": "Passed",
+        "Duration": 0.0014214,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TraceBuffering.Tests.TraceBufferTests.NewStreamDetectsForeignCursorAndBeginsOwnHistory",
+        "Status": "Passed",
+        "Duration": 0.000832,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TraceBuffering.Tests.TraceBufferTests.PagesAdvanceExclusiveCursorWithoutDuplicates",
+        "Status": "Passed",
+        "Duration": 0.0006308,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TraceBuffering.Tests.TraceBufferTests.ReaderCannotBeCastToWriterOrOwner",
+        "Status": "Passed",
+        "Duration": 0.0002567,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TraceBuffering.Tests.TraceBufferTests.SlowReaderReceivesExactGapAndOnlyRetainedRecords",
+        "Status": "Passed",
+        "Duration": 0.000458,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "TraceBuffering.Tests.TraceBufferTests.SnapshotSurvivesOverwriteAndReadersHaveIndependentPositions",
+        "Status": "Passed",
+        "Duration": 0.0002981,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "WaveDispatching.Tests.WaveDispatcherTests.CallbackFailureClearsWorkAndReleasesGuard",
+        "Status": "Passed",
+        "Duration": 0.0063,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "WaveDispatching.Tests.WaveDispatcherTests.CallbackGuardsPreserveQueuedItems",
+        "Status": "Passed",
+        "Duration": 0.0008665,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "WaveDispatching.Tests.WaveDispatcherTests.DispatchAll_DefersReentrantItemsToNextWave",
+        "Status": "Passed",
+        "Duration": 0.0003913,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "WaveDispatching.Tests.WaveDispatcherTests.DispatchAll_WhenWaveLimitIsExceeded_ClearsPendingWork",
+        "Status": "Passed",
+        "Duration": 0.000387,
+        "Message": null,
+        "StackTrace": null
+      }
+    ]
+  },
+  "playMode": {
+    "status": "completed",
+    "duration": 0.25,
+    "summary": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "inconclusive": 0
+    },
+    "results": [
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.LocalPhysicsTests.FactOverflowFaultsAtTheControlledBoundary",
+        "Status": "Passed",
+        "Duration": 0.0374516,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.LocalPhysicsTests.LocalSensorsPublishDeduplicatedFactsWithoutSteppingDefaultPhysics",
+        "Status": "Passed",
+        "Duration": 0.0299012,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "DeterministicSimulation.Unity.Tests.LocalPhysicsTests.ReusedAndForeignBindingsCannotProduceStaleContactFacts",
+        "Status": "Passed",
+        "Duration": 0.0317521,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.PlayMode.GameplayPresentationTests.DemoCaptureDrivesDeathRespawnReplayAndReturnToLiveWithoutAdvancingItsClock",
+        "Status": "Passed",
+        "Duration": 0.0382818,
+        "Message": null,
+        "StackTrace": null
+      },
+      {
+        "FullName": "MovementDemo.Tests.PlayMode.GameplayPresentationTests.DetachedSnapshotsMapThreeActorsByIdentityAndReuseViewsAcrossReset",
+        "Status": "Passed",
+        "Duration": 0.0311988,
+        "Message": null,
+        "StackTrace": null
+      }
+    ]
+  },
+  "scene": {
+    "Scene": "Assets/game/movement-demo/scenes/CharacterMovementDemo.unity",
+    "Dirty": false,
+    "MissingScripts": 0
+  },
+  "demo": {
+    "SavedPath": "C:/Users/angus/AppData/LocalLow/DefaultCompany/Replay and Simulation\\Replays\\replay-20260830-075443-997e96f9e90845a2a7b65701ade8ef6c.json",
+    "LiveTick": 2203,
+    "ReplayEnd": 2203,
+    "State": "Completed",
+    "ReturnLiveTick": 2203,
+    "ActiveViews": 2,
+    "AdapterFailure": null
+  },
+  "playerBuild": {
+    "totalWarnings": 1,
+    "target": "StandaloneWindows64",
+    "result": "Succeeded",
+    "totalErrors": 0,
+    "outputPath": ".utmp/Player/ReplaySimulation.exe",
+    "reportedTotalSizeBytes": 113859032,
+    "buildId": "build_fd84a4382840",
+    "warnings": [
+      {
+        "message": "Pipeline: No RuntimePipelineManager components found in build scenes. Pipeline will be disabled in Player builds."
+      }
+    ],
+    "buildTimeMs": 60329
+  },
+  "playerStartup": {
+    "executable": "P:\\Tutorial_Exercises\\Replay and Simulation\\.utmp\\Player\\ReplaySimulation.exe",
+    "elapsedSeconds": 30.99,
+    "remainedRunning": true,
+    "pid": 33796,
+    "runtimeErrors": [],
+    "log": "P:\\Tutorial_Exercises\\Replay and Simulation\\.utmp\\retirement-player.log",
+    "startedAtUtc": "2026-08-30T07:56:33.7685057Z",
+    "observedAtUtc": "2026-08-30T07:57:04.7561548Z",
+    "stoppedAfterCheck": true
+  },
+  "sourceBoundary": {
+    "retiredApiReferences": 0,
+    "generatedPerformanceTestResourcesRemoved": true,
+    "assemblyDefinitions": 40,
+    "validUniqueMetadataGuids": 293,
+    "activeSourceProjectAssemblyFiles": 176,
+    "loadedGameAssemblyProbe": {
+      "absent": true,
+      "names": [
+        "GameplaySimulation.GameplaySession",
+        "GameplaySimulation.GameplayRequest",
+        "GameplaySimulation.ReplayArtifact",
+        "GameplaySimulation.FailureArtifact",
+        "GameplaySimulation.GameplayStateHasher",
+        "GameplaySimulation.ReplayPlayback"
+      ]
+    }
+  },
+  "coverageMigration": {
+    "DiagnosticReader": {
+      "after": 6,
+      "before": 6
+    },
+    "retired": "One legacy capability catalog case; previous aggregate rerun-difference case replaced by three first-difference cases. No required gameplay behavior removed.",
+    "GameProtocol": {
+      "after": 10,
+      "before": 6
+    },
+    "Replay": {
+      "after": 12,
+      "before": 12
+    },
+    "LifecycleAndRandom": {
+      "after": 15,
+      "before": 15
+    },
+    "GameplayBehavior": {
+      "after": 20,
+      "before": 20
+    },
+    "ToolControl": {
+      "after": 11,
+      "before": 10
+    }
+  },
+  "limitations": [
+    "Same-runtime logical determinism only",
+    "Startup smoke uses batchmode/nographics and does not replace interactive gameplay tests",
+    "Original legacy failure file lacks fully verified build/policy and remains historical evidence",
+    "No socket, external client, rollback, snapshot restore or dynamic-body authority added"
+  ],
+  "documentation": {
+    "currentMarkdownFiles": 42,
+    "historicalAssessmentsExcluded": true,
+    "missingLocalLinks": 0,
+    "validatedLocalLinks": 261
+  },
+  "cleanup": {
+    "preloadedAssetsRestoredToBaseline": true,
+    "newOrChangedCSharpDeclarationsExplicitlyTyped": true,
+    "unityConnectRestoredDisabled": true,
+    "solutionOrderAndEncodingRestored": true
+  }
+}

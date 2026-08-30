@@ -76,7 +76,7 @@ Observer 應回傳不可變複本／value object，不改世界、不保留 worl
 Observer 的例外會傳出但不改 session 狀態，因為 observer 契約是唯讀；不得依賴這點在 observer 內改 gameplay。
 `Render(alpha)` 呼叫已註冊 presentation participants，alpha 必須在 0..1；此模板不累積 wall time、不自動產生插值 snapshot。
 
-## 基本 Session、Testability 與相容 facade
+## 基本 Session 與 Testability
 
 本模板提供手動 Step，也可透過 CreateRealtimeRunner 建立具唯一驅動權的即時 driver；掛上 Runner 後不可手動 Step，先 Dispose Runner 才能切回手動控制。詳見 [即時 Runner](realtime-runner.md)。
 EnqueueIntent 是放入下一次處理的 intent queue，不是帶 SessionId／Sequence／TargetTick 的 gameplay admission。
@@ -85,9 +85,9 @@ Stop 保留不可再執行的 queue，Reset／Dispose 丟棄；沒有 ActionResu
 
 [ReplayableSimulationDefinition／TestableSimulationSession](testability-replay-template.md)已在基本模板外提供 admission、ActionResult、invariants、trace、recording 與 Replay。第 4–5 章與 Demo 以 [GameplayDefinition](../../Assets/game/gameplay-simulation/src/Runtime/GameplayDefinition.cs)接入這層；Definition 建立 GameplayWorld，玩法決策仍由 GameplayActions／Domain 執行。
 
-[GameplaySession](../../Assets/game/gameplay-simulation/src/Runtime/GameplaySession.cs)現為同一 GameplayDefinition → TestableSimulationSession 的相容 facade，保留舊 ports／artifact/hash 投影，沒有另一份玩法或 pipeline。新功能直接使用現行 definition，不在 facade 增加 handlers。
+舊 GameplaySession facade 與 artifact API 已退役；新功能直接使用現行 definition 與模板 ports。需要查閱舊工具時，使用 [退休政策](../legacy-compatibility-retirement.md)所列的歷史基準，不把舊型別加回新專案。
 
-基本 framework 不反向依賴 testability 或 Protocol；Replay 來自已存在的延伸層。不要同時把兩個獨立 host 套在同一個可變 world。Protocol 暫緩，只保留相容 consumer，不是建立基本／可重播 session 的前置條件。
+基本 framework 不反向依賴 testability 或 Protocol；Replay 來自已存在的延伸層。不要同時把兩個獨立 host 套在同一個可變 world。Protocol adapter 已接現行 ports，但 transport 仍暫緩；它不是建立基本／可重播 session 的前置條件。
 
 ## 契約驗證
 

@@ -1,5 +1,7 @@
 # GameplaySession 與舊 artifact 的退役方案評估
 
+> 本文保留退役前的評估；方案 A 後續已執行，現況見 [退役政策](../legacy-compatibility-retirement.md)與[實作／驗證紀錄](../implementation-progress.md)。本文的舊 source 路徑與行號對應基準 `22f6966`，部分型別已從目前工作目錄移除。
+
 日期：2026-08-30。性質：方案建議；本輪未修改 runtime、Protocol、檔案格式或 Unity 資產。
 
 本評估以目前工作目錄的實作為準，包括上一輪尚未提交的重構；不是只看 Git HEAD。沿用「Protocol 暫緩、避免過度工程」的範圍，不把恢復 Protocol 開發當成本輪已獲授權的實作。

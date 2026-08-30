@@ -28,7 +28,7 @@ Unity 沿用現行 Demo，已新增[多物件／Pool 與獨立 Physics sensor ad
 
 - [極簡接線範例](minimal-wiring.md)：獨立 Player 模型，已有編譯來源；只用來比較最少接點。
 - [從零建立 Unity 接線案例](minimal-unity-wiring.md)：獨立 CubeActor 文件範例；該頁明示尚未完成其 Unity 編譯／Play Mode 驗證。
-- [FrameworkGuideExamples](../../tools/gameplay-checks/FrameworkGuideExamples.cs) 中的 ControlledMovement 保留 GameplaySession 相容 ports 檢查。該 facade 已轉接同一 template runtime；新組裝使用 GameplayDefinition，不需要先完成相容 API 範例。
+- [FrameworkGuideExamples](../../tools/gameplay-checks/FrameworkGuideExamples.cs) 中的 ControlledMovement 是現行 ports 的短版範例；使用 GameplayDefinition，不需要另外學習舊控制面。
 
 ## 依任務選擇
 
@@ -39,22 +39,23 @@ Unity 沿用現行 Demo，已新增[多物件／Pool 與獨立 Physics sensor ad
 | 理解攻擊、死亡與錄製   | 可執行第 5 階段；包含 seeded 血量、延遲重生與現行 GameplayWorld |
 | 接上 Unity             | 累積路線的 Unity 連接、RealtimeRunner、MovementDemoSession |
 | 排查 Replay 不一致     | 驗證檢查表、契約中的 hash 邊界                 |
-| 未來接外部 AI／Fuzzer  | Protocol 暫緩；先完成當前 framework 與 game 接線驗收 |
+| 接工具或未來的 AI／Fuzzer | Protocol adapter 的 game payload v2／現行 ports；transport 與外部 client 仍暫緩 |
 
 ## 現有參考實作
 
 - [module／assembly／namespace 對照](../module-naming.md)。
-- [Gameplay Simulation 與相容控制面](../../Assets/game/gameplay-simulation/README.md)；現行 Demo 路徑見 [Demo 整合](demo-template.md)。
+- [Gameplay Simulation 與正式控制面](../../Assets/game/gameplay-simulation/README.md)；現行 Demo 路徑見 [Demo 整合](demo-template.md)。
 - [Testability](../../Assets/framework.testability/README.md)。
 - [完整 Demo](../../Assets/game/movement-demo/README.md)。
 - [生命週期、phase、RNG 與重生排程](../testability/simulation-lifecycle-phase-random.md)。
-- [Protocol 核心](../../Assets/framework.gameplay-protocol/README.md)與[專案 adapter](../../Assets/game/gameplay-protocol/README.md)：**Deferred（暫緩）**，保留相容；目前沒有網路 listener，也未接到 Demo。
+- [Protocol 核心](../../Assets/framework.gameplay-protocol/README.md)與[專案 adapter](../../Assets/game/gameplay-protocol/README.md)：envelope v1／game payload v2，直接接正式 ports；**transport Deferred（暫緩）**，沒有網路 listener，也未接到 Demo。
+- [舊控制面與格式退休政策](../legacy-compatibility-retirement.md)：現行版本不再讀舊 artifact；歷史基準為 `22f6966`。
 
 ## 使用範圍
 
-本輪依實作進度分階段整理 framework 與教學；導航完成不等於接線、測試或全部課程完成。Protocol 等其他 framework 穩定後再處理，不阻擋目前各階段驗收，也不因此刪除它仍需的相容入口。
+本輪依實作進度分階段整理 framework 與教學；導航完成不等於接線、測試或全部課程完成。Protocol adapter 的 ports 遷移已納入本輪，transport／外部 client 另列暫緩，不由現有測試推定完成。
 
-範例分成「最小機制展示」「現行 Demo」與「過渡相容路徑」；不要把完整 GameplaySession 整份複製後當成所有遊戲的標準模型。
+範例分成「最小機制展示」與「現行 Demo」；舊 facade／artifact 只留在歷史基準，不是第三條現行教學路線。先學所需接點，不整份複製完整遊戲組裝。
 目前目標是相同 runtime／規則下重現，不承諾跨平台 bitwise determinism、完整 snapshot restore 或 rollback。
 
 維護原則：修改契約時，同時更新本指南與對應測試；程式範例以實際參與編譯的來源為準。

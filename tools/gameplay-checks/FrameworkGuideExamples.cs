@@ -5,6 +5,7 @@ using CharacterMovement.Integration;
 using DeterministicSimulation.Framework;
 using GameplaySimulation;
 using Testability;
+using Testability.Templates;
 using MovementAggregate = CharacterMovement.Domain.CharacterMovement;
 
 internal static class FrameworkGuideExamples
@@ -28,7 +29,7 @@ internal static class FrameworkGuideExamples
         MinimalWiringExample.Example.Run();
         Console.WriteLine("PASS: minimal wiring example (queue, movement, stop and reset).");
         GameplaySimulation.Tests.DemoTemplateChecks.Verify();
-        Console.WriteLine("PASS: migrated demo template, legacy gameplay parity and replay frame matrix.");
+        Console.WriteLine("PASS: direct-session and demo template contracts, gameplay parity and replay frame matrix.");
         GameplaySimulation.Tests.ModernGameplayContractChecks.ScenarioLimits();
         GameplaySimulation.Tests.ModernGameplayContractChecks.CustomInvariantIsolationAndPolicy();
         GameplaySimulation.Tests.ModernGameplayContractChecks.EventCausation();
@@ -77,17 +78,20 @@ internal static class FrameworkGuideExamples
 
     private static void ControlledMovement()
     {
-        GameplaySession session = new GameplaySession();
-        session.Admin.Start(new GameplayScenario(tickDelta: .25f, includeEnemy: false));
-        SubmissionResult admission = session.Gameplay.Submit(new GameplayRequest(
-            session.Id, 1, 2, GameplayActionKind.Move, 1, x: 1));
-        Require(admission.Queued && session.Gameplay.Observe().Actors[0].X == 0, "Admission is not execution.");
-        TickReport first = session.Simulation.Step();
-        Require(first.Results.Count == 0 && session.Gameplay.Observe().Actors[0].X == 0, "Target tick must be respected.");
-        TickReport second = session.Simulation.Step();
-        Require(second.Results.Count == 1 && second.Results[0].Status == ActionStatus.Accepted, "Execution result.");
-        Require(session.Gameplay.Observe().Actors[0].X == 1, "Controlled movement position.");
-        Require(session.Results.Find(session.Id, 1).State == ActionLookupState.Completed, "Result query.");
+        using (TestableSimulationSession<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> session =
+            new GameplayDefinition().CreateTestSession(new GameplayScenario(tickDelta: .25f, includeEnemy: false)))
+        {
+            ulong player = session.Gameplay.Observe().PlayerId;
+            SubmissionResult admission = session.Gameplay.Submit(session.Id, 1, 2,
+                new GameplayInput(GameplayActionKind.Move, player, x: 1));
+            Require(admission.Queued && session.Gameplay.Observe().FindActor(player).X == 0, "Admission is not execution.");
+            TemplateTick first = session.Simulation.Step();
+            Require(first.Results.Count == 0 && session.Gameplay.Observe().FindActor(player).X == 0, "Target tick must be respected.");
+            TemplateTick second = session.Simulation.Step();
+            Require(second.Results.Count == 1 && second.Results[0].Status == ActionStatus.Accepted, "Execution result.");
+            Require(session.Gameplay.Observe().FindActor(player).X == 1, "Controlled movement position.");
+            Require(session.Results.Find(session.Id, 1).State == "Completed", "Result query.");
+        }
     }
 
     private static void Require(bool condition, string message)

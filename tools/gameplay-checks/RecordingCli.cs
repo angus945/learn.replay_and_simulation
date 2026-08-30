@@ -18,15 +18,14 @@ internal static class RecordingCli
 
     internal static int Run(string[] args)
     {
-        if (args.Length != 2) throw new ArgumentException("Usage: capture|capture-success|rerun|legacy-rerun <path.json>");
+        if (args.Length != 2) throw new ArgumentException("Usage: capture|capture-success|rerun <path.json>");
         string path = Path.GetFullPath(args[1]);
         switch (args[0])
         {
             case "capture": return Capture(path, expectFailure: true);
             case "capture-success": return Capture(path, expectFailure: false);
             case "rerun": return Rerun(path);
-            case "legacy-rerun": return LegacyRerun(path);
-            default: throw new ArgumentException("Unknown command. Use capture, capture-success, rerun or legacy-rerun.");
+            default: throw new ArgumentException("Unknown command. Use capture, capture-success or rerun. Historical formats require the archived version documented in docs/legacy-compatibility-retirement.md.");
         }
     }
 
@@ -88,20 +87,6 @@ internal static class RecordingCli
                 Warnings = warnings
             });
             return matches ? 0 : 2;
-        }
-    }
-
-    private static int LegacyRerun(string path)
-    {
-        using (FileStream input = OpenBounded(path))
-        {
-            FailureArtifact artifact = ArtifactJson.Read<FailureArtifact>(input);
-            if (artifact == null) throw new ArgumentException("Legacy artifact cannot be null.");
-            if (artifact.FailureTick > 100000 || artifact.Actions.Count > 100000)
-                throw new ArgumentException("Legacy CLI rerun budget is 100,000 ticks/actions, matching the shared runtime limits.");
-            RerunReport report = FailureRerun.Compare(artifact, currentBuild: Environment.GetEnvironmentVariable("GAMEPLAY_BUILD"));
-            WriteJson(report);
-            return report.Matches ? 0 : 2;
         }
     }
 

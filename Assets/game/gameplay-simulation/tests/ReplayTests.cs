@@ -4,6 +4,8 @@ using System.Linq;
 using NUnit.Framework;
 using Testability;
 using Testability.Templates;
+using ModernSession = Testability.Templates.TestableSimulationSession<GameplaySimulation.GameplayWorld, GameplaySimulation.GameplayScenario, GameplaySimulation.GameplayInput, GameplaySimulation.GameplayObservation>;
+using ModernReplay = Testability.Templates.TemplateReplay<GameplaySimulation.GameplayWorld, GameplaySimulation.GameplayScenario, GameplaySimulation.GameplayInput, GameplaySimulation.GameplayObservation>;
 
 namespace GameplaySimulation.Tests
 {
@@ -17,29 +19,28 @@ namespace GameplaySimulation.Tests
         [Test]
         public void RealtimeDemoRecordingPlaysInSeparateManualSession()
         {
-            MovementDemo.MovementDemoSession live = new MovementDemo.MovementDemoSession(new View(), 4, .125f, true);
+            using MovementDemo.MovementDemoSession live = new MovementDemo.MovementDemoSession(new View(), 4, .125f, true);
             live.RequestAttack(); live.AdvanceTime(.125f);
             live.CaptureAxes(1, 0); live.AdvanceTime(.5f);
-            using TemplateReplay<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> replay = new GameplayDefinition().CreateReplay(live.CaptureReplay());
+            using ModernReplay replay = new GameplayDefinition().CreateReplay(live.CaptureReplay());
             ulong liveTick = live.TickNumber;
-            live.CaptureAxes(-1, 0); // Live input cannot enter the separate replay.
+            live.CaptureAxes(-1, 0);
             replay.Play(); replay.AdvanceTime(2);
             Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Completed));
-            Assert.That(replay.Observe().Actors[0].X, Is.EqualTo(live.CurrentPosition.X));
+            Assert.That(replay.Observe().FindActor(1).X, Is.EqualTo(live.CurrentPosition.X));
             Assert.That(live.TickNumber, Is.EqualTo(liveTick));
         }
 
-        private static GameplaySession Record()
+        private static TemplateRecording RecordBattle()
         {
-            GameplaySession session = new GameplaySession();
-            session.Start(new GameplayScenario(tickDelta: .125f));
-            session.Submit(new GameplayRequest(session.Id, 1, 1, GameplayActionKind.Attack, 1, 2));
-            session.Submit(new GameplayRequest(session.Id, 2, 2, GameplayActionKind.Attack, 1, 2));
-            session.Submit(new GameplayRequest(session.Id, 3, 3, GameplayActionKind.Attack, 1, 2));
-            session.Submit(new GameplayRequest(session.Id, 4, 3, GameplayActionKind.Move, 2, x: 1));
-            session.Submit(new GameplayRequest(session.Id, 5, 4, GameplayActionKind.Move, 1, x: 1));
-            for (int i = 0; i < 16; i++) session.Step();
-            return session;
+            using ModernSession session = new GameplayDefinition().CreateTestSession(new GameplayScenario(tickDelta: .125f));
+            session.Gameplay.Submit(session.Id, 1, 1, new GameplayInput(GameplayActionKind.Attack, 1, 2));
+            session.Gameplay.Submit(session.Id, 2, 2, new GameplayInput(GameplayActionKind.Attack, 1, 2));
+            session.Gameplay.Submit(session.Id, 3, 3, new GameplayInput(GameplayActionKind.Attack, 1, 2));
+            session.Gameplay.Submit(session.Id, 4, 3, new GameplayInput(GameplayActionKind.Move, 2, x: 1));
+            session.Gameplay.Submit(session.Id, 5, 4, new GameplayInput(GameplayActionKind.Move, 1, x: 1));
+            for (int tick = 0; tick < 16; tick++) session.Simulation.Step();
+            return session.CaptureRecording();
         }
 
         [TestCase(1f / 30)]
@@ -48,22 +49,23 @@ namespace GameplaySimulation.Tests
         [TestCase(.37f)]
         public void ReplayMatchesAcrossFrameRatesIncludingDeathAndInputFreeTail(float delta)
         {
-            GameplaySession original = Record();
-            ReplayPlayback replay = new ReplayPlayback(original.CaptureReplay());
+            TemplateRecording recording = RecordBattle();
+            using ModernReplay replay = new GameplayDefinition().CreateReplay(recording);
             replay.Play();
-            for (int i = 0; i < 10000 && replay.State == ReplayPlaybackState.Playing; i++) replay.AdvanceTime(delta);
-            Assert.That(replay.State, Is.EqualTo(ReplayPlaybackState.Completed));
+            for (int frame = 0; frame < 10000 && replay.State == TemplateReplayState.Playing; frame++) replay.AdvanceTime(delta);
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Completed));
             Assert.That(replay.FirstDifference, Is.Null);
             Assert.That(replay.Observe().Tick, Is.EqualTo(16));
-            Assert.That(replay.Observe().Actors[1].Active, Is.False);
-            Assert.That(replay.Observe().Actors[0].X, Is.EqualTo(original.Observe().Actors[0].X));
+            Assert.That(replay.Observe().FindActor(2).Active, Is.False);
+            Assert.That(replay.Observe().FindActor(1).X, Is.EqualTo(6.5f));
+            Assert.That(recording.Ticks[2].Results[1].Code, Is.EqualTo("actor.dead"));
             Assert.That(replay.PresentationAlpha, Is.EqualTo(1));
         }
 
         [Test]
         public void PauseStepRestartAndEndDoNotAdvanceUnexpectedly()
         {
-            ReplayPlayback replay = new ReplayPlayback(Record().CaptureReplay());
+            using ModernReplay replay = new GameplayDefinition().CreateReplay(RecordBattle());
             replay.AdvanceTime(1);
             Assert.That(replay.Observe().Tick, Is.Zero);
             replay.Step();
@@ -73,7 +75,7 @@ namespace GameplaySimulation.Tests
             replay.AdvanceTime(10);
             Assert.That(replay.Observe().Tick, Is.EqualTo(tick));
             replay.Restart();
-            Assert.That(replay.State, Is.EqualTo(ReplayPlaybackState.Paused));
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Paused));
             Assert.That(replay.Observe().Tick, Is.Zero);
             replay.Play(); replay.AdvanceTime(10);
             replay.Play(); replay.AdvanceTime(10);
@@ -84,55 +86,70 @@ namespace GameplaySimulation.Tests
         [Test]
         public void SnapshotIsIndependentOfLaterRecordingAndPendingInputs()
         {
-            GameplaySession original = Record();
-            original.Submit(new GameplayRequest(original.Id, 6, 30, GameplayActionKind.Move, 1));
-            ReplayArtifact saved = original.CaptureReplay();
-            original.Step(); original.Reset(new GameplayScenario());
-            ReplayPlayback replay = new ReplayPlayback(saved);
+            GameplayDefinition definition = new GameplayDefinition();
+            using ModernSession original = definition.CreateTestSession(new GameplayScenario(tickDelta: .125f));
+            original.Gameplay.Submit(original.Id, 1, 1, new GameplayInput(GameplayActionKind.Move, 1, x: 1));
+            original.Gameplay.Submit(original.Id, 2, 30, new GameplayInput(GameplayActionKind.Move, 1));
+            for (int tick = 0; tick < 16; tick++) original.Simulation.Step();
+            TemplateRecording saved = original.CaptureRecording();
+            original.Simulation.Step(); original.Admin.Reset(new GameplayScenario());
+            using ModernReplay replay = definition.CreateReplay(saved);
             replay.Play(); replay.AdvanceTime(10);
-            Assert.That(saved.EndTick, Is.EqualTo(16));
-            Assert.That(saved.Actions.Count, Is.EqualTo(6));
-            Assert.That(replay.State, Is.EqualTo(ReplayPlaybackState.Completed));
+            Assert.That(saved.Ticks.Count, Is.EqualTo(16));
+            Assert.That(saved.Inputs.Count, Is.EqualTo(2));
+            Assert.That(saved.Inputs[1].Tick, Is.EqualTo(30));
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Completed));
+            Assert.That(replay.Observe().FindActor(1).X, Is.EqualTo(8));
+            Assert.That(original.CurrentTick, Is.Zero);
         }
 
         [Test]
-        public void ZeroTickRecordingIsValidAndFaultCaptureIsRejected()
+        public void ZeroTickAndFaultedRecordingsAreBothSupported()
         {
-            GameplaySession original = new GameplaySession();
-            Assert.Throws<InvalidOperationException>(() => original.CaptureReplay());
-            original.Start(new GameplayScenario());
-            Assert.That(new ReplayPlayback(original.CaptureReplay()).State, Is.EqualTo(ReplayPlaybackState.Completed));
-            original.Reset(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
-            original.Submit(new GameplayRequest(original.Id, 1, 1, GameplayActionKind.Move, 1, x: 1)); original.Step();
-            Assert.Throws<InvalidOperationException>(() => original.CaptureReplay());
+            GameplayDefinition definition = new GameplayDefinition();
+            using ModernSession original = definition.CreateTestSession(new GameplayScenario());
+            using ModernReplay empty = definition.CreateReplay(original.CaptureRecording());
+            Assert.That(empty.State, Is.EqualTo(TemplateReplayState.Completed));
+            original.Admin.Reset(new GameplayScenario(tickDelta: 2, speed: float.MaxValue));
+            original.Gameplay.Submit(original.Id, 1, 1, new GameplayInput(GameplayActionKind.Move, 1, x: 1));
+            original.Simulation.Step();
+            TemplateRecording failed = original.CaptureRecording();
+            using ModernReplay replay = definition.CreateReplay(failed);
+            replay.Step();
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.ReproducedFailure));
+            Assert.That(failed.Failure.Stage, Is.EqualTo("PrePhysics"));
         }
 
         [Test]
-        public void SaveLoadRoundTripAndNoOverwrite()
+        public void RecordingCodecRetainsCallerStreamsAndEnforcesReadBounds()
         {
-            string path = Path.Combine(Path.GetTempPath(), "replay-test-" + Guid.NewGuid().ToString("N") + ".json");
-            try
-            {
-                ReplayArtifact saved = Record().CaptureReplay();
-                ReplayFile.SaveNew(path, saved);
-                Assert.Throws<IOException>(() => ReplayFile.SaveNew(path, saved));
-                ReplayPlayback replay = new ReplayPlayback(ReplayFile.Load(path));
-                replay.Play(); replay.AdvanceTime(10);
-                Assert.That(replay.State, Is.EqualTo(ReplayPlaybackState.Completed));
-            }
-            finally { if (File.Exists(path)) File.Delete(path); }
+            TemplateRecording saved = RecordBattle();
+            using MemoryStream bytes = new MemoryStream();
+            TemplateRecordingIO.Write(bytes, saved);
+            Assert.That(bytes.CanWrite, Is.True);
+            bytes.Position = 0;
+            TemplateRecording loaded = TemplateRecordingIO.Read(bytes);
+            Assert.That(bytes.CanRead, Is.True);
+            Assert.That(loaded.Ticks.Select(tick => tick.Hash), Is.EqualTo(saved.Ticks.Select(tick => tick.Hash)));
+            using ModernReplay replay = new GameplayDefinition().CreateReplay(loaded);
+            replay.Play(); replay.AdvanceTime(10);
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Completed));
+            bytes.Position = 0;
+            Assert.Throws<ArgumentException>(() => TemplateRecordingIO.Read(bytes, 1));
+            Assert.That(bytes.CanRead, Is.True);
         }
 
         [Test]
         public void FirstChangedCheckpointStopsAtExactTick()
         {
-            ReplayArtifact saved = Record().CaptureReplay();
-            HashCheckpoint[] hashes = saved.Hashes.ToArray();
-            hashes[5] = new HashCheckpoint(5, "different");
-            ReplayArtifact changed = new ReplayArtifact(saved.Scenario, saved.DiagnosticPolicy, saved.EndTick, saved.Actions, saved.Results, hashes);
-            ReplayPlayback replay = new ReplayPlayback(changed);
+            TemplateRecording saved = RecordBattle();
+            TemplateTick[] ticks = saved.Ticks.ToArray();
+            ticks[4] = new TemplateTick(5, "different", ticks[4].Results);
+            TemplateRecording changed = new TemplateRecording(saved.Policy, saved.Runtime, saved.Scenario, saved.TickDelta, saved.Limits,
+                saved.InitialHash, saved.Inputs, ticks, saved.Failure, saved.Trace, saved.DroppedTraceEntries);
+            using ModernReplay replay = new GameplayDefinition().CreateReplay(changed);
             replay.Play(); replay.AdvanceTime(10);
-            Assert.That(replay.State, Is.EqualTo(ReplayPlaybackState.Diverged));
+            Assert.That(replay.State, Is.EqualTo(TemplateReplayState.Diverged));
             Assert.That(replay.FirstDifference.Tick, Is.EqualTo(5));
             Assert.That(replay.FirstDifference.Category, Is.EqualTo("state_hash"));
             Assert.That(replay.Observe().Tick, Is.EqualTo(5));
@@ -141,13 +158,15 @@ namespace GameplaySimulation.Tests
         [Test]
         public void ResultAndPolicyDifferencesAreReported()
         {
-            ReplayArtifact saved = Record().CaptureReplay();
-            ActionResult[] results = saved.Results.ToArray();
-            results[0] = new ActionResult(1, 1, ActionStatus.Rejected, "changed");
-            ReplayPlayback replay = new ReplayPlayback(new ReplayArtifact(saved.Scenario, saved.DiagnosticPolicy, saved.EndTick, saved.Actions, results, saved.Hashes));
+            TemplateRecording saved = RecordBattle();
+            TemplateTick[] ticks = saved.Ticks.ToArray();
+            ticks[0] = new TemplateTick(1, ticks[0].Hash, new[] { new ActionResult(1, 1, ActionStatus.Rejected, "changed") });
+            TemplateRecording changed = new TemplateRecording(saved.Policy, saved.Runtime, saved.Scenario, saved.TickDelta, saved.Limits,
+                saved.InitialHash, saved.Inputs, ticks, saved.Failure, saved.Trace, saved.DroppedTraceEntries);
+            using ModernReplay replay = new GameplayDefinition().CreateReplay(changed);
             replay.Step();
             Assert.That(replay.FirstDifference.Category, Is.EqualTo("action_result"));
-            ReplayPlayback policy = new ReplayPlayback(saved, () => new GameplaySession(policyRevision: "different"));
+            using ModernReplay policy = new GameplayDefinition(null, "different").CreateReplay(saved);
             Assert.That(policy.FirstDifference.Category, Is.EqualTo("policy"));
             Assert.That(policy.Observe().Tick, Is.Zero);
         }
@@ -155,10 +174,15 @@ namespace GameplaySimulation.Tests
         [Test]
         public void MalformedAndIncompleteHistoryCannotPlay()
         {
-            ReplayArtifact saved = Record().CaptureReplay();
-            Assert.Throws<ArgumentException>(() => new ReplayArtifact(saved.Scenario, saved.DiagnosticPolicy, saved.EndTick, saved.Actions, saved.Results, saved.Hashes.Skip(1)));
-            Assert.Throws<ArgumentException>(() => new ReplayArtifact(saved.Scenario, saved.DiagnosticPolicy, saved.EndTick, saved.Actions, saved.Results.Skip(1), saved.Hashes));
-            Assert.Throws<InvalidOperationException>(() => new ReplayPlayback(saved, () => new GameplaySession(SimulationDriveMode.Realtime)));
+            TemplateRecording saved = RecordBattle();
+            TemplateRecording missingTick = new TemplateRecording(saved.Policy, saved.Runtime, saved.Scenario, saved.TickDelta, saved.Limits,
+                saved.InitialHash, saved.Inputs, saved.Ticks.Skip(1), null, saved.Trace, saved.DroppedTraceEntries);
+            Assert.Throws<ArgumentException>(() => new GameplayDefinition().CreateReplay(missingTick));
+            TemplateTick[] ticks = saved.Ticks.ToArray();
+            ticks[0] = new TemplateTick(1, ticks[0].Hash, Array.Empty<ActionResult>());
+            TemplateRecording missingResult = new TemplateRecording(saved.Policy, saved.Runtime, saved.Scenario, saved.TickDelta, saved.Limits,
+                saved.InitialHash, saved.Inputs, ticks, null, saved.Trace, saved.DroppedTraceEntries);
+            Assert.Throws<ArgumentException>(() => new GameplayDefinition().CreateReplay(missingResult));
         }
     }
 }

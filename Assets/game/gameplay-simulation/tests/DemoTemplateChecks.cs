@@ -5,6 +5,7 @@ using CharacterMovement.Integration;
 using MovementDemo;
 using Testability;
 using Testability.Templates;
+using ModernSession = Testability.Templates.TestableSimulationSession<GameplaySimulation.GameplayWorld, GameplaySimulation.GameplayScenario, GameplaySimulation.GameplayInput, GameplaySimulation.GameplayObservation>;
 
 namespace GameplaySimulation.Tests
 {
@@ -14,26 +15,27 @@ namespace GameplaySimulation.Tests
         {
             GameplayScenario scenario = new GameplayScenario(tickDelta: .125f, includeEnemy: true,
                 respawnEnemies: true, enemyHealthMin: 20, enemyHealthMax: 40, randomRespawnDelay: true);
-            GameplaySession legacy = new GameplaySession();
-            legacy.Start(scenario);
+            using ModernSession direct = new GameplayDefinition().CreateTestSession(scenario);
             using (MovementDemoSession demo = new MovementDemoSession(new View(), tickDeltaTime: .125f,
                 includeEnemy: true, respawnEnemies: true, enemyHealthMin: 20, enemyHealthMax: 40, randomRespawnDelay: true))
             {
                 ulong sequence = 0;
                 for (ulong tick = 1; tick <= 160; tick++)
                 {
-                    legacy.Submit(new GameplayRequest(legacy.Id, ++sequence, tick, GameplayActionKind.Move, 1));
+                    ulong player = direct.Observe().PlayerId;
+                    direct.Gameplay.Submit(direct.Id, ++sequence, tick, new GameplayInput(GameplayActionKind.Move, player));
                     if (tick % 3 == 0)
                     {
                         ulong target = 2;
-                        foreach (ActorObservation actor in legacy.Observe().Actors)
-                            if (actor.Id != 1 && actor.Active) { target = actor.Id; break; }
-                        legacy.Submit(new GameplayRequest(legacy.Id, ++sequence, tick, GameplayActionKind.Attack, 1, target));
+                        foreach (ActorObservation actor in direct.Observe().Actors)
+                            if (actor.Id != player && actor.Active) { target = actor.Id; break; }
+                        direct.Gameplay.Submit(direct.Id, ++sequence, tick, new GameplayInput(GameplayActionKind.Attack, player, target));
                         demo.RequestAttack();
                     }
-                    legacy.Step(); demo.AdvanceTime(.125f);
+                    TemplateTick expected = direct.Simulation.Step(); demo.AdvanceTime(.125f);
                     Require(demo.State == SessionState.Running, "Demo faulted");
-                    Require(GameplayStateHasher.Compute(legacy.Observe(), scenario) == GameplayStateHasher.Compute(demo.Observe(), scenario), "Legacy gameplay parity at " + tick);
+                    TemplateRecording actual = demo.CaptureReplay();
+                    Require(expected.Hash == actual.Ticks[actual.Ticks.Count - 1].Hash, "Demo differs from manual gameplay at " + tick);
                 }
                 Require(demo.Observe().EnemiesSpawned > 2, "Respawn not exercised");
                 TemplateRecording recording;
@@ -42,7 +44,7 @@ namespace GameplaySimulation.Tests
                     TemplateRecordingIO.Write(stream, demo.CaptureReplay()); stream.Position = 0;
                     recording = TemplateRecordingIO.Read(stream);
                 }
-                Require(recording.Policy.StartsWith("gameplay-template-v1", StringComparison.Ordinal), "Legacy recording path");
+                Require(recording.Policy == GameplayDefinition.DefaultPolicy, "Unexpected gameplay recording policy");
                 foreach (float delta in new float[] { 1f / 30, 1f / 60, 1f / 144, .7f })
                 {
                     using (TemplateReplay<GameplayWorld, GameplayScenario, GameplayInput, GameplayObservation> replay = new GameplayDefinition().CreateReplay(recording))

@@ -52,3 +52,11 @@ foreach ($file in (& rg --files (Join-Path $projectRoot 'Assets') -g '*.meta')) 
     $assetGuids[$guid] = $file
 }
 Write-Output "PASS: $($definitions.Count) assembly definitions; acyclic, no Module->Framework/Game, no Framework->Game, pure assemblies disable engine references; $($assetGuids.Count) valid unique asset GUIDs."
+
+# These APIs were retired after baseline 22f6966. Historical documents and fixtures are intentionally excluded.
+$retiredApi = '\b(GameplaySession|GameplayRequest|TickReport|HashCheckpoint|FailureArtifact|ReplayArtifact|ReplayPlayback|ReplayPlaybackState|ReplayFile|ScenarioRerun|FailureRerun|RerunReport|RerunDifference|GameplayStateHasher|IGameplayControl|ISimulationControl|IRealtimeTickDriver|IActionResultReader|IGameplayCapabilities|GameplayCapabilities|ActionDescriptor|ActionLookupState|ActionLookup|ActionResultPage|SimulationDriveMode|IReplayPlayback|ITestSession|IStateObserver|Old_Simulation)\b'
+$activeSources = @(& rg --files (Join-Path $projectRoot 'Assets') (Join-Path $projectRoot 'tools') -g '*.cs' -g '*.csproj' -g '*.asmdef' -g '!**/obj/**' -g '!**/bin/**')
+foreach ($source in $activeSources) {
+    if ((Get-Content -LiteralPath $source -Raw) -match $retiredApi) { throw "Active source references retired API: $source ($($Matches[0]))" }
+}
+Write-Output "PASS: $($activeSources.Count) active source/project/assembly files contain no retired gameplay API or Old_Simulation reference."

@@ -145,8 +145,9 @@ Testability host 先建立候選世界、checks、初始 observation/hash；這�
 - 不在 ConfigureWorld 註冊另一個未記錄的外部 input source，否則錄製不完整。
 - Domain event／Internal Command 是重新執行的結果，不作為錄製輸入。
 
-MovementDemo、現行 CLI 與教學直接使用 GameplayDefinition／GameplayWorld／GameplayActions。GameplaySession 已轉接同一 TestableSimulationSession runtime，只保留既有 ports 與舊格式投影；不是尚待合併的第二份世界或規則。Protocol **Deferred**，保留 adapter 相容性，不作此模板或教學驗收的阻擋。沒有擴充 snapshot seek/restore、rollback 或跨平台 bitwise 保證。
-新 TemplateRecording schema 與既有 Gameplay ReplayArtifact 是不同格式，不互相冒充相容。
+MovementDemo、CLI、測試、教學及 Protocol adapter 共用 GameplayDefinition／TestableSimulationSession；gameplay 規則在 GameplayWorld／GameplayActions。舊 GameplaySession、ports 與 artifact API 已移除。Protocol game payload v2 改接現行能力，envelope 維持 v1，transport 仍 Deferred；沒有擴充 snapshot seek/restore、rollback 或跨平台 bitwise 保證。
+
+現行 TemplateRecording 不讀舊 ReplayArtifact／FailureArtifact。歷史樣本不改寫，舊工具需使用基準 `22f6966`，詳見 [退休政策](../legacy-compatibility-retirement.md)。
 
 ## 驗證入口
 

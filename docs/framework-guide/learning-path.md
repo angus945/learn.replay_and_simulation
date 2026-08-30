@@ -20,7 +20,7 @@ dotnet run --project tools/gameplay-lessons -- simulation
 
 ## 從一個角色逐步增加責任
 
-| 階段 | 新增概念 | 可執行來源／操作說明 | 已驗證的結果 |
+| 階段 | 新增概念 | 可執行來源／操作說明 | 驗收結果 |
 | --- | --- | --- | --- |
 | 01 Domain | 方向、時間、速度與規則 | [Stage01](../../tools/gameplay-lessons/Stage01Domain.cs)／[說明](../../tools/gameplay-lessons/lessons/01-domain.md) | 改方向不立刻移動；.25 秒 X=1；負時間拒絕；斜向不加速 |
 | 02 Application | 指定角色與 repository | [Stage02](../../tools/gameplay-lessons/Stage02Application.cs)／[說明](../../tools/gameplay-lessons/lessons/02-application.md) | unknown actor 拒絕；兩角色隔離；遍歷順序明確 |
@@ -48,13 +48,13 @@ MovementDemoHost → MovementDemoSession → GameplayDefinition
 - [Unity adapters](../../Assets/framework.deterministic-simulation.unity/README.md)：多物件呈現與獨立 3D sensor scene 的接線契約；沒有 dynamic-body state readback。
 - [CharacterMovementDemo 場景](../../Assets/game/movement-demo/scenes/CharacterMovementDemo.unity)：已有實際 Demo，不另建第三套 lesson game。
 
-上述 Unity adapter 與 Demo 接線已通過當次 Unity EditMode / PlayMode 驗收；Player build 等各層證據分別記在 [實作進度](../implementation-progress.md)。本 CLI 不操作 Unity，不能以 CLI PASS 取代 Unity 驗收。Physics 限定獨立 scene 的 logical-authority sensors，不等於已還原舊 Apply／Capture TODO 或讓 Demo 依賴物理權威狀態。
+上述 Unity adapter 與 Demo 接線的 EditMode／PlayMode／Player build 證據分別記在 [實作進度](../implementation-progress.md)。本 CLI 不操作 Unity，不能以 CLI PASS 取代 Unity 驗收。Physics 限定獨立 scene 的 logical-authority sensors，不等於已還原舊 Apply／Capture TODO 或讓 Demo 依賴物理權威狀態。
 
-第 5 章已在同一範例加入 seeded 血量與延遲重生，沒有另建遊戲模型；現有規格可讀 [生命週期與 RNG](../testability/simulation-lifecycle-phase-random.md)。Protocol 目前 **Deferred（暫緩）**，保留相容程式，待其他 framework 穩定後處理，不作教學前置條件。
+第 5 章已在同一範例加入 seeded 血量與延遲重生，沒有另建遊戲模型；現有規格可讀 [生命週期與 RNG](../testability/simulation-lifecycle-phase-random.md)。Protocol adapter 使用現行 ports／game payload v2，transport 仍 **Deferred（暫緩）**；不作教學前置條件。
 
 ## 驗證與範圍
 
-2026-08-30：以上 `all` 命令執行成功，五階段各自完成斷言。現行教學直接建立 GameplayDefinition，不用 GameplaySession 相容 API 或 ReplayArtifact，也不編入 Protocol／Unity 來源。GameplaySession 本身現已轉接同一 template runtime，並非另一套玩法。
+以上 `all` 命令依序執行五階段斷言，當次結果見 [實作進度](../implementation-progress.md)。教學直接建立 GameplayDefinition，只使用 TemplateRecording，不編入 Protocol／Unity 來源。舊 GameplaySession／artifact API 已退役，歷史基準及舊樣本處理見 [退休政策](../legacy-compatibility-retirement.md)。
 
 Domain 不依賴 simulation／testability／Unity；接線在外圍。GameplayWorld 是每個 session 的組裝與狀態容器，不因名稱為 World 就成為 Aggregate。C# 宣告使用明確型別，不用 `var`。
 

@@ -7,6 +7,7 @@ namespace DeterministicSimulation.Framework
     public sealed class SimulationDriveOwnership
     {
         private RealtimeSimulationRunner driver;
+        public bool HasRealtimeDriver => driver != null;
         public void EnsureManual()
         {
             if (driver != null) throw new InvalidOperationException("Realtime runner owns tick authority; dispose it before manual Step, Reset or session Dispose.");
