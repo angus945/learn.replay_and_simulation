@@ -1,224 +1,225 @@
-using UnityEngine;
-using SimulationCore.Logging.Unity.Infrastructure;
+// using UnityEngine;
+// using SimulationCore.Logging.Unity.Infrastructure;
 
-using SimulationCore;
-using SimulationCore.Contracts;
-using SimulationCore.Infrastructure;
+// using SimulationCore;
+// using SimulationCore.Contracts;
+// using SimulationCore.CommandSystem.API;
+// using SimulationCore.CommandSystem.Application;
+// using SimulationCore.ExternalCommands;
+// using SimulationCore.ExternalCommands.PlayerInput.Application;
+// using SimulationCore.ExternalCommands.PlayerInput.Infrastructure;
+// using SimulationCore.ExternalCommands.PlayerInput.Contract;
+// using SimulationCore.ExternalCommands.Port;
+// using SimulationCore.World.API;
+// using SimulationCore.World.Application;
+// using SimulationCore.World.Infrastructure;
+// using SimulationCore.SimulationActor.Application;
+// using SimulationCore.SimulationActor.Contract;
+// using SimulationCore.SimulationActor.Infrastructure;
+// using SimulationCore.SimulationActor.Presentation;
+// using SimulationCore.SimulationPhysics.Application;
+// using SimulationCore.SimulationPhysics.Contract;
+// using SimulationCore.SimulationPhysics.Infrastructure;
+// using SimulationCore.Unity.PhysicsRuntime.Infrastructure;
 
-using SimulationCore.CommandSystem.API;
-using SimulationCore.CommandSystem.Application;
+// public class TestCompositionRoot : MonoBehaviour
+// {
+//     private static readonly Vector2[] DefaultCoinSpawnPositions =
+//     {
+//         new Vector2(-3.2f, 2.2f),
+//         new Vector2(3.1f, 2.0f),
+//         new Vector2(-2.6f, -2.2f),
+//         new Vector2(2.5f, -1.9f),
+//         new Vector2(0f, 3.2f)
+//     };
 
-using SimulationCore.ExternalCommands.PlayerInput.Application;
-using SimulationCore.ExternalCommands.PlayerInput.Infrastructure;
-using SimulationCore.ExternalCommands.PlayerInput.Contract;
-using SimulationCore.ExternalCommands.PlayerInput.API;
-using SimulationCore.ExternalCommands;
-using SimulationCore.ExternalCommands.Port;
+//     [SerializeField] UnityLogger logger;
+//     [SerializeField] Player playerPrefab;
+//     [SerializeField] Coin coinPrefab;
+//     [SerializeField] float playerMoveSpeed = 4f;
+//     [SerializeField] Vector2 playAreaHalfExtents = new Vector2(4.25f, 4.25f);
+//     [SerializeField] Vector2[] coinSpawnPositions =
+//     {
+//         new Vector2(-3.2f, 2.2f),
+//         new Vector2(3.1f, 2.0f),
+//         new Vector2(-2.6f, -2.2f),
+//         new Vector2(2.5f, -1.9f),
+//         new Vector2(0f, 3.2f)
+//     };
 
-using SimulationCore.World.Application;
-using SimulationCore.World.Contract;
-using SimulationCore.World.Infrastructure;
-using SimulationCore.World.API;
+//     PlayerInputCommands playerInput;
+//     SimulationRunner runner;
+//     CoinCollectionSystem coinCollection;
+//     GUIStyle hudStyle;
+//     GUIStyle completeStyle;
 
-using SimulationCore.SimulationActor.Infrastructure;
-using SimulationCore.SimulationActor.Contract;
-using SimulationCore.SimulationActor.Application;
-using SimulationCore.SimulationPhysics.Application;
-using SimulationCore.Unity.PhysicsRuntime.Infrastructure;
-using SimulationCore.SimulationPhysics.Infrastructure;
-using SimulationCore.SimulationActor.Presentation;
+//     void Start()
+//     {
+//         if (playerPrefab == null)
+//             throw new MissingReferenceException($"{nameof(TestCompositionRoot)} requires a player prefab.");
 
-// Example of a simple player
-#region PlayerInputs
-public struct MoveHorizontal : IAxisInputKey { }
-public struct MoveVertical : IAxisInputKey { }
+//         if (coinPrefab == null)
+//             throw new MissingReferenceException($"{nameof(TestCompositionRoot)} requires a coin prefab.");
 
-public readonly struct PlayerMoveCommand : ICommand
-{
-    public readonly Float3 Direction;
+//         Vector2[] resolvedCoinSpawnPositions = ResolveCoinSpawnPositions();
 
-    public PlayerMoveCommand(Float3 direction)
-    {
-        Direction = direction;
-    }
-    public override string ToString()
-    {
-        return $"PlayerMoveCommand: Direction = {Direction}";
-    }
-}
-public class AcquirePlayerMoveCommand : IInputCommandRule
-{
-    public bool TryProduce(IPlayerInputSnapshot snapshot, out ICommand command)
-    {
-        var horizontal = snapshot.GetAxisState<MoveHorizontal>();
-        var vertical = snapshot.GetAxisState<MoveVertical>();
-        var direction = new Float3(horizontal.Value, vertical.Value, 0).Normalized();
+//         CommandServices commandServices = new CommandServices();
+//         ICommandContext commandContext = commandServices;
 
-        command = new PlayerMoveCommand(direction);
+//         RegisterableExternalCommand registerableCommands = BuildExternalCommands(commandContext);
+//         EcsWorld world = BuildWorld(commandContext, resolvedCoinSpawnPositions.Length);
+//         UnityActorInstancePort unityInstancePort = BuildUnityActorPort();
 
-        return true;
-    }
-}
-#endregion
+//         PhysicsEventSink collisionEventSink = new PhysicsEventSink(commandContext);
+//         PhysicsEventDispatchPort eventDispatchPort = new PhysicsEventDispatchPort(collisionEventSink, commandContext);
+//         SimulationPhysics physics = new SimulationPhysics(new UnityPhysicsRuntime(), eventDispatchPort);
+//         PhysicsActorInstancePortDecorator physicsActorDecorator = new PhysicsActorInstancePortDecorator(unityInstancePort, collisionEventSink);
 
-public struct PlayerTag : IComponent { }
-public struct SpawnPlayerArguments : IEntityArguments
-{
-    public readonly Float3 Position;
+//         EntityPort entityPort = new EntityPort(world);
+//         SimulationActors simulationActors = new SimulationActors(entityPort, physicsActorDecorator);
+//         simulationActors.RegisterActorPool<Player>(GameActorArchetypes.Player, 1);
+//         simulationActors.RegisterActorPool<Coin>(GameActorArchetypes.Coin, resolvedCoinSpawnPositions.Length);
 
-    public SpawnPlayerArguments(Float3 position)
-    {
-        Position = position;
-    }
-}
-public sealed class SpawnPlayerRecipe : IEntityRecipe<SpawnPlayerArguments>
-{
-    public void Build(IEntityBuildContext context, in SpawnPlayerArguments arguments)
-    {
-        context.AddComponent(new PlayerTag());
-        context.AddComponent(new ActorArchetypeComponent(0));
-        context.AddComponent(new ActorTransformState(arguments.Position, FloatQuaternion.Identity));
-    }
-}
+//         playerInput.Initialize();
+//         world.InitializeSystems();
 
-public class PlayerSystem : ISystem, IPrePhysicsTick
-{
-    private IEcsWorld world;
-    IEntityFilter filter;
+//         UnitySimulationPresentation presentation = new UnitySimulationPresentation(world, physicsActorDecorator, unityInstancePort);
 
-    PlayerMoveCommandHandler movement;
+//         runner = new SimulationRunner(
+//             commandServices,
+//             registerableCommands,
+//             world,
+//             simulationActors,
+//             physics,
+//             presentation,
+//             1f / 60f,
+//             logger);
 
-    public PlayerSystem()
-    {
-        movement = new PlayerMoveCommandHandler();
-    }
+//         SpawnInitialEntities(world, resolvedCoinSpawnPositions);
+//         PrimeSpawnedActors();
+//     }
 
-    public void Initialize(IEcsWorld world, ICommandHandleRegistryPort commandRegistry)
-    {
-        this.world = world;
-        filter = world.CreateFilter()
-            .With<PlayerTag>()
-            .With<ActorArchetypeComponent>()
-            .With<ActorTransformState>()
-            .Build();
+//     void Update()
+//     {
+//         if (playerInput == null || runner == null)
+//             return;
 
-        commandRegistry.Register<PlayerMoveCommand>(movement);
-    }
+//         playerInput.CaptureRenderInput();
+//         runner.AdvanceTime(Time.unscaledDeltaTime);
+//         runner.UpdatePresentation();
+//     }
 
-    public void PrePhysicsTick(ulong tick, float deltaTime)
-    {
-        for (int i = 0; i < filter.EntityCount; i++)
-        {
-            EntityHandle entity = filter.GetEntity(i);
+//     void OnGUI()
+//     {
+//         if (coinCollection == null)
+//             return;
 
-            if (!world.TryGetComponent<ActorTransformState>(entity, out ActorTransformState transformState))
-                continue;
+//         EnsureGuiStyles();
 
-            Float3 position = transformState.Position + movement.Direction * deltaTime;
-            ActorTransformState newTransformState = new ActorTransformState(position, transformState.Rotation);
-            world.SetComponent(entity, newTransformState);
-        }
-    }
+//         GUI.Label(
+//             new Rect(16f, 14f, 360f, 32f),
+//             $"Coins: {coinCollection.CollectedCoins}/{coinCollection.TotalCoins}",
+//             hudStyle);
 
-    private sealed class PlayerMoveCommandHandler : ICommandHandler<PlayerMoveCommand>
-    {
-        public Float3 Direction { get; private set; }
+//         if (coinCollection.IsComplete)
+//         {
+//             GUI.Label(
+//                 new Rect(16f, 50f, 420f, 32f),
+//                 "All coins collected",
+//                 completeStyle);
+//         }
+//     }
 
-        public void Handle(PlayerMoveCommand command)
-        {
-            Direction = command.Direction;
-        }
-    }
-}
+//     private RegisterableExternalCommand BuildExternalCommands(ICommandContext commandContext)
+//     {
+//         RegisterableExternalCommand registerableCommands = new RegisterableExternalCommand();
+//         ICommandPort commandPort = new CommandEnqueuePort(commandContext, logger);
+//         IButtonRegistrationPort buttonPort = new ButtonRegistration();
+//         IAxisRegistrationPort axisPort = new AxisRegistration();
+//         IRuleRegistrationPort registrationPort = new RuleRegistration();
 
-// Composition Root
-public class TestCompositionRoot : MonoBehaviour
-{
-    [SerializeField] UnityLogger logger;
-    [SerializeField] Player playerPrefab;
+//         playerInput = new PlayerInputCommands(commandPort, buttonPort, axisPort, registrationPort);
+//         playerInput.RegisterAxisStatePuller<MoveHorizontal>(new UnityAxisStatePuller("Horizontal"));
+//         playerInput.RegisterAxisStatePuller<MoveVertical>(new UnityAxisStatePuller("Vertical"));
+//         playerInput.RegisterInputCommand<PlayerMoveCommand>(new AcquirePlayerMoveCommand());
+//         registerableCommands.RegisterExternalCommandProvider(playerInput);
 
-    PlayerInputCommands playerInput;
-    SimulationRunner runner;
+//         return registerableCommands;
+//     }
 
-    void Awake()
-    {
+//     private EcsWorld BuildWorld(ICommandContext commandContext, int coinCount)
+//     {
+//         ICommandHandleRegistryPort commandSubscriberPort = new CommandSubscriberPort(commandContext);
+//         EcsWorld world = new EcsWorld(100, commandSubscriberPort);
+//         world.RegisterComponent<PlayerTag>();
+//         world.RegisterComponent<PlayerScoreComponent>();
+//         world.RegisterComponent<CoinTag>();
+//         world.RegisterComponent<CoinValueComponent>();
+//         world.RegisterComponent<ActorArchetypeComponent>();
+//         world.RegisterComponent<ActorTransformState>();
 
-    }
-    void Start()
-    {
-        CommandServices commandServices = new CommandServices();
-        ICommandContext commandContext = commandServices;
+//         coinCollection = new CoinCollectionSystem(coinCount);
+//         commandContext.RegisterCommandHandler(new FlushPhysicsEventsCommandHandler());
+//         commandContext.RegisterEventHandler<OnCollisionEnter>(coinCollection);
+//         commandContext.RegisterEventHandler<OnCollisionStay>(coinCollection);
 
-        // SimulationExternalCommands
-        RegisterableExternalCommand registerableCommands = new RegisterableExternalCommand();
-        ICommandPort commandPort = new CommandEnqueuePort(commandContext, logger);
-        IButtonRegistrationPort buttonPort = new ButtonRegistration();
-        IAxisRegistrationPort axisPort = new AxisRegistration();
-        IRuleRegistrationPort registrationPort = new RuleRegistration();
-        playerInput = new PlayerInputCommands(commandPort, buttonPort, axisPort, registrationPort);
-        playerInput.RegisterAxisStatePuller<MoveHorizontal>(new UnityAxisStatePuller("Horizontal"));
-        playerInput.RegisterAxisStatePuller<MoveVertical>(new UnityAxisStatePuller("Vertical"));
-        playerInput.RegisterInputCommand<PlayerMoveCommand>(new AcquirePlayerMoveCommand());
-        registerableCommands.RegisterExternalCommandProvider(playerInput);
-        // TODO: Register UI, Debug, and other external commands here
+//         world.RegisterSystem(new PlayerSystem(playerMoveSpeed, playAreaHalfExtents));
+//         world.RegisterSystem(coinCollection);
 
-        // SimulationWorld
-        ICommandHandleRegistryPort commandSubscriberPort = new CommandSubscriberPort(commandContext);
-        EcsWorld world = new EcsWorld(100, commandSubscriberPort);
-        world.RegisterComponent<PlayerTag>();
-        world.RegisterSystem(new PlayerSystem());
+//         return world;
+//     }
 
-        // SimulationActors
-        UnityActorInstancePort unityInstancePort = new UnityActorInstancePort(transform);
-        unityInstancePort.RegisterPrefab<Player>(0, playerPrefab);
+//     private UnityActorInstancePort BuildUnityActorPort()
+//     {
+//         UnityActorInstancePort unityInstancePort = new UnityActorInstancePort(transform);
+//         unityInstancePort.RegisterPrefab<Player>(GameActorArchetypes.Player, playerPrefab);
+//         unityInstancePort.RegisterPrefab<Coin>(GameActorArchetypes.Coin, coinPrefab);
+//         return unityInstancePort;
+//     }
 
-        // Physics Simulation / Decorator
-        PhysicsEventSink collisionEventSink = new PhysicsEventSink(commandContext);
-        SimulationPhysics physics = new SimulationPhysics(new UnityPhysicsRuntime(), collisionEventSink);
-        PhysicsActorInstancePortDecorator physicsActorDecorator = new PhysicsActorInstancePortDecorator(unityInstancePort, collisionEventSink);
+//     private void SpawnInitialEntities(IEcsWorld world, Vector2[] resolvedCoinSpawnPositions)
+//     {
+//         world.SpawnRequest(
+//             new SpawnPlayerRecipe(),
+//             new SpawnPlayerArguments(new Float3(0f, 0f, 0f), resolvedCoinSpawnPositions.Length));
 
-        // SimulationActors
-        EntityPort entityPort = new EntityPort(world);
-        SimulationActors simulationActors = new SimulationActors(entityPort, physicsActorDecorator);
-        simulationActors.RegisterActorPool<Player>(0, 10);
-        world.RegisterComponent<ActorArchetypeComponent>();
-        world.RegisterComponent<ActorTransformState>();
+//         SpawnCoinRecipe coinRecipe = new SpawnCoinRecipe();
+//         for (int i = 0; i < resolvedCoinSpawnPositions.Length; i++)
+//         {
+//             Vector2 spawnPosition = resolvedCoinSpawnPositions[i];
+//             world.SpawnRequest(
+//                 coinRecipe,
+//                 new SpawnCoinArguments(new Float3(spawnPosition.x, spawnPosition.y, 0f), 1));
+//         }
+//     }
 
+//     private void PrimeSpawnedActors()
+//     {
+//         runner.AdvanceTime(runner.TickDeltaTime);
+//         runner.UpdatePresentation();
+//     }
 
-        // Initialize Systems
-        playerInput.Initialize();
-        world.InitializeSystems();
+//     private Vector2[] ResolveCoinSpawnPositions()
+//     {
+//         if (coinSpawnPositions != null && coinSpawnPositions.Length > 0)
+//             return coinSpawnPositions;
 
-        // Presentation
-        UnitySimulationPresentation presentation = new UnitySimulationPresentation(world, physicsActorDecorator, unityInstancePort);
+//         return DefaultCoinSpawnPositions;
+//     }
 
-        ISimulationCommandSystem commandSystem = commandServices;
-        ISimulationExternalCommands externalCommands = registerableCommands;
-        ISimulationWorld simulationWorld = world;
-        ISimulationActor simulationActor = simulationActors;
-        ISimulationPhysics simulationPhysics = physics;
-        ISimulationPresentation simulationPresentation = presentation;
-        runner = new SimulationRunner(
-            commandSystem,
-            externalCommands,
-            simulationWorld,
-            simulationActor,
-            simulationPhysics,
-            simulationPresentation,
-            1 / 60f,
-            logger);
+//     private void EnsureGuiStyles()
+//     {
+//         if (hudStyle != null)
+//             return;
 
-        // Test spawning a player entity
-        IEcsWorld ecsWorld = world;
-        ecsWorld.SpawnRequest(new SpawnPlayerRecipe(), new SpawnPlayerArguments(new Float3(0f, 0f, 0f)));
-    }
-    void Update()
-    {
-        playerInput.CaptureRenderInput();
+//         hudStyle = new GUIStyle(GUI.skin.label);
+//         hudStyle.fontSize = 24;
+//         hudStyle.fontStyle = FontStyle.Bold;
+//         hudStyle.normal.textColor = Color.white;
 
-        runner.AdvanceTime(Time.unscaledDeltaTime);
-
-        runner.UpdatePresentation();
-    }
-
-}
+//         completeStyle = new GUIStyle(GUI.skin.label);
+//         completeStyle.fontSize = 20;
+//         completeStyle.fontStyle = FontStyle.Bold;
+//         completeStyle.normal.textColor = new Color(1f, 0.86f, 0.2f);
+//     }
+// }

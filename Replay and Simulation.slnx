@@ -1,21 +1,3 @@
 ﻿<Solution>
-  <Project Path="SimulationCore.Unity.SimulationActor.csproj" />
-  <Project Path="SimulationCore.World.csproj" />
-  <Project Path="SimulationCore.World.Test.csproj" />
-  <Project Path="SimulationCore.Logging.csproj" />
-  <Project Path="SimulationCore.CommandSystem.Test.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="SimulationCore.ExternalCommands.csproj" />
-  <Project Path="SimulationCore.ExternalCommands.Test.csproj" />
-  <Project Path="SimulationCore.CommandSystem.csproj" />
-  <Project Path="SimulationCore.SimulationActor.csproj" />
-  <Project Path="SimulationCore.csproj" />
-  <Project Path="SimulationCore.Unity.Physics.PlayMode.Test.csproj" />
-  <Project Path="SimulationCore.Physics.Test.csproj" />
-  <Project Path="SimulationCore.Test.csproj" />
-  <Project Path="SimulationCore.Unity.ExternalCommands.csproj" />
-  <Project Path="SimulationCore.Unity.SimulationActor.PlayMode.Test.csproj" />
-  <Project Path="SimulationCore.Unity.Logging.csproj" />
-  <Project Path="SimulationCore.Physics.PlayMode.Test.csproj" />
-  <Project Path="SimulationCore.SimulationActor.Test.csproj" />
 </Solution>

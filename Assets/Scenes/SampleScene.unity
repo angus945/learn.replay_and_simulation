@@ -387,6 +387,15 @@ MonoBehaviour:
   logger:
     minimumLevel: 6
   playerPrefab: {fileID: 1764499472357152524, guid: ebba026a35442074aa870e675c5267b0, type: 3}
+  coinPrefab: {fileID: 5867218501332908940, guid: 8d0173f9c18a4b04a9fd75182a50ee39, type: 3}
+  playerMoveSpeed: 4
+  playAreaHalfExtents: {x: 4.25, y: 4.25}
+  coinSpawnPositions:
+  - {x: -3.2, y: 2.2}
+  - {x: 3.1, y: 2}
+  - {x: -2.6, y: -2.2}
+  - {x: 2.5, y: -1.9}
+  - {x: 0, y: 3.2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
