@@ -25,7 +25,7 @@
 public StateSnapshotReference Publish(SimulationSession<ArenaRuntime, ArenaScenario> session, string sessionId, long epoch)
 {
     ArenaObservation observation = new ArenaObservation(session.World);
-    return publisher.Publish(observation, new StateSnapshotCaptureMetadata("arena", sessionId, epoch));
+    return publisher.Publish(observation);
 }
 ```
 

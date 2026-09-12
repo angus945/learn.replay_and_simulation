@@ -1,6 +1,0 @@
-{
-  "name": "Module.Verification.Invariant.Tests",
-  "references": ["Module.Verification.Invariant"],
-  "includePlatforms": ["Editor"],
-  "optionalUnityReferences": ["TestAssemblies"]
-}

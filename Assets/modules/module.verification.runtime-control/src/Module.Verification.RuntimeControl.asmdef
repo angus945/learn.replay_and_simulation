@@ -1,7 +1,0 @@
-{
-  "name": "Module.Verification.RuntimeControl",
-  "rootNamespace": "Module.Verification.RuntimeControl",
-  "references": [],
-  "autoReferenced": true,
-  "noEngineReferences": true
-}

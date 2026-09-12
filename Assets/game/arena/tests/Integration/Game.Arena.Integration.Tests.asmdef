@@ -1,6 +1,6 @@
 {
   "name": "Game.Arena.Integration.Tests",
-  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Infrastructure", "Game.Arena.Integration", "Game.Arena.Composition", "Framework.DeterministicSimulation", "framework.deterministic-playback", "Module.Verification.TraceBuffer", "Module.Verification.Invariant", "Module.Verification.RuntimeControl", "Module.Verification.StateSnapshot", "Module.Verification.Oracle", "Module.Verification.Evidence"],
+  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Infrastructure", "Game.Arena.Integration", "Game.Arena.Composition", "Framework.DeterministicSimulation", "framework.deterministic-playback", "Module.Verification.TraceBuffer", "Module.Verification.Invariant", "Module.Verification.RuntimeControl", "Module.Verification.StateSnapshot", "Module.Verification.Oracle", "Module.Verification.Evidence", "Module.Verification.SystemFact", "Module.Verification.SystemFact.Observability"],
   "optionalUnityReferences": ["TestAssemblies"],
   "includePlatforms": ["Editor"],
   "noEngineReferences": true

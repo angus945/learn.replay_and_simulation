@@ -8,6 +8,6 @@
     <AssemblyName>Module.Verification.Diagnostics</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../Assets/modules/module.verification.diagnostics/src/Diagnostics/**/*.cs" />
+    <Compile Include="../../../Assets/modules/module.verification/Module.Verification.Diagnostics/src/Diagnostics/**/*.cs" Exclude="../../../Assets/modules/module.verification/Module.Verification.Diagnostics/src/Diagnostics/**/obj/**/*.cs;../../../Assets/modules/module.verification/Module.Verification.Diagnostics/src/Diagnostics/**/bin/**/*.cs" />
   </ItemGroup>
 </Project>

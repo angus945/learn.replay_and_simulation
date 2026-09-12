@@ -8,6 +8,6 @@
     <AssemblyName>Module.Verification.RuntimeControl</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../Assets/modules/module.verification.runtime-control/src/**/*.cs" Exclude="../../../Assets/modules/module.verification.runtime-control/src/**/*.csproj" />
+    <Compile Include="../../../Assets/modules/module.verification/Module.Verification.RuntimeControl/src/**/*.cs" Exclude="../../../Assets/modules/module.verification/Module.Verification.RuntimeControl/src/**/*.csproj" />
   </ItemGroup>
 </Project>

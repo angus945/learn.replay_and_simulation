@@ -35,15 +35,13 @@ internal static class ModuleContractChecks
     internal static void StateSnapshot()
     {
         StateSnapshotChannel<string> channel = new StateSnapshotChannel<string>(1);
-        StateSnapshotCaptureMetadata firstMetadata = new StateSnapshotCaptureMetadata("source", "scope", 1);
-        StateSnapshotReference first = channel.PublisherPort.Publish("first", firstMetadata);
+        StateSnapshotReference first = channel.PublisherPort.Publish("first");
         Check(channel.ReaderPort.Read(first).Snapshot == "first", "Exact state snapshot lookup failed.");
-        StateSnapshotCaptureMetadata failureMetadata = new StateSnapshotCaptureMetadata("source", "scope", 2);
-        channel.PublisherPort.ReportStateSnapshotCaptureFailure(new StateSnapshotCaptureFailure(failureMetadata, "capture.failed", "expected"));
+        channel.PublisherPort.ReportStateSnapshotCaptureFailure(new StateSnapshotCaptureFailure("capture.failed", "expected"));
         Check(channel.ReaderPort.ReadLatest().State == StateSnapshotReadState.CaptureFailed, "Capture failure was not retained independently.");
         Check(channel.ReaderPort.Read(first).State == StateSnapshotReadState.Evicted, "Bounded observation eviction failed.");
         StateSnapshotChannel<string> other = new StateSnapshotChannel<string>();
-        StateSnapshotReference foreign = other.PublisherPort.Publish("other", firstMetadata);
+        StateSnapshotReference foreign = other.PublisherPort.Publish("other");
         Check(channel.ReaderPort.Read(foreign).State == StateSnapshotReadState.ForeignReference, "Foreign observation reference was accepted.");
     }
 

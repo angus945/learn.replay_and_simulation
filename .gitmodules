@@ -10,6 +10,6 @@
 	path = Assets/framework.deterministic-playback
 	url = https://github.com/crafty-racoon/framework.deterministic-playback.git
 	ignore = untracked
-[submodule "Assets/modules/module.verification.diagnostics"]
-	path = Assets/modules/module.verification.diagnostics
-	url = https://github.com/crafty-racoon/module.verification.diagnostics.git
+[submodule "Assets/modules/module.verification"]
+	path = Assets/modules/module.verification
+	url = https://github.com/crafty-racoon/module.verification.git

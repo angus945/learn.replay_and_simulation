@@ -33,8 +33,8 @@ dotnet run --project tools/arena-checks -- rerun failure.json
 
 - [Arena game](Assets/game/arena/README.md)：Domain、Application、Infrastructure、Integration、Composition、Unity、Editor。
 - [Deterministic simulation](Assets/framework.deterministic-simulation/README.md)：tick、phase、messages、session、realtime runner。
-- [State snapshot](Assets/modules/module.verification.state-snapshot/README.md)與[runtime control](Assets/modules/module.verification.runtime-control/README.md)：被動 snapshot publication／lookup 與 authoritative operation admission／state。
-- [Oracle](Assets/modules/module.verification.oracle/README.md)與[evidence](Assets/modules/module.verification.evidence/README.md)：純 evaluation 與有界 reference／artifact manifest。
+- [State snapshot](Assets/modules/module.verification/Module.Verification.StateSnapshot/README.md)與[runtime control](Assets/modules/module.verification/Module.Verification.RuntimeControl/README.md)：被動 snapshot publication／lookup 與 authoritative operation admission／state。
+- [Oracle](Assets/modules/module.verification/Module.Verification.Oracle/README.md)與[evidence](Assets/modules/module.verification/Module.Verification.Evidence/README.md)：純 evaluation 與有界 reference／artifact manifest。
 - [Verification capability family 命名規範](docs/modularization.md)：family 是 taxonomy，不是 dependency cluster。
 - [Deterministic playback](Assets/framework.deterministic-playback/README.md)：通用 adapter lifecycle 與 playback cursor；Arena 自己擁有 recording schema、policy 與 determinism 判定。
 - [Unity adapters](Assets/framework.deterministic-simulation.unity/README.md)：可重用 pool／presentation，以及獨立的可選 sensors。

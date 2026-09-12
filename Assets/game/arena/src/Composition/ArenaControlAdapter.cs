@@ -8,7 +8,7 @@ namespace Arena.Composition
 {
     internal sealed class ArenaQueuedOperation
     {
-        public ArenaQueuedOperation(OperationHandle handle, ulong targetTick, string payload, ArenaTraceMetadata metadata)
+        public ArenaQueuedOperation(OperationHandle handle, ulong targetTick, string payload, ArenaMessageDescription metadata)
         {
             Handle = handle;
             TargetTick = targetTick;
@@ -19,7 +19,7 @@ namespace Arena.Composition
         public OperationHandle Handle { get; }
         public ulong TargetTick { get; }
         public string Payload { get; }
-        public ArenaTraceMetadata Metadata { get; }
+        public ArenaMessageDescription Metadata { get; }
     }
 
     internal sealed class ArenaQueuedOperationComparer : IComparer<ArenaQueuedOperation>
@@ -41,11 +41,11 @@ namespace Arena.Composition
         private readonly SortedDictionary<ulong, List<ArenaQueuedOperation>> pending = new SortedDictionary<ulong, List<ArenaQueuedOperation>>();
         private long totalPayloadBytes;
 
-        internal ArenaControlAdapter(ArenaDefinition definition, ArenaLimits limits, string sessionId, long epoch, int scenarioPayloadBytes)
+        internal ArenaControlAdapter(ArenaDefinition definition, ArenaLimits limits, string sessionId, long epoch, int scenarioPayloadBytes, IOperationTransitionObserver<ArenaOperationResult> transitionObserver)
         {
             this.definition = definition;
             this.limits = limits;
-            registry = new OperationRegistry<ArenaOperationResult>(sessionId, epoch, limits.MaxInputs, limits.MaxInputs);
+            registry = new OperationRegistry<ArenaOperationResult>(sessionId, epoch, limits.MaxInputs, limits.MaxInputs, transitionObserver);
             totalPayloadBytes = scenarioPayloadBytes;
         }
 
@@ -73,7 +73,7 @@ namespace Arena.Composition
             }
             int payloadBytes = Encoding.UTF8.GetByteCount(payload);
             if (totalPayloadBytes + payloadBytes > limits.MaxTotalPayloadBytes) return OperationAdmission.Invalid("input.payload_budget");
-            ArenaTraceMetadata metadata = definition.DescribeInput(independent);
+            ArenaMessageDescription metadata = definition.DescribeInput(independent);
             OperationDescriptor descriptor = new OperationDescriptor(metadata.Type);
             OperationAdmission admission = registry.Admit(descriptor);
             if (!admission.IsAdmitted) return admission;

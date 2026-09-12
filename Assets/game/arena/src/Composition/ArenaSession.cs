@@ -10,11 +10,12 @@ using Module.Verification.StateSnapshot;
 using Module.Verification.Evidence;
 using Module.Verification.Oracle;
 using Module.Verification.TraceBuffer;
+using Module.Verification.SystemFact.Observability;
 
 namespace Arena.Composition
 {
     /// <summary>Arena-owned host workflow. The general modules do not know or choose its next step.</summary>
-    public sealed class ArenaSession : IDisposable, IArenaInputExecutionObserver
+    public sealed class ArenaSession : IDisposable, IArenaInputExecutionObserver, IArenaVerificationContext
     {
         private sealed class Completion
         {
@@ -73,7 +74,7 @@ namespace Arena.Composition
                 return owner.latestDiagnostics;
             }
 
-            public TraceBatch<ArenaTraceEntry> ReadTrace(TraceCursor cursor, int maxItems)
+            public TraceRead<ObservedFact> ReadTrace(TraceCursor cursor, int maxItems)
             {
                 owner.EnsureIdle();
                 return owner.trace.Reader.Read(cursor, maxItems);
@@ -112,7 +113,8 @@ namespace Arena.Composition
         private ArenaControlAdapter controls;
         private ArenaObservationAdapter observations;
         private OracleSet<ArenaObservation> oracles;
-        private TraceBuffer<ArenaTraceEntry> trace;
+        private TraceBuffer<ObservedFact> trace;
+        private SystemFactHub factHub;
         private CollectingDiagnosticSink diagnosticSink;
         private ArenaScenario scenario;
         private string scenarioPayload;
@@ -173,6 +175,14 @@ namespace Arena.Composition
             get { return observations.Reader; }
         }
         public IArenaOperationReader Controls { get; }
+        string IArenaVerificationContext.SessionId
+        {
+            get { return Id; }
+        }
+        ulong IArenaVerificationContext.Tick
+        {
+            get { return CurrentTick; }
+        }
         public bool HasRealtimeDriver
         {
             get
@@ -192,13 +202,7 @@ namespace Arena.Composition
         {
             EnsureIdle();
             if (State != ArenaSessionState.Running) return OperationAdmission.Denied("session.not_running");
-            OperationAdmission admission = controls.Submit(CurrentTick, targetTick, input);
-            if (admission.IsAdmitted)
-            {
-                ArenaTraceMetadata metadata = definition.DescribeInput(input);
-                RecordTrace(new ArenaTraceEntry(Id, CurrentTick, admission.Handle.Sequence, "Admission", metadata.Type, admission.Code, actor: metadata.Actor, target: metadata.Target));
-            }
-            return admission;
+            return controls.Submit(CurrentTick, targetTick, input);
         }
 
         public ArenaTickEvidence Step()
@@ -217,9 +221,9 @@ namespace Arena.Composition
         public ArenaRecording CaptureRecording()
         {
             EnsureIdle();
-            TraceBatch<ArenaTraceEntry> traceBatch = trace.Reader.Read(default(TraceCursor), trace.Capacity);
-            List<ArenaTraceEntry> traceEntries = new List<ArenaTraceEntry>();
-            foreach (TraceRecord<ArenaTraceEntry> record in traceBatch.Items) traceEntries.Add(record.Entry);
+            TraceRead<ObservedFact> traceRead = trace.Reader.Read(default(TraceCursor), trace.Capacity);
+            List<ArenaRecordedTraceEntry> traceEntries = new List<ArenaRecordedTraceEntry>();
+            foreach (ObservedFact observedFact in traceRead.Items) traceEntries.Add(ToTraceEntry(observedFact));
             return new ArenaRecording(definition.PolicyId, Environment.Version + " / " + Environment.OSVersion, scenarioPayload, TickDelta, Limits, initialDigest, controls.Inputs, ticks, traceEntries, trace.OverwrittenCount);
         }
 
@@ -270,13 +274,19 @@ namespace Arena.Composition
             string nextId = Guid.NewGuid().ToString("N");
             epoch = checked(epoch + 1);
             ArenaObservationAdapter nextObservations = new ArenaObservationAdapter();
-            TraceBuffer<ArenaTraceEntry> nextTrace = new TraceBuffer<ArenaTraceEntry>(Limits.TraceCapacity);
+            TraceBuffer<ObservedFact> nextTrace = new TraceBuffer<ObservedFact>(Limits.TraceCapacity);
+            SystemFactTraceObserver traceObserver = new SystemFactTraceObserver(nextTrace.Writer);
+            SystemFactHubBuilder factHubBuilder = new SystemFactHubBuilder();
+            factHubBuilder.Register<Module.Verification.SystemFact.ISystemFact>(traceObserver);
+            SystemFactHub nextFactHub = factHubBuilder.Build();
             CollectingDiagnosticSink nextDiagnostics = new CollectingDiagnosticSink(Limits.TraceCapacity);
-            ArenaControlAdapter nextControls = new ArenaControlAdapter(definition, Limits, nextId, epoch, Encoding.UTF8.GetByteCount(nextPayload));
+            RuntimeControlFactAdapter<ArenaOperationResult> transitionAdapter = new RuntimeControlFactAdapter<ArenaOperationResult>(this, nextFactHub);
+            ArenaControlAdapter nextControls = new ArenaControlAdapter(definition, Limits, nextId, epoch, Encoding.UTF8.GetByteCount(nextPayload), transitionAdapter);
             OracleSet<ArenaObservation> nextOracles = definition.CreateOracleSet();
             Id = nextId;
             observations = nextObservations;
             trace = nextTrace;
+            factHub = nextFactHub;
             diagnosticSink = nextDiagnostics;
             controls = nextControls;
             oracles = nextOracles;
@@ -345,7 +355,7 @@ namespace Arena.Composition
                     observationReference = barrier;
                     stage = "StateDigest";
                     digest = ArenaStateDigest.Compute(observation);
-                    RecordTrace(new ArenaTraceEntry(Id, target, 0, "StateDigest", "State", digest));
+                    PublishFact(new ArenaTraceFact(Id, target, 0, "StateDigest", "State", digest));
                     stage = "Oracle";
                     evaluation = oracles.Evaluate("tick:" + target, observation);
                     RecordOracleResults(target, evaluation);
@@ -389,7 +399,6 @@ namespace Arena.Composition
                 if (outcome == null) outcome = new ArenaOperationResult(operation.Handle.Sequence, operation.TargetTick, OperationState.Failed, operation.Handle.Sequence == executingSequence ? "simulation.exception" : "tick.aborted", null);
                 ArenaOperationResult result = controls.Complete(operation, outcome, barrierText);
                 completed.Add(result);
-                RecordTrace(new ArenaTraceEntry(Id, operation.TargetTick, operation.Handle.Sequence, "Operation", operation.Metadata.Type, outcome.Code, actor: operation.Metadata.Actor, target: operation.Metadata.Target));
             }
             return completed;
         }
@@ -421,7 +430,7 @@ namespace Arena.Composition
             Diagnostic diagnostic = Diagnostic.Error("arena.session", code, detail ?? string.Empty);
             DiagnosticReport report = new DiagnosticReport(diagnostic, Id + ":" + tick + ":" + code, scopeId: Id, generation: epoch);
             diagnosticSink.Report(report);
-            RecordTrace(new ArenaTraceEntry(Id, tick, executingSequence, stage, "Failure", code));
+            PublishFact(new ArenaTraceFact(Id, tick, executingSequence, stage, "Failure", code));
         }
 
         private void RecordOracleResults(ulong tick, EvaluationReport report)
@@ -429,7 +438,7 @@ namespace Arena.Composition
             foreach (OracleResult result in report.Results)
             {
                 if (result.Verdict == TestVerdict.Passed) continue;
-                RecordTrace(new ArenaTraceEntry(Id, tick, 0, "Oracle", result.Code, result.Detail));
+                PublishFact(new ArenaTraceFact(Id, tick, 0, "Oracle", result.Code, result.Detail));
                 Diagnostic diagnostic = Diagnostic.Error("arena.oracle", result.Code, result.Detail);
                 DiagnosticReport diagnosticReport = new DiagnosticReport(diagnostic, Id + ":" + tick + ":" + result.Code, scopeId: Id, generation: epoch);
                 diagnosticSink.Report(diagnosticReport);
@@ -449,25 +458,32 @@ namespace Arena.Composition
         {
             stage = phase.ToString();
             executingSequence = 0;
-            RecordTrace(new ArenaTraceEntry(Id, core == null ? 0 : core.TickNumber, 0, "Phase", stage, entering ? "begin" : "end"));
+            PublishFact(new ArenaTraceFact(Id, core == null ? 0 : core.TickNumber, 0, "Phase", stage, entering ? "begin" : "end"));
         }
 
         private void RecordDispatch(MessageDispatch dispatch)
         {
-            ArenaTraceMetadata metadata = definition.DescribeMessage(dispatch.Message);
+            ArenaMessageDescription metadata = definition.DescribeMessage(dispatch.Message);
             if (metadata == null)
             {
                 string type = dispatch.Message.GetType().Name;
-                RecordTrace(new ArenaTraceEntry(Id, core.TickNumber, 0, dispatch.Category.ToString(), type, string.Empty, dispatch.Wave));
+                PublishFact(new ArenaTraceFact(Id, core.TickNumber, 0, dispatch.Category.ToString(), type, string.Empty, dispatch.Wave));
                 return;
             }
             executingSequence = metadata.Sequence;
-            RecordTrace(new ArenaTraceEntry(Id, core.TickNumber, metadata.Sequence, dispatch.Category.ToString(), metadata.Type, metadata.Detail, dispatch.Wave, metadata.Actor, metadata.Target));
+            PublishFact(new ArenaTraceFact(Id, core.TickNumber, metadata.Sequence, dispatch.Category.ToString(), metadata.Type, metadata.Detail, dispatch.Wave, metadata.Actor, metadata.Target));
         }
 
-        private void RecordTrace(ArenaTraceEntry entry)
+        private void PublishFact(ArenaTraceFact fact)
         {
-            trace.Writer.Record(entry);
+            factHub.Publish(fact);
+        }
+
+        private static ArenaRecordedTraceEntry ToTraceEntry(ObservedFact observedFact)
+        {
+            IArenaTraceFact fact = observedFact.Fact as IArenaTraceFact;
+            if (fact == null) throw new InvalidOperationException("Arena trace received a fact outside the Arena published language.");
+            return new ArenaRecordedTraceEntry(fact.SessionId, fact.Tick, fact.OperationSequence, fact.Stage, fact.Type, fact.Code, fact.Wave, fact.Actor, fact.Target);
         }
 
         private void UpdateDiagnosticSnapshot()

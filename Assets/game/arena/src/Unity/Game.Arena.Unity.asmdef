@@ -11,6 +11,8 @@
     "Module.SimulationPrimitives",
     "Module.SimulationObjectRegistry",
     "Module.Verification.Invariant",
+    "Module.Verification.SystemFact",
+    "Module.Verification.SystemFact.Observability",
     "Unity.InputSystem"
   ]
 }

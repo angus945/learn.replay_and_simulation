@@ -42,7 +42,7 @@ ArenaSession 記錄 admission、phase、dispatch、operation result、digest 與
 例如對 fact message 回傳：
 
 ```csharp
-return new ArenaTraceMetadata(
+return new ArenaMessageDescription(
     fact.Fact.Kind.ToString(),
     fact.Sequence,
     fact.Fact.Actor.Value,
@@ -62,11 +62,11 @@ Action sequence 和 trace record sequence 不相同。前者連回操作；後�
 IArenaDiagnosticReader reader = session.Diagnostics;
 ArenaDiagnosticSnapshot snapshot = reader.ReadSnapshot();
 TraceCursor cursor = default;
-TraceBatch<ArenaTraceEntry> batch = reader.ReadTrace(cursor, 64);
+TraceRead<ObservedFact> batch = reader.ReadTrace(cursor, 64);
 cursor = batch.NextCursor;
 ```
 
-讀取不 Step、不重新 capture、不重算 oracle，不新增 trace。多次 Poll 不應改變 gameplay digest。Trace 有界；讀者落後會看見 MissedCount／StreamChanged，不能把缺失資料說成沒有事件。
+讀取不 Step、不重新 capture、不重算 oracle，不新增 trace。多次 Poll 不應改變 gameplay digest。Trace 有界；讀者落後會看見 `MissedCount`／`TraceReadState.Evicted`，foreign cursor 會得到 `TraceReadState.ForeignCursor`，不能把缺失資料說成沒有事件。
 
 Unity 的 [ArenaDiagnosticsPanel](../../Assets/game/arena/src/Unity/ArenaDiagnosticsPanel.cs) 只取得這個 reader。來源 overwrite、尚未讀到就遺失、面板本地歷史淘汰是三件不同事；reader 無法 Submit／Step／Stop。
 

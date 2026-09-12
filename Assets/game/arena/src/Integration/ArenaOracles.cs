@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using InvariantChecks;
+using Module.Verification.Invariant;
 using Module.Verification.RuntimeControl;
 using Module.Verification.Oracle;
 
@@ -22,9 +22,9 @@ namespace Arena.Integration
 
         public OracleResult Evaluate(ArenaObservation context)
         {
-            InvariantViolation violation = invariant.Evaluate(context);
-            if (violation == null) return new OracleResult(TestVerdict.Passed, invariant.Code + ".passed");
-            return new OracleResult(TestVerdict.Failed, violation.Code, violation.Detail);
+            InvariantResult result = invariant.Evaluate(context);
+            if (result.IsSatisfied) return new OracleResult(TestVerdict.Passed, invariant.Code + ".passed");
+            return new OracleResult(TestVerdict.Failed, result.Violation.Code, result.Violation.Detail);
         }
     }
 

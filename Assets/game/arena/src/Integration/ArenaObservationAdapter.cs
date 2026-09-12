@@ -26,14 +26,12 @@ namespace Arena.Integration
         public StateSnapshotReference Publish(SimulationSession<ArenaRuntime, ArenaScenario> session, string sessionId, long epoch)
         {
             ArenaObservation observation = session.Observe(this);
-            StateSnapshotCaptureMetadata metadata = new StateSnapshotCaptureMetadata("arena.runtime", sessionId, epoch, "tick:" + observation.Tick);
-            return channel.PublisherPort.Publish(observation, metadata);
+            return channel.PublisherPort.Publish(observation);
         }
 
         public void ReportFailure(string sessionId, long epoch, string code, string detail)
         {
-            StateSnapshotCaptureMetadata metadata = new StateSnapshotCaptureMetadata("arena.runtime", sessionId, epoch);
-            channel.PublisherPort.ReportStateSnapshotCaptureFailure(new StateSnapshotCaptureFailure(metadata, code, detail));
+            channel.PublisherPort.ReportStateSnapshotCaptureFailure(new StateSnapshotCaptureFailure(code, detail));
         }
     }
 }

@@ -8,6 +8,6 @@
     <AssemblyName>Module.Verification.Oracle</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../Assets/modules/module.verification.oracle/src/**/*.cs" Exclude="../../../Assets/modules/module.verification.oracle/src/**/*.csproj" />
+    <Compile Include="../../../Assets/modules/module.verification/Module.Verification.Oracle/src/**/*.cs" Exclude="../../../Assets/modules/module.verification/Module.Verification.Oracle/src/**/*.csproj" />
   </ItemGroup>
 </Project>

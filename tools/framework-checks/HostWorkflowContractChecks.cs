@@ -128,8 +128,7 @@ internal static class HostWorkflowContractChecks
         private StateSnapshotReference Publish()
         {
             DocumentObservation observation = new DocumentObservation(workspace.Text, workspace.Revision);
-            StateSnapshotCaptureMetadata metadata = new StateSnapshotCaptureMetadata("import-host", "import-workspace", workspace.Revision);
-            return observations.PublisherPort.Publish(observation, metadata);
+            return observations.PublisherPort.Publish(observation);
         }
     }
 
@@ -138,14 +137,12 @@ internal static class HostWorkflowContractChecks
         DocumentWorkspaceState workspace = new DocumentWorkspaceState("before", 0);
         StateSnapshotChannel<DocumentObservation> observations = new StateSnapshotChannel<DocumentObservation>();
         OperationRegistry<DocumentOutcome> operations = new OperationRegistry<DocumentOutcome>("document-workspace", 1);
-        StateSnapshotCaptureMetadata initialMetadata = new StateSnapshotCaptureMetadata("document-host", "document-workspace", workspace.Revision);
-        observations.PublisherPort.Publish(new DocumentObservation(workspace.Text, workspace.Revision), initialMetadata);
+        observations.PublisherPort.Publish(new DocumentObservation(workspace.Text, workspace.Revision));
 
         OperationAdmission admission = operations.Admit(new OperationDescriptor("document.replace", "replace-once"));
         Check(admission.IsAdmitted && operations.TryMarkRunning(admission.Handle), "Document operation did not enter the formal product path.");
         workspace.Replace("after");
-        StateSnapshotCaptureMetadata afterMetadata = new StateSnapshotCaptureMetadata("document-host", "document-workspace", workspace.Revision);
-        StateSnapshotReference barrier = observations.PublisherPort.Publish(new DocumentObservation(workspace.Text, workspace.Revision), afterMetadata);
+        StateSnapshotReference barrier = observations.PublisherPort.Publish(new DocumentObservation(workspace.Text, workspace.Revision));
         DocumentOutcome outcome = new DocumentOutcome(workspace.Revision);
         OperationCompletion<DocumentOutcome> completion = new OperationCompletion<DocumentOutcome>(OperationState.Succeeded, "replace.completed", outcome, FormatBarrier(barrier));
         Check(operations.TryComplete(admission.Handle, completion), "Document operation did not complete.");

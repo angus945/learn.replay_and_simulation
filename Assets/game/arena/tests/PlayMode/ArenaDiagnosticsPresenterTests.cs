@@ -7,6 +7,7 @@ using Module.Verification.Diagnostics;
 using NUnit.Framework;
 using Module.Verification.Oracle;
 using Module.Verification.TraceBuffer;
+using Module.Verification.SystemFact.Observability;
 
 namespace Arena.Tests.PlayMode
 {
@@ -190,12 +191,13 @@ namespace Arena.Tests.PlayMode
         private sealed class CountingReader : IArenaDiagnosticReader
         {
             private readonly int capacity;
-            private TraceBuffer<ArenaTraceEntry> trace;
+            private TraceBuffer<ObservedFact> trace;
+            private long sequence;
 
             public CountingReader(int capacity)
             {
                 this.capacity = capacity;
-                trace = new TraceBuffer<ArenaTraceEntry>(capacity);
+                trace = new TraceBuffer<ObservedFact>(capacity);
             }
 
             public string SessionId { get; set; } = "presenter-test-session";
@@ -206,12 +208,18 @@ namespace Arena.Tests.PlayMode
             public void Append(int count, string code = "received")
             {
                 for (int index = 0; index < count; index++)
-                    trace.Writer.Record(new ArenaTraceEntry(SessionId, 0, index, "Test", "Fact", code));
+                {
+                    sequence++;
+                    ArenaTraceFact fact = new ArenaTraceFact(SessionId, 0, index, "Test", "Fact", code);
+                    FactObservationContext context = new FactObservationContext(sequence, DateTimeOffset.UtcNow);
+                    trace.Writer.Append(new ObservedFact(fact, context));
+                }
             }
 
             public void ResetStream()
             {
-                trace = new TraceBuffer<ArenaTraceEntry>(capacity);
+                trace = new TraceBuffer<ObservedFact>(capacity);
+                sequence = 0;
             }
 
             public ArenaDiagnosticSnapshot ReadSnapshot()
@@ -222,7 +230,7 @@ namespace Arena.Tests.PlayMode
                 return new ArenaDiagnosticSnapshot(SessionId, ArenaSessionState.Running, 0, 0, default, null, evaluation, null, Array.Empty<DiagnosticReport>());
             }
 
-            public TraceBatch<ArenaTraceEntry> ReadTrace(TraceCursor cursor, int maxItems)
+            public TraceRead<ObservedFact> ReadTrace(TraceCursor cursor, int maxItems)
             {
                 TraceReads++;
                 LastMaximum = maxItems;

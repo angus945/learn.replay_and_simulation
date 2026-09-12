@@ -13,7 +13,9 @@
     "Framework.DeterministicSimulation",
     "Framework.DeterministicSimulation.Unity",
     "Module.Verification.TraceBuffer",
-    "Module.Verification.Invariant"
+    "Module.Verification.Invariant",
+    "Module.Verification.SystemFact",
+    "Module.Verification.SystemFact.Observability"
   ],
   "optionalUnityReferences": ["TestAssemblies"]
 }

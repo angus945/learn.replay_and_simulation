@@ -34,7 +34,7 @@ namespace Arena.Integration
     }
     public sealed class ArenaInputIntent : IIntent
     {
-        public ArenaInputIntent(ArenaInput input, ArenaInputExecutionContext context, ArenaTraceMetadata metadata, IArenaInputExecutionObserver observer)
+        public ArenaInputIntent(ArenaInput input, ArenaInputExecutionContext context, ArenaMessageDescription metadata, IArenaInputExecutionObserver observer)
         {
             Input = input ?? throw new System.ArgumentNullException(nameof(input));
             Context = context ?? throw new System.ArgumentNullException(nameof(context));
@@ -44,7 +44,7 @@ namespace Arena.Integration
 
         public ArenaInput Input { get; }
         public ArenaInputExecutionContext Context { get; }
-        public ArenaTraceMetadata Metadata { get; }
+        public ArenaMessageDescription Metadata { get; }
         public IArenaInputExecutionObserver Observer { get; }
     }
     public readonly struct ArenaInputCommand : IInternalCommand
@@ -84,25 +84,25 @@ namespace Arena.Integration
             OperationState state = result.Decision == ArenaDecision.Accepted ? OperationState.Succeeded : OperationState.Rejected;
             return new ArenaOperationResult(context.Handle.Sequence, context.TargetTick, state, result.Code, null);
         }
-        public static ArenaTraceMetadata Describe(object message)
+        public static ArenaMessageDescription Describe(object message)
         {
             if (message is ArenaInputIntent inputIntent)
             {
-                ArenaTraceMetadata metadata = inputIntent.Metadata;
-                return new ArenaTraceMetadata(metadata.Type, inputIntent.Context.Handle.Sequence, metadata.Actor, metadata.Target, metadata.Detail);
+                ArenaMessageDescription metadata = inputIntent.Metadata;
+                return new ArenaMessageDescription(metadata.Type, inputIntent.Context.Handle.Sequence, metadata.Actor, metadata.Target, metadata.Detail);
             }
             if (message is ArenaInputCommand inputCommand)
             {
                 ArenaInputIntent commandIntent = inputCommand.Intent;
-                ArenaTraceMetadata metadata = commandIntent.Metadata;
-                return new ArenaTraceMetadata(metadata.Type, commandIntent.Context.Handle.Sequence, metadata.Actor, metadata.Target, metadata.Detail);
+                ArenaMessageDescription metadata = commandIntent.Metadata;
+                return new ArenaMessageDescription(metadata.Type, commandIntent.Context.Handle.Sequence, metadata.Actor, metadata.Target, metadata.Detail);
             }
             if (message is ArenaFactMessage fact)
-                return new ArenaTraceMetadata(fact.Fact.Kind.ToString(), fact.Sequence, fact.Fact.Actor.Value,
+                return new ArenaMessageDescription(fact.Fact.Kind.ToString(), fact.Sequence, fact.Fact.Actor.Value,
                     fact.Fact.Target.Value, fact.Fact.Amount.ToString(CultureInfo.InvariantCulture));
-            if (message is RespawnCommand command) return new ArenaTraceMetadata("ScheduleRespawn", command.Sequence);
+            if (message is RespawnCommand command) return new ArenaMessageDescription("ScheduleRespawn", command.Sequence);
             if (message is ArenaLifecycleMessage lifecycle)
-                return new ArenaTraceMetadata("Lifecycle", lifecycle.Sequence, lifecycle.Actor, detail: lifecycle.Code);
+                return new ArenaMessageDescription("Lifecycle", lifecycle.Sequence, lifecycle.Actor, detail: lifecycle.Code);
             return null;
         }
         private sealed class InputAdapter : IIntentHandler<ArenaInputIntent>, IInternalCommandHandler<ArenaInputCommand>

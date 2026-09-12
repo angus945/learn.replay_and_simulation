@@ -8,7 +8,7 @@
     <AssemblyName>Module.Verification.TraceBuffer</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../Assets/modules/module.verification.trace-buffer/src/**/*.cs" />
+    <Compile Include="../../../Assets/modules/module.verification/Module.Verification.TraceBuffer/src/**/*.cs" />
 
   </ItemGroup>
 </Project>

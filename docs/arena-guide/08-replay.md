@@ -35,7 +35,7 @@ ArenaRecording 保存：
 - encoded scenario、Policy、Runtime、TickDelta、實際 ArenaLimits。
 - initial digest 與 admitted external inputs 的 sequence／tick／payload。
 - 每個 ArenaRecordedTick 的 digest、operation results，包含沒有輸入的尾段。
-- 失敗 tick 的 ArenaRecordedFailure 與有界 ArenaTraceEntry。
+- 失敗 tick 的 ArenaRecordedFailure 與有界 ArenaRecordedTraceEntry（serialization projection）。
 
 它不保存整個 Actor object graph、不保存 Unity frame delta、不把 RespawnCommand／ArenaFactMessage 當新輸入，不保存任意 observation 作 restore checkpoint。
 

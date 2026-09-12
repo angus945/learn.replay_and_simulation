@@ -3,7 +3,7 @@ using System.IO;
 using System.Runtime.Serialization.Json;
 using System.Security.Cryptography;
 using System.Text;
-using InvariantChecks;
+using Module.Verification.Invariant;
 
 namespace Arena.Integration
 {
@@ -91,21 +91,21 @@ namespace Arena.Integration
         {
             get { return "arena.committed-state"; }
         }
-        public InvariantViolation Evaluate(ArenaObservation state)
+        public InvariantResult Evaluate(ArenaObservation state)
         {
-            if (state.RegistryActiveCount != state.Actors.Count) return new InvariantViolation(Code, "Registry/repository disagreement.");
+            if (state.RegistryActiveCount != state.Actors.Count) return InvariantResult.Violated(new InvariantViolation(Code, "Registry/repository disagreement."));
             ulong previous = 0;
             foreach (ActorSnapshot actor in state.Actors)
             {
                 if (actor.Id <= previous || actor.Health <= 0 || actor.Health > actor.MaxHealth)
-                    return new InvariantViolation(Code, "Unordered identity or dead actor survived commit.");
+                    return InvariantResult.Violated(new InvariantViolation(Code, "Unordered identity or dead actor survived commit."));
                 if (!Domain.Position.IsFinite(actor.X) || !Domain.Position.IsFinite(actor.Y) ||
                     !Domain.Position.IsFinite(actor.DirectionX) || !Domain.Position.IsFinite(actor.DirectionY) ||
                     (double)actor.DirectionX * actor.DirectionX + (double)actor.DirectionY * actor.DirectionY > 1.000001)
-                    return new InvariantViolation(Code, "Invalid movement snapshot.");
+                    return InvariantResult.Violated(new InvariantViolation(Code, "Invalid movement snapshot."));
                 previous = actor.Id;
             }
-            return null;
+            return InvariantResult.Satisfied();
         }
     }
     /// <summary>Opt-in teaching oracle, never enabled by the normal gameplay composition.</summary>
@@ -115,10 +115,11 @@ namespace Arena.Integration
         {
             get { return "tutorial.position-limit"; }
         }
-        public InvariantViolation Evaluate(ArenaObservation state)
+        public InvariantResult Evaluate(ArenaObservation state)
         {
             ActorSnapshot player = state.FindActor(state.PlayerId);
-            return player != null && player.X > 1.5f ? new InvariantViolation(Code, "Training oracle: player X exceeded 1.5.") : null;
+            if (player != null && player.X > 1.5f) return InvariantResult.Violated(new InvariantViolation(Code, "Training oracle: player X exceeded 1.5."));
+            return InvariantResult.Satisfied();
         }
     }
 }

@@ -70,8 +70,8 @@ $arenaAllowed = @{
     'Game.Arena.Domain' = @()
     'Game.Arena.Application' = @('Game.Arena.Domain')
     'Game.Arena.Infrastructure' = @('Game.Arena.Domain','Game.Arena.Application','Module.SeededRandom','Module.SimulationObjectRegistry')
-    'Game.Arena.Integration' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Infrastructure','Framework.DeterministicSimulation','Module.SimulationPrimitives','Module.Verification.Invariant','Module.Verification.TraceBuffer','Module.Verification.Diagnostics','Module.Verification.RuntimeControl','Module.Verification.StateSnapshot','Module.Verification.Oracle')
-    'Game.Arena.Composition' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Integration','Framework.DeterministicSimulation','framework.deterministic-playback','Module.SimulationPrimitives','Module.Verification.Invariant','Module.Verification.TraceBuffer','Module.TickInputBuffer','Module.Verification.Diagnostics','Module.Verification.RuntimeControl','Module.Verification.StateSnapshot','Module.Verification.Oracle','Module.Verification.Evidence')
+    'Game.Arena.Integration' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Infrastructure','Framework.DeterministicSimulation','Module.SimulationPrimitives','Module.Verification.Invariant','Module.Verification.TraceBuffer','Module.Verification.Diagnostics','Module.Verification.RuntimeControl','Module.Verification.StateSnapshot','Module.Verification.Oracle','Module.Verification.SystemFact','Module.Verification.SystemFact.Observability')
+    'Game.Arena.Composition' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Integration','Framework.DeterministicSimulation','framework.deterministic-playback','Module.SimulationPrimitives','Module.Verification.Invariant','Module.Verification.TraceBuffer','Module.TickInputBuffer','Module.Verification.Diagnostics','Module.Verification.RuntimeControl','Module.Verification.StateSnapshot','Module.Verification.Oracle','Module.Verification.Evidence','Module.Verification.SystemFact','Module.Verification.SystemFact.Observability')
 }
 foreach ($arenaName in $arenaAllowed.Keys) {
     if (-not $definitions.ContainsKey($arenaName)) { throw "Missing Arena assembly: $arenaName" }
@@ -94,3 +94,41 @@ foreach ($arenaFile in (& rg --files (Join-Path $projectRoot 'Assets/game/arena'
     if ((Get-Content -LiteralPath $arenaFile -Raw) -match '\bvar\s+\w+\s*(=|in\b)') { throw "Arena C# requires explicit variable types: $arenaFile" }
 }
 Write-Output 'PASS: Arena inner-layer allowlist, matching Unity/headless project references, explicit C# variable types.'
+
+# Verification capability family contract freeze.
+$verificationNames = @('Module.Verification.SystemFact','Module.Verification.SystemFact.Observability','Module.Verification.StateSnapshot','Module.Verification.RuntimeControl','Module.Verification.Oracle','Module.Verification.Invariant','Module.Verification.Diagnostics','Module.Verification.TraceBuffer','Module.Verification.Evidence')
+$verificationRoot = Join-Path $projectRoot 'Assets/modules/module.verification'
+$actualVerificationNames = @(Get-ChildItem -LiteralPath $verificationRoot -Directory | ForEach-Object { $_.Name })
+if (($actualVerificationNames | Sort-Object) -join ',' -cne (($verificationNames | Sort-Object) -join ',')) {
+    throw "Verification repository taxonomy differs from the frozen eight-capability set: $($actualVerificationNames -join ', ')"
+}
+
+$verificationAssemblies = @{
+    'Module.Verification.SystemFact' = @()
+    'Module.Verification.SystemFact.Observability' = @('Module.Verification.SystemFact')
+    'Module.Verification.StateSnapshot' = @()
+    'Module.Verification.RuntimeControl' = @()
+    'Module.Verification.Oracle' = @()
+    'Module.Verification.Invariant' = @()
+    'Module.Verification.Diagnostics' = @()
+    'Module.Verification.TraceBuffer' = @()
+    'Module.Verification.Evidence' = @()
+}
+foreach ($verificationAssembly in $verificationAssemblies.Keys) {
+    if (-not $definitions.ContainsKey($verificationAssembly)) { throw "Missing frozen verification assembly: $verificationAssembly" }
+    $actualReferences = @($definitions[$verificationAssembly].references | Where-Object { $_ })
+    $expectedReferences = @($verificationAssemblies[$verificationAssembly])
+    if (($actualReferences | Sort-Object) -join ',' -cne (($expectedReferences | Sort-Object) -join ',')) { throw "Frozen verification module has unexpected dependencies: $verificationAssembly" }
+}
+
+$verificationSources = @(& rg --files $verificationRoot -g 'Module.Verification.*/**/*.cs' -g '!**/tests/**' -g '!**/obj/**' -g '!**/bin/**')
+$legacyVerificationNamespace = '\b(Module\.SystemFacts|Module\.RuntimeObservation|Module\.RuntimeControl|Module\.TestabilityOracles|Module\.TestabilityEvidence|Module\.Diagnostics|Module\.InvariantChecks|Module\.TraceBuffering|InvariantChecks)\b'
+$productContamination = '\b(Game\.Arena|UnityEngine|Framework\.DeterministicPlayback|Framework\.DeterministicSimulation|Narrative)\b'
+$duplicateContract = '\b(FactRecord|FactEntry|FactEnvelope|FactEvent|FactMessage|StateSnapshotCaptureMetadata|TraceRecord|TraceBatch|EvidenceOperationState|EvidenceFact|EvidenceSnapshot|EvidenceDiagnostic|EvidenceOracleResult)\b'
+foreach ($verificationSource in $verificationSources) {
+    $verificationText = Get-Content -LiteralPath $verificationSource -Raw
+    if ($verificationText -match $legacyVerificationNamespace) { throw "Verification source uses a retired namespace: $verificationSource ($($Matches[0]))" }
+    if ($verificationText -match $productContamination) { throw "Verification base module contains product/framework contamination: $verificationSource ($($Matches[0]))" }
+    if ($verificationText -match $duplicateContract) { throw "Verification source reintroduces a frozen duplicate contract: $verificationSource ($($Matches[0]))" }
+}
+Write-Output "PASS: verification taxonomy, namespaces, dependency boundaries, product neutrality and duplicate-contract freeze."

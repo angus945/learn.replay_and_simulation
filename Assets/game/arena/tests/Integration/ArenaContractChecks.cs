@@ -12,6 +12,7 @@ using Module.Verification.StateSnapshot;
 using Module.Verification.Evidence;
 using Module.Verification.Oracle;
 using Module.Verification.TraceBuffer;
+using Module.Verification.SystemFact.Observability;
 
 namespace Arena.Tests
 {
@@ -115,7 +116,7 @@ namespace Arena.Tests
                 session.Step();
                 session.Step();
                 Require(session.Observe().FindActor(3) != null, "Respawn gets a fresh identity.");
-                ArenaTraceEntry[] trace = session.CaptureRecording().Trace.ToArray();
+                ArenaRecordedTraceEntry[] trace = session.CaptureRecording().Trace.ToArray();
                 Require(trace.Any(IsDefeatTrace), "Domain fact causation is retained in trace.");
             }
         }
@@ -144,7 +145,7 @@ namespace Arena.Tests
                 ArenaDiagnosticSnapshot initial = session.Diagnostics.ReadSnapshot();
                 Require(initial.Evaluation.Verdict == TestVerdict.Passed, "Initial observation is evaluated explicitly by the Arena host.");
                 session.Step();
-                TraceBatch<ArenaTraceEntry> page = session.Diagnostics.ReadTrace(default(TraceCursor), 256);
+                TraceRead<ObservedFact> page = session.Diagnostics.ReadTrace(default(TraceCursor), 256);
                 ulong tick = session.CurrentTick;
                 session.Diagnostics.ReadSnapshot();
                 Require(session.CurrentTick == tick && session.Diagnostics.ReadTrace(page.NextCursor, 256).Items.Count == 0, "Diagnostic reads do not advance or evaluate.");
@@ -267,7 +268,7 @@ namespace Arena.Tests
             return result.Sequence;
         }
 
-        private static bool IsDefeatTrace(ArenaTraceEntry entry)
+        private static bool IsDefeatTrace(ArenaRecordedTraceEntry entry)
         {
             return entry.Type == "Defeated" && entry.Sequence == 1 && entry.Target == 2;
         }

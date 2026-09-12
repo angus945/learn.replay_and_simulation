@@ -20,5 +20,7 @@
     <ProjectReference Include="../Module.Verification.RuntimeControl/Module.Verification.RuntimeControl.csproj" />
     <ProjectReference Include="../Module.Verification.StateSnapshot/Module.Verification.StateSnapshot.csproj" />
     <ProjectReference Include="../Module.Verification.Oracle/Module.Verification.Oracle.csproj" />
+    <ProjectReference Include="../Module.Verification.SystemFact/Module.Verification.SystemFact.csproj" />
+    <ProjectReference Include="../Module.Verification.SystemFact.Observability/Module.Verification.SystemFact.Observability.csproj" />
   </ItemGroup>
 </Project>

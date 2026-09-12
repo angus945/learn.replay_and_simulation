@@ -127,9 +127,9 @@ namespace Arena.Composition
     {
         private ArenaRecordedInput[] inputItems;
         private ArenaRecordedTick[] tickItems;
-        private ArenaTraceEntry[] traceItems;
+        private ArenaRecordedTraceEntry[] traceItems;
 
-        public ArenaRecording(string policy, string runtime, string scenario, float tickDelta, ArenaLimits limits, string initialDigest, IEnumerable<ArenaRecordedInput> inputs, IEnumerable<ArenaRecordedTick> ticks, IEnumerable<ArenaTraceEntry> trace, long droppedTraceEntries)
+        public ArenaRecording(string policy, string runtime, string scenario, float tickDelta, ArenaLimits limits, string initialDigest, IEnumerable<ArenaRecordedInput> inputs, IEnumerable<ArenaRecordedTick> ticks, IEnumerable<ArenaRecordedTraceEntry> trace, long droppedTraceEntries)
         {
             Schema = 2;
             Policy = policy;
@@ -140,7 +140,7 @@ namespace Arena.Composition
             InitialDigest = initialDigest;
             inputItems = new List<ArenaRecordedInput>(inputs).ToArray();
             tickItems = new List<ArenaRecordedTick>(ticks).ToArray();
-            traceItems = new List<ArenaTraceEntry>(trace).ToArray();
+            traceItems = new List<ArenaRecordedTraceEntry>(trace).ToArray();
             DroppedTraceEntries = droppedTraceEntries;
         }
 
@@ -161,7 +161,7 @@ namespace Arena.Composition
             get { return tickItems; }
             set { tickItems = value; }
         }
-        [DataMember(Order = 10)] private ArenaTraceEntry[] TraceItems
+        [DataMember(Order = 10)] private ArenaRecordedTraceEntry[] TraceItems
         {
             get { return traceItems; }
             set { traceItems = value; }
@@ -175,7 +175,7 @@ namespace Arena.Composition
         {
             get { return Array.AsReadOnly(tickItems); }
         }
-        public IReadOnlyList<ArenaTraceEntry> Trace
+        public IReadOnlyList<ArenaRecordedTraceEntry> Trace
         {
             get { return Array.AsReadOnly(traceItems); }
         }

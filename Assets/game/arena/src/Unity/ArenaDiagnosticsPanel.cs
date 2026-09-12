@@ -6,6 +6,7 @@ using System.Text;
 using Arena.Integration;
 using Module.Verification.Oracle;
 using Module.Verification.TraceBuffer;
+using Module.Verification.SystemFact.Observability;
 
 namespace Arena.Unity
 {
@@ -14,18 +15,19 @@ namespace Arena.Unity
     {
         private const int SummaryLineLength = 64;
 
-        internal ArenaTraceRow(TraceRecord<ArenaTraceEntry> record)
+        internal ArenaTraceRow(ObservedFact observedFact)
         {
-            ArenaTraceEntry entry = record.Entry;
-            Sequence = record.Sequence;
+            IArenaTraceFact entry = observedFact.Fact as IArenaTraceFact;
+            if (entry == null) throw new ArgumentException("The observed fact is not part of the Arena trace language.", nameof(observedFact));
+            Sequence = observedFact.Context.Sequence;
             string first = string.Format(CultureInfo.InvariantCulture, "#{0}  t{1}  {2}/{3}",
-                record.Sequence, entry.Tick, entry.Stage, entry.Type);
+                Sequence, entry.Tick, entry.Stage, entry.Type);
             string second = string.Format(CultureInfo.InvariantCulture, "w{0}  {1} > {2}  {3}",
                 entry.Wave, entry.Actor, entry.Target, entry.Code);
             Summary = LimitLine(first) + "\n" + LimitLine(second);
             Detail = string.Format(CultureInfo.InvariantCulture,
                 "Record #{0} / input sequence {1}\nSession {2}\nTick {3} / wave {4}\n{5}/{6}\nActor {7} > target {8}\n{9}",
-                record.Sequence, entry.Sequence, entry.Session, entry.Tick, entry.Wave,
+                Sequence, entry.OperationSequence, entry.SessionId, entry.Tick, entry.Wave,
                 entry.Stage, entry.Type, entry.Actor, entry.Target, entry.Code);
         }
 
@@ -95,8 +97,8 @@ namespace Arena.Unity
         {
             ArenaDiagnosticSnapshot next = reader.ReadSnapshot();
             bool sessionChanged = Snapshot != null && !string.Equals(Snapshot.SessionId, next.SessionId, StringComparison.Ordinal);
-            TraceBatch<ArenaTraceEntry> batch = reader.ReadTrace(sessionChanged ? default : cursor, BatchCapacity);
-            bool reset = sessionChanged || batch.StreamChanged;
+            TraceRead<ObservedFact> batch = reader.ReadTrace(sessionChanged ? default : cursor, BatchCapacity);
+            bool reset = sessionChanged || batch.State == TraceReadState.ForeignCursor;
             long previousMissed = MissedCount;
             long previousOverwritten = SourceOverwrittenCount;
             long previousEvicted = LocalEvictedCount;

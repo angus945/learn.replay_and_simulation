@@ -92,12 +92,12 @@ namespace Arena.Composition
             return new ArenaLimits(scenario.MaxTicks, scenario.MaxInputs, scenario.TraceCapacity, 65536, 16777216);
         }
 
-        internal ArenaTraceMetadata DescribeInput(ArenaInput input)
+        internal ArenaMessageDescription DescribeInput(ArenaInput input)
         {
-            return new ArenaTraceMetadata(input.Kind.ToString(), actor: input.Actor, target: input.Target);
+            return new ArenaMessageDescription(input.Kind.ToString(), actor: input.Actor, target: input.Target);
         }
 
-        internal ArenaTraceMetadata DescribeMessage(object message)
+        internal ArenaMessageDescription DescribeMessage(object message)
         {
             return ArenaSimulationWiring.Describe(message);
         }

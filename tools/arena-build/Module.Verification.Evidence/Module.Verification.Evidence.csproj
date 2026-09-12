@@ -8,6 +8,6 @@
     <AssemblyName>Module.Verification.Evidence</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../Assets/modules/module.verification.evidence/src/**/*.cs" Exclude="../../../Assets/modules/module.verification.evidence/src/**/*.csproj" />
+    <Compile Include="../../../Assets/modules/module.verification/Module.Verification.Evidence/src/**/*.cs" Exclude="../../../Assets/modules/module.verification/Module.Verification.Evidence/src/**/*.csproj" />
   </ItemGroup>
 </Project>
