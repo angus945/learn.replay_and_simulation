@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using RuntimeControl;
-using RuntimeObservation;
-using TestabilityEvidence;
-using TestabilityOracles;
+using Module.Verification.RuntimeControl;
+using Module.Verification.StateSnapshot;
+using Module.Verification.Evidence;
+using Module.Verification.Oracle;
 
 internal static class HostWorkflowContractChecks
 {
@@ -86,7 +86,7 @@ internal static class HostWorkflowContractChecks
     private sealed class ImportQueueHost
     {
         private readonly DocumentWorkspaceState workspace = new DocumentWorkspaceState(string.Empty, 0);
-        private readonly ObservationChannel<DocumentObservation> observations = new ObservationChannel<DocumentObservation>();
+        private readonly StateSnapshotChannel<DocumentObservation> observations = new StateSnapshotChannel<DocumentObservation>();
         private readonly OperationRegistry<DocumentOutcome> operations = new OperationRegistry<DocumentOutcome>("import-workspace", 1);
         private readonly Queue<ImportRequest> pending = new Queue<ImportRequest>();
 
@@ -95,7 +95,7 @@ internal static class HostWorkflowContractChecks
             Publish();
         }
 
-        public IObservationReader<DocumentObservation> Observations
+        public IStateSnapshotReader<DocumentObservation> Observations
         {
             get { return observations.ReaderPort; }
         }
@@ -112,23 +112,23 @@ internal static class HostWorkflowContractChecks
             return operations.Read(handle);
         }
 
-        public ObservationReference ProgressOne()
+        public StateSnapshotReference ProgressOne()
         {
             if (pending.Count == 0) throw new InvalidOperationException("No import is pending.");
             ImportRequest request = pending.Dequeue();
             if (!operations.TryMarkRunning(request.Handle)) throw new InvalidOperationException("Import did not enter running state.");
             workspace.Replace(request.Value);
-            ObservationReference barrier = Publish();
+            StateSnapshotReference barrier = Publish();
             DocumentOutcome outcome = new DocumentOutcome(workspace.Revision);
             OperationCompletion<DocumentOutcome> completion = new OperationCompletion<DocumentOutcome>(OperationState.Succeeded, "import.completed", outcome, FormatBarrier(barrier));
             if (!operations.TryComplete(request.Handle, completion)) throw new InvalidOperationException("Import did not complete.");
             return barrier;
         }
 
-        private ObservationReference Publish()
+        private StateSnapshotReference Publish()
         {
             DocumentObservation observation = new DocumentObservation(workspace.Text, workspace.Revision);
-            CaptureMetadata metadata = new CaptureMetadata("import-host", "import-workspace", workspace.Revision);
+            StateSnapshotCaptureMetadata metadata = new StateSnapshotCaptureMetadata("import-host", "import-workspace", workspace.Revision);
             return observations.PublisherPort.Publish(observation, metadata);
         }
     }
@@ -136,32 +136,32 @@ internal static class HostWorkflowContractChecks
     internal static void DocumentWorkspace()
     {
         DocumentWorkspaceState workspace = new DocumentWorkspaceState("before", 0);
-        ObservationChannel<DocumentObservation> observations = new ObservationChannel<DocumentObservation>();
+        StateSnapshotChannel<DocumentObservation> observations = new StateSnapshotChannel<DocumentObservation>();
         OperationRegistry<DocumentOutcome> operations = new OperationRegistry<DocumentOutcome>("document-workspace", 1);
-        CaptureMetadata initialMetadata = new CaptureMetadata("document-host", "document-workspace", workspace.Revision);
+        StateSnapshotCaptureMetadata initialMetadata = new StateSnapshotCaptureMetadata("document-host", "document-workspace", workspace.Revision);
         observations.PublisherPort.Publish(new DocumentObservation(workspace.Text, workspace.Revision), initialMetadata);
 
         OperationAdmission admission = operations.Admit(new OperationDescriptor("document.replace", "replace-once"));
         Check(admission.IsAdmitted && operations.TryMarkRunning(admission.Handle), "Document operation did not enter the formal product path.");
         workspace.Replace("after");
-        CaptureMetadata afterMetadata = new CaptureMetadata("document-host", "document-workspace", workspace.Revision);
-        ObservationReference barrier = observations.PublisherPort.Publish(new DocumentObservation(workspace.Text, workspace.Revision), afterMetadata);
+        StateSnapshotCaptureMetadata afterMetadata = new StateSnapshotCaptureMetadata("document-host", "document-workspace", workspace.Revision);
+        StateSnapshotReference barrier = observations.PublisherPort.Publish(new DocumentObservation(workspace.Text, workspace.Revision), afterMetadata);
         DocumentOutcome outcome = new DocumentOutcome(workspace.Revision);
         OperationCompletion<DocumentOutcome> completion = new OperationCompletion<DocumentOutcome>(OperationState.Succeeded, "replace.completed", outcome, FormatBarrier(barrier));
         Check(operations.TryComplete(admission.Handle, completion), "Document operation did not complete.");
 
-        ObservationRead<DocumentObservation> exact = observations.ReaderPort.Read(barrier);
+        StateSnapshotRead<DocumentObservation> exact = observations.ReaderPort.Read(barrier);
         ITestOracle<DocumentObservation>[] oracleItems = new ITestOracle<DocumentObservation>[] { new ExpectedDocumentOracle("after", 1) };
         OracleSet<DocumentObservation> oracleSet = new OracleSet<DocumentObservation>("document-case", oracleItems);
-        EvaluationReport evaluation = oracleSet.Evaluate("replace", exact.Observation);
+        EvaluationReport evaluation = oracleSet.Evaluate("replace", exact.Snapshot);
         EvidenceBuilder evidence = new EvidenceBuilder(new EvidenceManifest("run", "replace"), 1024, 4);
-        evidence.TryAdd(new EvidenceEntry(EvidenceKind.Operation, "replace", new EvidenceReference("operation", admission.Handle.Sequence.ToString()), 64));
-        evidence.TryAdd(new EvidenceEntry(EvidenceKind.Observation, "after", new EvidenceReference("observation", FormatBarrier(barrier)), 64));
+        evidence.TryAdd(new EvidenceEntry(EvidenceKind.FactStream, "replace-operation-transition", new EvidenceReference("operation", admission.Handle.Sequence.ToString()), 64));
+        evidence.TryAdd(new EvidenceEntry(EvidenceKind.StateSnapshot, "after", new EvidenceReference("state-snapshot", FormatBarrier(barrier)), 64));
         evidence.TryAdd(new EvidenceEntry(EvidenceKind.Evaluation, "oracle", new EvidenceReference("evaluation", evaluation.Verdict.ToString()), 64));
         EvidenceBundle bundle = evidence.Build();
 
         OperationRead<DocumentOutcome> operation = operations.Read(admission.Handle);
-        Check(exact.State == ObservationReadState.Available && exact.Observation.Text == "after", "Exact observation barrier was not resolved.");
+        Check(exact.State == StateSnapshotReadState.Available && exact.Snapshot.Text == "after", "Exact state snapshot barrier was not resolved.");
         Check(operation.State == OperationState.Succeeded && operation.Completion.Result.Revision == 1, "Document completion state is incorrect.");
         Check(evaluation.Verdict == TestVerdict.Passed && bundle.Entries.Count == 3, "Document oracle or evidence assembly failed.");
     }
@@ -171,18 +171,18 @@ internal static class HostWorkflowContractChecks
         ImportQueueHost host = new ImportQueueHost();
         OperationAdmission admission = host.Submit("imported");
         OperationRead<DocumentOutcome> pending = host.Read(admission.Handle);
-        ObservationRead<DocumentObservation> before = host.Observations.ReadLatest();
-        Check(pending.State == OperationState.Pending && before.Observation.Revision == 0, "Submit performed asynchronous work before host progress.");
+        StateSnapshotRead<DocumentObservation> before = host.Observations.ReadLatest();
+        Check(pending.State == OperationState.Pending && before.Snapshot.Revision == 0, "Submit performed asynchronous work before host progress.");
 
-        ObservationReference barrier = host.ProgressOne();
+        StateSnapshotReference barrier = host.ProgressOne();
         OperationRead<DocumentOutcome> completed = host.Read(admission.Handle);
-        ObservationRead<DocumentObservation> after = host.Observations.Read(barrier);
+        StateSnapshotRead<DocumentObservation> after = host.Observations.Read(barrier);
         Check(completed.State == OperationState.Succeeded, "Explicit host progress did not complete the import.");
         Check(completed.Completion.ObservationBarrier == FormatBarrier(barrier), "Completion did not preserve its exact observation barrier.");
-        Check(after.State == ObservationReadState.Available && after.Observation.Text == "imported", "Import observation did not follow completion.");
+        Check(after.State == StateSnapshotReadState.Available && after.Snapshot.Text == "imported", "Import state snapshot did not follow completion.");
     }
 
-    private static string FormatBarrier(ObservationReference reference)
+    private static string FormatBarrier(StateSnapshotReference reference)
     {
         return reference.ChannelId.ToString("N") + ":" + reference.CaptureId;
     }

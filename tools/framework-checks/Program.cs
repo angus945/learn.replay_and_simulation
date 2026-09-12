@@ -23,10 +23,10 @@ internal static class Program
             SessionTemplateContractChecks.RealtimeTimingAndOwnership();
             SessionTemplateContractChecks.RealtimeFailuresAndReentry();
             Console.WriteLine("PASS framework definition / session / realtime ownership");
-            ModuleContractChecks.RuntimeObservation();
+            ModuleContractChecks.StateSnapshot();
             ModuleContractChecks.RuntimeControl();
-            ModuleContractChecks.TestabilityOracles();
-            ModuleContractChecks.TestabilityEvidence();
+            ModuleContractChecks.Oracle();
+            ModuleContractChecks.Evidence();
             Console.WriteLine("PASS passive observation / control / oracle / evidence modules");
             HostWorkflowContractChecks.DocumentWorkspace();
             HostWorkflowContractChecks.ImportQueue();

@@ -1,7 +1,0 @@
-{
-  "name": "module.testability-oracles",
-  "rootNamespace": "TestabilityOracles",
-  "references": [],
-  "autoReferenced": true,
-  "noEngineReferences": true
-}

@@ -4,7 +4,7 @@
 
 本章問題：外部工具要求「tick 2 向右」時，怎麼區分收到了要求、執行了要求，以及遊戲拒絕要求？直接呼叫 Application.Execute 無法表達這些不同時機。
 
-`ArenaControlAdapter` 使用 `module.runtime-control` 提供 operation admission／state，`ArenaSession` 再把到期輸入送入第 3 章的同一 pipeline。Application 仍只處理遊戲是否合法。
+`ArenaControlAdapter` 使用 `module.verification.runtime-control` 提供 operation admission／state，`ArenaSession` 再把到期輸入送入第 3 章的同一 pipeline。Application 仍只處理遊戲是否合法。
 
 ## 新增 payload 與 mapping，別再造一個 input dispatcher
 
@@ -26,7 +26,7 @@ Arena 不另外註冊一套 Move intent handler，不讓 Unity 或測試走第�
 在 [ArenaSimulationWiring](../../Assets/game/arena/src/Integration/ArenaSimulationWiring.cs) 的正式入口是：
 
 ```csharp
-public static ArenaInputOutcome Execute(ArenaRuntime runtime, ArenaInput input, ArenaInputExecutionContext context)
+public static ArenaOperationResult Execute(ArenaRuntime runtime, ArenaInput input, ArenaInputExecutionContext context)
 {
     // map to ArenaRequest, then call ArenaApplication.Execute
 }
@@ -62,7 +62,7 @@ using System;
 using Arena.Application;
 using Arena.Composition;
 using Arena.Integration;
-using RuntimeControl;
+using Module.Verification.RuntimeControl;
 
 using (ArenaSession session = new ArenaDefinition().CreateSession(new ArenaScenario(tickDelta: .25f)))
 {

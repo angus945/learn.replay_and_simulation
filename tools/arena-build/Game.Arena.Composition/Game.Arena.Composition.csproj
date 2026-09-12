@@ -15,13 +15,13 @@
     <ProjectReference Include="../Framework.DeterministicSimulation/Framework.DeterministicSimulation.csproj" />
     <ProjectReference Include="../Framework.DeterministicPlayback/Framework.DeterministicPlayback.csproj" />
     <ProjectReference Include="../Module.SimulationPrimitives/Module.SimulationPrimitives.csproj" />
-    <ProjectReference Include="../Module.InvariantChecks/Module.InvariantChecks.csproj" />
+    <ProjectReference Include="../Module.Verification.Invariant/Module.Verification.Invariant.csproj" />
     <ProjectReference Include="../Module.TickInputBuffer/Module.TickInputBuffer.csproj" />
-    <ProjectReference Include="../Module.TraceBuffer/Module.TraceBuffer.csproj" />
-    <ProjectReference Include="../Module.Diagnostics/Module.Diagnostics.csproj" />
-    <ProjectReference Include="../Module.RuntimeControl/Module.RuntimeControl.csproj" />
-    <ProjectReference Include="../Module.RuntimeObservation/Module.RuntimeObservation.csproj" />
-    <ProjectReference Include="../Module.TestabilityOracles/Module.TestabilityOracles.csproj" />
-    <ProjectReference Include="../Module.TestabilityEvidence/Module.TestabilityEvidence.csproj" />
+    <ProjectReference Include="../Module.Verification.TraceBuffer/Module.Verification.TraceBuffer.csproj" />
+    <ProjectReference Include="../Module.Verification.Diagnostics/Module.Verification.Diagnostics.csproj" />
+    <ProjectReference Include="../Module.Verification.RuntimeControl/Module.Verification.RuntimeControl.csproj" />
+    <ProjectReference Include="../Module.Verification.StateSnapshot/Module.Verification.StateSnapshot.csproj" />
+    <ProjectReference Include="../Module.Verification.Oracle/Module.Verification.Oracle.csproj" />
+    <ProjectReference Include="../Module.Verification.Evidence/Module.Verification.Evidence.csproj" />
   </ItemGroup>
 </Project>

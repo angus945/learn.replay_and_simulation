@@ -1,19 +1,19 @@
 using System;
 using DeterministicSimulation.Framework;
-using RuntimeObservation;
+using Module.Verification.StateSnapshot;
 
 namespace Arena.Integration
 {
     public sealed class ArenaObservationAdapter : ISimulationObserver<ArenaRuntime, ArenaObservation>
     {
-        private readonly ObservationChannel<ArenaObservation> channel;
+        private readonly StateSnapshotChannel<ArenaObservation> channel;
 
         public ArenaObservationAdapter(int capacity = 128)
         {
-            channel = new ObservationChannel<ArenaObservation>(capacity);
+            channel = new StateSnapshotChannel<ArenaObservation>(capacity);
         }
 
-        public IObservationReader<ArenaObservation> Reader
+        public IStateSnapshotReader<ArenaObservation> Reader
         {
             get { return channel.ReaderPort; }
         }
@@ -23,17 +23,17 @@ namespace Arena.Integration
             return new ArenaObservation(world);
         }
 
-        public ObservationReference Publish(SimulationSession<ArenaRuntime, ArenaScenario> session, string sessionId, long epoch)
+        public StateSnapshotReference Publish(SimulationSession<ArenaRuntime, ArenaScenario> session, string sessionId, long epoch)
         {
             ArenaObservation observation = session.Observe(this);
-            CaptureMetadata metadata = new CaptureMetadata("arena.runtime", sessionId, epoch, "tick:" + observation.Tick);
+            StateSnapshotCaptureMetadata metadata = new StateSnapshotCaptureMetadata("arena.runtime", sessionId, epoch, "tick:" + observation.Tick);
             return channel.PublisherPort.Publish(observation, metadata);
         }
 
         public void ReportFailure(string sessionId, long epoch, string code, string detail)
         {
-            CaptureMetadata metadata = new CaptureMetadata("arena.runtime", sessionId, epoch);
-            channel.PublisherPort.ReportCaptureFailure(new CaptureFailure(metadata, code, detail));
+            StateSnapshotCaptureMetadata metadata = new StateSnapshotCaptureMetadata("arena.runtime", sessionId, epoch);
+            channel.PublisherPort.ReportStateSnapshotCaptureFailure(new StateSnapshotCaptureFailure(metadata, code, detail));
         }
     }
 }

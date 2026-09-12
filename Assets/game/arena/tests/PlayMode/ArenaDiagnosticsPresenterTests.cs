@@ -3,10 +3,10 @@ using System.Collections;
 using Arena.Composition;
 using Arena.Integration;
 using Arena.Unity;
-using Diagnostics;
+using Module.Verification.Diagnostics;
 using NUnit.Framework;
-using TestabilityOracles;
-using TraceBuffering;
+using Module.Verification.Oracle;
+using Module.Verification.TraceBuffer;
 
 namespace Arena.Tests.PlayMode
 {

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Arena.Integration;
 using Deterministic.Playback;
-using RuntimeControl;
+using Module.Verification.RuntimeControl;
 
 namespace Arena.Composition
 {

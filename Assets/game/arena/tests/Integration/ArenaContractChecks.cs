@@ -7,11 +7,11 @@ using Arena.Composition;
 using Arena.Domain;
 using Arena.Infrastructure;
 using Arena.Integration;
-using RuntimeControl;
-using RuntimeObservation;
-using TestabilityEvidence;
-using TestabilityOracles;
-using TraceBuffering;
+using Module.Verification.RuntimeControl;
+using Module.Verification.StateSnapshot;
+using Module.Verification.Evidence;
+using Module.Verification.Oracle;
+using Module.Verification.TraceBuffer;
 
 namespace Arena.Tests
 {
@@ -87,7 +87,7 @@ namespace Arena.Tests
                 long[] sequences = tick.Results.Select(GetSequence).ToArray();
                 Require(sequences.SequenceEqual(new long[] { 1, 2, 3 }), "Stable operation order.");
                 Require(tick.Results[0].State == OperationState.Rejected, "Admission and product rejection remain separate.");
-                ArenaOperationLookup lookup = session.Controls.Find(first.Handle);
+                OperationRead<ArenaOperationResult> lookup = session.Controls.Find(first.Handle);
                 Require(lookup.ReadState == OperationReadState.Found && lookup.State == OperationState.Rejected, "Result lookup.");
                 Require(session.Controls.Read(0, 2).HasMore, "Result paging.");
                 OperationAdmission fourth = Submit(session, 4, new ArenaInput(ArenaAction.Move, 1));
@@ -95,7 +95,7 @@ namespace Arena.Tests
                 Require(fourth.IsAdmitted && !overBudget.IsAdmitted, "Input budget.");
                 Require(second.Handle.Sequence == 2 && third.Handle.Sequence == 3, "Handles preserve admission identity.");
                 session.Stop();
-                ArenaOperationLookup cancelled = session.Controls.Find(fourth.Handle);
+                OperationRead<ArenaOperationResult> cancelled = session.Controls.Find(fourth.Handle);
                 Require(cancelled.ReadState == OperationReadState.Found && cancelled.State == OperationState.Cancelled, "Stop must preserve an explicit terminal result for pending work.");
             }
         }
@@ -125,14 +125,14 @@ namespace Arena.Tests
             using (ArenaSession first = new ArenaDefinition().CreateSession(new ArenaScenario(tickDelta: .25f)))
             using (ArenaSession second = new ArenaDefinition().CreateSession(new ArenaScenario(tickDelta: .25f)))
             {
-                ObservationRead<ArenaObservation> initial = first.ObservationReader.ReadLatest();
-                ArenaObservation before = initial.Observation;
+                StateSnapshotRead<ArenaObservation> initial = first.ObservationReader.ReadLatest();
+                ArenaObservation before = initial.Snapshot;
                 byte[] bytes = ArenaCanonicalState.Encode(before);
                 Submit(first, 1, new ArenaInput(ArenaAction.Move, 1, x: 1));
                 first.Step();
                 second.Step();
                 Require(before.FindActor(1).X == 0 && bytes.SequenceEqual(ArenaCanonicalState.Encode(before)), "Observation is detached.");
-                Require(first.ObservationReader.Read(initial.Reference).Observation == before, "An exact retained observation remains readable.");
+                Require(first.ObservationReader.Read(initial.Reference).Snapshot == before, "An exact retained state snapshot remains readable.");
                 Require(second.Observe().FindActor(1).X == 0, "Session isolation.");
             }
         }

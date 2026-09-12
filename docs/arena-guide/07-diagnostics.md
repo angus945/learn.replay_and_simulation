@@ -29,7 +29,7 @@ internal OracleSet<ArenaObservation> CreateOracleSet()
 }
 ```
 
-ArenaSession 要求 Definition 建立 oracle set，並在每個 tick 的 observation/digest 後明確呼叫 Evaluate。`module.testability-oracles` 只按已給順序執行純 evaluation，不知道 tick 或 session lifecycle。Definition 只保存 bool 組裝選項，不共用會累積狀態的 invariant instance。
+ArenaSession 要求 Definition 建立 oracle set，並在每個 tick 的 observation/digest 後明確呼叫 Evaluate。`module.verification.oracle` 只按已給順序執行純 evaluation，不知道 tick 或 session lifecycle。Definition 只保存 bool 組裝選項，不共用會累積狀態的 invariant instance。
 
 tick 0 建立 observation/digest，也完成 initial evaluation。consumer 應同時看 report context、verdict、errors 和 session failure，而不是只顯示一個綠色 PASS。
 
@@ -56,7 +56,7 @@ Action sequence 和 trace record sequence 不相同。前者連回操作；後�
 
 ## 接點三：只把 reader 交給診斷 consumer
 
-以下放在已有 `session` 的測試／console 方法，引用 `TraceBuffering`、`Arena.Integration`：
+以下放在已有 `session` 的測試／console 方法，引用 `Module.Verification.TraceBuffer`、`Arena.Integration`：
 
 ```csharp
 IArenaDiagnosticReader reader = session.Diagnostics;

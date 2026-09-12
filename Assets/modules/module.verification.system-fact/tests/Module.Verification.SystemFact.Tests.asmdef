@@ -1,0 +1,6 @@
+{
+  "name": "Module.Verification.SystemFact.Tests",
+  "references": ["Module.Verification.SystemFact"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

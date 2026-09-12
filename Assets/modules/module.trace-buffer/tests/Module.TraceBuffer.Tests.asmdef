@@ -1,6 +1,0 @@
-{
-  "name": "Module.TraceBuffer.Tests",
-  "references": ["Module.TraceBuffer"],
-  "includePlatforms": ["Editor"],
-  "optionalUnityReferences": ["TestAssemblies"]
-}

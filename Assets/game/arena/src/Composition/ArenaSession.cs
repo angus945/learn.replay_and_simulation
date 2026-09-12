@@ -4,12 +4,12 @@ using System.Text;
 using Arena.Integration;
 using DeterministicSimulation;
 using DeterministicSimulation.Framework;
-using Diagnostics;
-using RuntimeControl;
-using RuntimeObservation;
-using TestabilityEvidence;
-using TestabilityOracles;
-using TraceBuffering;
+using Module.Verification.Diagnostics;
+using Module.Verification.RuntimeControl;
+using Module.Verification.StateSnapshot;
+using Module.Verification.Evidence;
+using Module.Verification.Oracle;
+using Module.Verification.TraceBuffer;
 
 namespace Arena.Composition
 {
@@ -18,14 +18,14 @@ namespace Arena.Composition
     {
         private sealed class Completion
         {
-            public Completion(ArenaQueuedOperation operation, ArenaInputOutcome outcome)
+            public Completion(ArenaQueuedOperation operation, ArenaOperationResult outcome)
             {
                 Operation = operation;
                 Outcome = outcome;
             }
 
             public ArenaQueuedOperation Operation { get; }
-            public ArenaInputOutcome Outcome { get; }
+            public ArenaOperationResult Outcome { get; }
         }
 
         private sealed class TickSource : ISimulationTickSource
@@ -89,7 +89,7 @@ namespace Arena.Composition
                 this.owner = owner;
             }
 
-            public ArenaOperationLookup Find(OperationHandle handle)
+            public OperationRead<ArenaOperationResult> Find(OperationHandle handle)
             {
                 owner.EnsureIdle();
                 return owner.controls.Find(handle);
@@ -124,7 +124,7 @@ namespace Arena.Composition
         private bool busy;
         private bool disposed;
         private ArenaObservation observation;
-        private ObservationReference observationReference;
+        private StateSnapshotReference observationReference;
         private EvaluationReport evaluation;
         private ArenaDiagnosticSnapshot latestDiagnostics;
 
@@ -168,7 +168,7 @@ namespace Arena.Composition
             get { return initialDigest; }
         }
         public IArenaDiagnosticReader Diagnostics { get; }
-        public IObservationReader<ArenaObservation> ObservationReader
+        public IStateSnapshotReader<ArenaObservation> ObservationReader
         {
             get { return observations.Reader; }
         }
@@ -253,7 +253,7 @@ namespace Arena.Composition
             executingSequence = intent.Context.Handle.Sequence;
         }
 
-        void IArenaInputExecutionObserver.OnInputExecutionCompleted(ArenaInputIntent intent, ArenaInputOutcome outcome)
+        void IArenaInputExecutionObserver.OnInputExecutionCompleted(ArenaInputIntent intent, ArenaOperationResult outcome)
         {
             ArenaQueuedOperation operation = FindCurrentOperation(intent.Context.Handle.Sequence);
             completions.Add(new Completion(operation, outcome));
@@ -284,8 +284,8 @@ namespace Arena.Composition
             scenario = independent;
             scenarioPayload = nextPayload;
             observationReference = observations.Publish(core, Id, epoch);
-            ObservationRead<ArenaObservation> initialRead = observations.Reader.Read(observationReference);
-            observation = initialRead.Observation;
+            StateSnapshotRead<ArenaObservation> initialRead = observations.Reader.Read(observationReference);
+            observation = initialRead.Snapshot;
             initialDigest = ArenaStateDigest.Compute(observation);
             evaluation = oracles.Evaluate("tick:0", observation);
             ticks.Clear();
@@ -323,7 +323,7 @@ namespace Arena.Composition
                 executingOperations.Clear();
                 IReadOnlyList<ArenaQueuedOperation> batch = controls.TakeBatch(target);
                 string digest = null;
-                ObservationReference barrier = default(ObservationReference);
+                StateSnapshotReference barrier = default(StateSnapshotReference);
                 try
                 {
                     stage = "InputDecode";
@@ -340,8 +340,8 @@ namespace Arena.Composition
                     core.Step();
                     stage = "Observation";
                     barrier = observations.Publish(core, Id, epoch);
-                    ObservationRead<ArenaObservation> read = observations.Reader.Read(barrier);
-                    observation = read.Observation;
+                    StateSnapshotRead<ArenaObservation> read = observations.Reader.Read(barrier);
+                    observation = read.Snapshot;
                     observationReference = barrier;
                     stage = "StateDigest";
                     digest = ArenaStateDigest.Compute(observation);
@@ -354,7 +354,7 @@ namespace Arena.Composition
                         OracleResult result = FindFailedOracleResult(evaluation);
                         string code = result == null ? "oracle.infrastructure" : result.Code;
                         string detail = result == null ? "Oracle evaluation failed." : result.Detail;
-                        CaptureFailure(target, code, null, detail);
+                        StateSnapshotCaptureFailure(target, code, null, detail);
                     }
                     else
                     {
@@ -364,7 +364,7 @@ namespace Arena.Composition
                 catch (Exception exception)
                 {
                     observations.ReportFailure(Id, epoch, "simulation.exception", exception.Message);
-                    CaptureFailure(target, "simulation.exception", exception, exception.Message);
+                    StateSnapshotCaptureFailure(target, "simulation.exception", exception, exception.Message);
                 }
                 List<ArenaOperationResult> completed = CompleteBatch(batch, barrier);
                 ArenaTickEvidence evidence = new ArenaTickEvidence(0, target, digest, completed, evaluation, Failure);
@@ -379,14 +379,14 @@ namespace Arena.Composition
             }
         }
 
-        private List<ArenaOperationResult> CompleteBatch(IReadOnlyList<ArenaQueuedOperation> batch, ObservationReference barrier)
+        private List<ArenaOperationResult> CompleteBatch(IReadOnlyList<ArenaQueuedOperation> batch, StateSnapshotReference barrier)
         {
             List<ArenaOperationResult> completed = new List<ArenaOperationResult>();
             string barrierText = barrier.CaptureId == 0 ? null : barrier.ChannelId.ToString("N") + ":" + barrier.CaptureId;
             foreach (ArenaQueuedOperation operation in batch)
             {
-                ArenaInputOutcome outcome = FindOutcome(operation.Handle.Sequence);
-                if (outcome == null) outcome = new ArenaInputOutcome(OperationState.Failed, operation.Handle.Sequence == executingSequence ? "simulation.exception" : "tick.aborted");
+                ArenaOperationResult outcome = FindOutcome(operation.Handle.Sequence);
+                if (outcome == null) outcome = new ArenaOperationResult(operation.Handle.Sequence, operation.TargetTick, OperationState.Failed, operation.Handle.Sequence == executingSequence ? "simulation.exception" : "tick.aborted", null);
                 ArenaOperationResult result = controls.Complete(operation, outcome, barrierText);
                 completed.Add(result);
                 RecordTrace(new ArenaTraceEntry(Id, operation.TargetTick, operation.Handle.Sequence, "Operation", operation.Metadata.Type, outcome.Code, actor: operation.Metadata.Actor, target: operation.Metadata.Target));
@@ -401,7 +401,7 @@ namespace Arena.Composition
             throw new InvalidOperationException("The executing Arena operation was not found.");
         }
 
-        private ArenaInputOutcome FindOutcome(long sequence)
+        private ArenaOperationResult FindOutcome(long sequence)
         {
             foreach (Completion completion in completions)
             {
@@ -410,7 +410,7 @@ namespace Arena.Composition
             return null;
         }
 
-        private void CaptureFailure(ulong tick, string code, Exception exception, string detail)
+        private void StateSnapshotCaptureFailure(ulong tick, string code, Exception exception, string detail)
         {
             if (Failure != null) return;
             string exceptionType = exception == null ? null : exception.GetType().FullName;

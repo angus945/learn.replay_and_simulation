@@ -1,8 +1,8 @@
 using System;
-using RuntimeControl;
-using RuntimeObservation;
-using TestabilityEvidence;
-using TestabilityOracles;
+using Module.Verification.RuntimeControl;
+using Module.Verification.StateSnapshot;
+using Module.Verification.Evidence;
+using Module.Verification.Oracle;
 
 internal static class ModuleContractChecks
 {
@@ -32,19 +32,19 @@ internal static class ModuleContractChecks
         }
     }
 
-    internal static void RuntimeObservation()
+    internal static void StateSnapshot()
     {
-        ObservationChannel<string> channel = new ObservationChannel<string>(1);
-        CaptureMetadata firstMetadata = new CaptureMetadata("source", "scope", 1);
-        ObservationReference first = channel.PublisherPort.Publish("first", firstMetadata);
-        Check(channel.ReaderPort.Read(first).Observation == "first", "Exact observation lookup failed.");
-        CaptureMetadata failureMetadata = new CaptureMetadata("source", "scope", 2);
-        channel.PublisherPort.ReportCaptureFailure(new CaptureFailure(failureMetadata, "capture.failed", "expected"));
-        Check(channel.ReaderPort.ReadLatest().State == ObservationReadState.CaptureFailed, "Capture failure was not retained independently.");
-        Check(channel.ReaderPort.Read(first).State == ObservationReadState.Evicted, "Bounded observation eviction failed.");
-        ObservationChannel<string> other = new ObservationChannel<string>();
-        ObservationReference foreign = other.PublisherPort.Publish("other", firstMetadata);
-        Check(channel.ReaderPort.Read(foreign).State == ObservationReadState.ForeignReference, "Foreign observation reference was accepted.");
+        StateSnapshotChannel<string> channel = new StateSnapshotChannel<string>(1);
+        StateSnapshotCaptureMetadata firstMetadata = new StateSnapshotCaptureMetadata("source", "scope", 1);
+        StateSnapshotReference first = channel.PublisherPort.Publish("first", firstMetadata);
+        Check(channel.ReaderPort.Read(first).Snapshot == "first", "Exact state snapshot lookup failed.");
+        StateSnapshotCaptureMetadata failureMetadata = new StateSnapshotCaptureMetadata("source", "scope", 2);
+        channel.PublisherPort.ReportStateSnapshotCaptureFailure(new StateSnapshotCaptureFailure(failureMetadata, "capture.failed", "expected"));
+        Check(channel.ReaderPort.ReadLatest().State == StateSnapshotReadState.CaptureFailed, "Capture failure was not retained independently.");
+        Check(channel.ReaderPort.Read(first).State == StateSnapshotReadState.Evicted, "Bounded observation eviction failed.");
+        StateSnapshotChannel<string> other = new StateSnapshotChannel<string>();
+        StateSnapshotReference foreign = other.PublisherPort.Publish("other", firstMetadata);
+        Check(channel.ReaderPort.Read(foreign).State == StateSnapshotReadState.ForeignReference, "Foreign observation reference was accepted.");
     }
 
     internal static void RuntimeControl()
@@ -67,7 +67,7 @@ internal static class ModuleContractChecks
         Check(registry.Read(second.Handle).State == OperationState.Rejected, "Terminal operation state was not queryable.");
     }
 
-    internal static void TestabilityOracles()
+    internal static void Oracle()
     {
         ITestOracle<int>[] ordered = new ITestOracle<int>[] { new PassingOracle(), new ThrowingOracle() };
         OracleSet<int> set = new OracleSet<int>("contract", ordered);
@@ -77,11 +77,11 @@ internal static class ModuleContractChecks
         Check(report.Verdict == TestVerdict.InfrastructureError, "Oracle infrastructure failure did not dominate the aggregate verdict.");
     }
 
-    internal static void TestabilityEvidence()
+    internal static void Evidence()
     {
         EvidenceManifest manifest = new EvidenceManifest("run", "case", "build", "fixture");
         EvidenceBuilder builder = new EvidenceBuilder(manifest, 8, 2);
-        EvidenceEntry retained = new EvidenceEntry(EvidenceKind.Observation, "observation", new EvidenceReference("memory", "one"), 8);
+        EvidenceEntry retained = new EvidenceEntry(EvidenceKind.StateSnapshot, "state-snapshot", new EvidenceReference("memory", "one"), 8);
         EvidenceEntry dropped = new EvidenceEntry(EvidenceKind.Trace, "trace", new EvidenceReference("memory", "two"), 1);
         Check(builder.TryAdd(retained), "Evidence within budget was rejected.");
         Check(!builder.TryAdd(dropped), "Evidence byte budget was not enforced.");

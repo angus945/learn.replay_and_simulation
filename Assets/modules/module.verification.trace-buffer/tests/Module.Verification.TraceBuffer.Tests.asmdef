@@ -1,0 +1,6 @@
+{
+  "name": "Module.Verification.TraceBuffer.Tests",
+  "references": ["Module.Verification.TraceBuffer"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

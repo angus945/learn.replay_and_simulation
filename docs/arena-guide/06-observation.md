@@ -4,7 +4,7 @@
 
 本章問題：測試和 UI 需要看世界，但不能拿到 Actor 後直接改血量；Replay 則要比較「未來仍會做相同決定」的狀態，而不是只比較畫面看起來一樣。
 
-因此建立明確的 observation，再定義唯一、穩定的 canonical encoding。Arena host 負責何時 capture 與計算 digest；`module.runtime-observation` 只負責 publish／reference／lookup。
+因此建立明確的 observation，再定義唯一、穩定的 canonical encoding。Arena host 負責何時 capture 與計算 digest；`module.verification.state-snapshot` 只負責 publish／reference／lookup。
 
 ## 接點一：複製成不可變 read model
 
@@ -22,10 +22,10 @@
 在 [ArenaObservationAdapter](../../Assets/game/arena/src/Integration/ArenaObservationAdapter.cs) 內，capture 很短：
 
 ```csharp
-public ObservationReference Publish(SimulationSession<ArenaRuntime, ArenaScenario> session, string sessionId, long epoch)
+public StateSnapshotReference Publish(SimulationSession<ArenaRuntime, ArenaScenario> session, string sessionId, long epoch)
 {
     ArenaObservation observation = new ArenaObservation(session.World);
-    return publisher.Publish(observation, new CaptureMetadata("arena", sessionId, epoch));
+    return publisher.Publish(observation, new StateSnapshotCaptureMetadata("arena", sessionId, epoch));
 }
 ```
 

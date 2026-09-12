@@ -73,7 +73,7 @@ Unity presentation → DeterministicSimulation.Unity
 
 `framework.deterministic-playback` 提供 adapter lifecycle、cursor 與 replay execution history；它不知道 Arena recording、state digest 或 oracle policy。
 
-`module.runtime-observation`、`module.runtime-control`、`module.testability-oracles`、`module.testability-evidence` 分別提供 observation reference、operation state、純 evaluation 與 evidence bundle。它們彼此獨立，也不引用 Unity、simulation 或 playback。
+`module.verification.state-snapshot`、`module.verification.runtime-control`、`module.verification.oracle`、`module.verification.evidence` 分別提供 observation reference、operation state、純 evaluation 與 evidence bundle。它們彼此獨立，也不引用 Unity、simulation 或 playback。
 
 `ArenaDefinition` 是普通的 adopter composition，不繼承通用 testability template。`ArenaSession` 明確擁有 Prepare／Submit／Step／Observe／Evaluate／Persist／Cleanup 的順序；framework 回呼 outer adapters，adapters 再呼叫 Application。這就是把「框架執行流程」與「內層規則」接在一起的地方。
 

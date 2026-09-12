@@ -6,14 +6,14 @@
     "Game.Arena.Composition",
     "Game.Arena.Integration",
     "Game.Arena.Application",
-    "module.diagnostics",
-    "module.runtime-control",
-    "module.runtime-observation",
-    "module.testability-oracles",
+    "Module.Verification.Diagnostics",
+    "Module.Verification.RuntimeControl",
+    "Module.Verification.StateSnapshot",
+    "Module.Verification.Oracle",
     "Framework.DeterministicSimulation",
     "Framework.DeterministicSimulation.Unity",
-    "Module.TraceBuffer",
-    "Module.InvariantChecks"
+    "Module.Verification.TraceBuffer",
+    "Module.Verification.Invariant"
   ],
   "optionalUnityReferences": ["TestAssemblies"]
 }

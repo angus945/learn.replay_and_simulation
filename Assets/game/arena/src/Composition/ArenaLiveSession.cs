@@ -4,7 +4,7 @@ using Arena.Domain;
 using Arena.Integration;
 using DeterministicSimulation;
 using DeterministicSimulation.Framework;
-using RuntimeControl;
+using Module.Verification.RuntimeControl;
 using TickInputBuffering;
 using TickInputBuffering.Contract;
 

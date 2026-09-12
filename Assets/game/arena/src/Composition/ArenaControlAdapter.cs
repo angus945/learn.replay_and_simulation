@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Arena.Integration;
-using RuntimeControl;
+using Module.Verification.RuntimeControl;
 
 namespace Arena.Composition
 {
@@ -35,10 +35,9 @@ namespace Arena.Composition
     {
         private readonly ArenaDefinition definition;
         private readonly ArenaLimits limits;
-        private readonly OperationRegistry<ArenaInputOutcome> registry;
+        private readonly OperationRegistry<ArenaOperationResult> registry;
         private readonly List<ArenaRecordedInput> inputs = new List<ArenaRecordedInput>();
         private readonly List<ArenaOperationResult> resultHistory = new List<ArenaOperationResult>();
-        private readonly Dictionary<long, ArenaOperationResult> results = new Dictionary<long, ArenaOperationResult>();
         private readonly SortedDictionary<ulong, List<ArenaQueuedOperation>> pending = new SortedDictionary<ulong, List<ArenaQueuedOperation>>();
         private long totalPayloadBytes;
 
@@ -46,7 +45,7 @@ namespace Arena.Composition
         {
             this.definition = definition;
             this.limits = limits;
-            registry = new OperationRegistry<ArenaInputOutcome>(sessionId, epoch, limits.MaxInputs, limits.MaxInputs);
+            registry = new OperationRegistry<ArenaOperationResult>(sessionId, epoch, limits.MaxInputs, limits.MaxInputs);
             totalPayloadBytes = scenarioPayloadBytes;
         }
 
@@ -100,13 +99,12 @@ namespace Arena.Composition
             return batch.AsReadOnly();
         }
 
-        internal ArenaOperationResult Complete(ArenaQueuedOperation operation, ArenaInputOutcome outcome, string observationBarrier)
+        internal ArenaOperationResult Complete(ArenaQueuedOperation operation, ArenaOperationResult outcome, string observationBarrier)
         {
-            OperationCompletion<ArenaInputOutcome> completion = new OperationCompletion<ArenaInputOutcome>(outcome.State, outcome.Code, outcome, observationBarrier);
+            ArenaOperationResult result = new ArenaOperationResult(operation.Handle.Sequence, operation.TargetTick, outcome.State, outcome.Code, observationBarrier);
+            OperationCompletion<ArenaOperationResult> completion = new OperationCompletion<ArenaOperationResult>(result.State, result.Code, result, observationBarrier);
             bool completed = registry.TryComplete(operation.Handle, completion);
             if (!completed) throw new InvalidOperationException("Arena operation could not transition to a terminal state.");
-            ArenaOperationResult result = new ArenaOperationResult(operation.Handle.Sequence, operation.TargetTick, outcome.State, outcome.Code, observationBarrier);
-            results.Add(result.Sequence, result);
             resultHistory.Add(result);
             return result;
         }
@@ -116,12 +114,9 @@ namespace Arena.Composition
             if (!registry.TryMarkRunning(operation.Handle)) throw new InvalidOperationException("Arena operation could not enter Running.");
         }
 
-        internal ArenaOperationLookup Find(OperationHandle handle)
+        internal OperationRead<ArenaOperationResult> Find(OperationHandle handle)
         {
-            OperationRead<ArenaInputOutcome> read = registry.Read(handle);
-            ArenaOperationResult result;
-            results.TryGetValue(handle.Sequence, out result);
-            return new ArenaOperationLookup(read.ReadState, read.State, result);
+            return registry.Read(handle);
         }
 
         internal ArenaOperationResultPage Read(int afterIndex, int maxItems)
@@ -139,7 +134,7 @@ namespace Arena.Composition
             {
                 foreach (ArenaQueuedOperation operation in scheduled.Value)
                 {
-                    ArenaInputOutcome outcome = new ArenaInputOutcome(OperationState.Cancelled, code);
+                    ArenaOperationResult outcome = new ArenaOperationResult(operation.Handle.Sequence, operation.TargetTick, OperationState.Cancelled, code, null);
                     Complete(operation, outcome, null);
                 }
             }

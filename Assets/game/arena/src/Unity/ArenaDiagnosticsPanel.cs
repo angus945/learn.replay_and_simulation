@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Arena.Integration;
-using TestabilityOracles;
-using TraceBuffering;
+using Module.Verification.Oracle;
+using Module.Verification.TraceBuffer;
 
 namespace Arena.Unity
 {

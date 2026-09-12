@@ -1,5 +1,5 @@
 {
   "name": "Game.Arena.Integration",
-  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Infrastructure", "Framework.DeterministicSimulation", "Module.SimulationPrimitives", "Module.InvariantChecks", "Module.TraceBuffer", "module.diagnostics", "module.runtime-control", "module.runtime-observation", "module.testability-oracles"],
+  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Infrastructure", "Framework.DeterministicSimulation", "Module.SimulationPrimitives", "Module.Verification.Invariant", "Module.Verification.TraceBuffer", "Module.Verification.Diagnostics", "Module.Verification.RuntimeControl", "Module.Verification.StateSnapshot", "Module.Verification.Oracle"],
   "noEngineReferences": true
 }

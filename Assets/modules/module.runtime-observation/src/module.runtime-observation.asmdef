@@ -1,7 +1,0 @@
-{
-  "name": "module.runtime-observation",
-  "rootNamespace": "RuntimeObservation",
-  "references": [],
-  "autoReferenced": true,
-  "noEngineReferences": true
-}

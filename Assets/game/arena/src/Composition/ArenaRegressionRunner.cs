@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Arena.Integration;
-using RuntimeControl;
-using TestabilityEvidence;
+using Module.Verification.RuntimeControl;
+using Module.Verification.Evidence;
 
 namespace Arena.Composition
 {

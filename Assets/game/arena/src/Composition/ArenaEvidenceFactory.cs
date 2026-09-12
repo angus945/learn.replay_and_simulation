@@ -1,6 +1,6 @@
 using System;
 using Arena.Integration;
-using TestabilityEvidence;
+using Module.Verification.Evidence;
 
 namespace Arena.Composition
 {
@@ -14,8 +14,8 @@ namespace Arena.Composition
             EvidenceBuilder builder = new EvidenceBuilder(manifest, recording.Limits.MaxTotalPayloadBytes, recording.Limits.MaxInputs + recording.Limits.MaxTicks + recording.Limits.TraceCapacity + 4);
             AddOperations(builder, recording);
             AddTicks(builder, recording);
-            EvidenceReference observationReference = new EvidenceReference("arena-observation", snapshot.ObservationReference.ChannelId.ToString("N") + ":" + snapshot.ObservationReference.CaptureId);
-            builder.TryAdd(new EvidenceEntry(EvidenceKind.Observation, "latest-observation", observationReference, 128));
+            EvidenceReference observationReference = new EvidenceReference("arena-observation", snapshot.StateSnapshotReference.ChannelId.ToString("N") + ":" + snapshot.StateSnapshotReference.CaptureId);
+            builder.TryAdd(new EvidenceEntry(EvidenceKind.StateSnapshot, "latest-state-snapshot", observationReference, 128));
             EvidenceReference traceReference = new EvidenceReference("arena-trace", snapshot.SessionId + ":" + recording.Trace.Count);
             builder.TryAdd(new EvidenceEntry(EvidenceKind.Trace, "bounded-trace", traceReference, recording.Trace.Count * 128L, recording.DroppedTraceEntries > 0));
             if (snapshot.FaultCode != null) builder.RecordFailure(snapshot.FaultCode);
@@ -27,7 +27,7 @@ namespace Arena.Composition
             foreach (ArenaRecordedInput input in recording.Inputs)
             {
                 EvidenceReference reference = new EvidenceReference("arena-operation", input.Sequence.ToString());
-                builder.TryAdd(new EvidenceEntry(EvidenceKind.Operation, "operation-" + input.Sequence, reference, input.Payload.Length * 2L));
+                builder.TryAdd(new EvidenceEntry(EvidenceKind.FactStream, "operation-transition-" + input.Sequence, reference, input.Payload.Length * 2L));
             }
         }
 
@@ -36,7 +36,7 @@ namespace Arena.Composition
             foreach (ArenaRecordedTick tick in recording.Ticks)
             {
                 EvidenceReference observation = new EvidenceReference("arena-state-digest", tick.Tick + ":" + tick.Digest);
-                builder.TryAdd(new EvidenceEntry(EvidenceKind.Observation, "tick-" + tick.Tick, observation, 96));
+                builder.TryAdd(new EvidenceEntry(EvidenceKind.StateSnapshot, "tick-" + tick.Tick, observation, 96));
                 EvidenceReference evaluation = new EvidenceReference("arena-evaluation", tick.Tick + ":" + (tick.Failure == null ? "passed" : tick.Failure.Code));
                 builder.TryAdd(new EvidenceEntry(EvidenceKind.Evaluation, "evaluation-" + tick.Tick, evaluation, 96));
             }

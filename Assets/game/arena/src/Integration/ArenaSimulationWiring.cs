@@ -3,7 +3,7 @@ using Arena.Application;
 using Arena.Domain;
 using DeterministicSimulation;
 using DeterministicSimulation.Framework;
-using RuntimeControl;
+using Module.Verification.RuntimeControl;
 
 namespace Arena.Integration
 {
@@ -30,7 +30,7 @@ namespace Arena.Integration
     public interface IArenaInputExecutionObserver
     {
         void OnInputExecutionStarted(ArenaInputIntent intent);
-        void OnInputExecutionCompleted(ArenaInputIntent intent, ArenaInputOutcome outcome);
+        void OnInputExecutionCompleted(ArenaInputIntent intent, ArenaOperationResult outcome);
     }
     public sealed class ArenaInputIntent : IIntent
     {
@@ -73,16 +73,16 @@ namespace Arena.Integration
             builder.RegisterPrePhysicsParticipant(new MovementStep(runtime.Application));
             builder.RegisterStructuralCommitParticipant(new LifetimeCommit(runtime, builder.Events));
         }
-        public static ArenaInputOutcome Execute(ArenaRuntime runtime, ArenaInput input, ArenaInputExecutionContext context)
+        public static ArenaOperationResult Execute(ArenaRuntime runtime, ArenaInput input, ArenaInputExecutionContext context)
         {
-            if (input == null) return new ArenaInputOutcome(OperationState.Rejected, "null-input");
+            if (input == null) return new ArenaOperationResult(context.Handle.Sequence, context.TargetTick, OperationState.Rejected, "null-input", null);
             ActorId actor = input.Actor == 0 ? default : new ActorId(input.Actor);
             ActorId target = input.Target == 0 ? default : new ActorId(input.Target);
             ArenaResult result = runtime.Application.Execute(new ArenaRequest(input.Kind, actor, target, input.X, input.Y));
             foreach (ArenaFact fact in result.Facts)
                 context.Events.PublishDomainEvent(new ArenaFactMessage(fact, context.Handle.Sequence, context.TargetTick));
             OperationState state = result.Decision == ArenaDecision.Accepted ? OperationState.Succeeded : OperationState.Rejected;
-            return new ArenaInputOutcome(state, result.Code);
+            return new ArenaOperationResult(context.Handle.Sequence, context.TargetTick, state, result.Code, null);
         }
         public static ArenaTraceMetadata Describe(object message)
         {
@@ -128,7 +128,7 @@ namespace Arena.Integration
                 ArenaInputIntent intent = command.Intent;
                 intent.Observer.OnInputExecutionStarted(intent);
                 ArenaInputExecutionContext context = intent.Context.WithEvents(events);
-                ArenaInputOutcome outcome = Execute(runtime, intent.Input, context);
+                ArenaOperationResult outcome = Execute(runtime, intent.Input, context);
                 intent.Observer.OnInputExecutionCompleted(intent, outcome);
             }
         }

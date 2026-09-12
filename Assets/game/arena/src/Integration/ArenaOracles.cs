@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using InvariantChecks;
-using RuntimeControl;
-using TestabilityOracles;
+using Module.Verification.RuntimeControl;
+using Module.Verification.Oracle;
 
 namespace Arena.Integration
 {

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Arena.Integration;
 using DeterministicSimulation.Framework;
-using TestabilityOracles;
+using Module.Verification.Oracle;
 
 namespace Arena.Composition
 {

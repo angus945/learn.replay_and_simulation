@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Diagnostics;
-using RuntimeControl;
-using RuntimeObservation;
-using TestabilityOracles;
-using TraceBuffering;
+using Module.Verification.Diagnostics;
+using Module.Verification.RuntimeControl;
+using Module.Verification.StateSnapshot;
+using Module.Verification.Oracle;
+using Module.Verification.TraceBuffer;
 
 namespace Arena.Integration
 {
@@ -35,20 +35,6 @@ namespace Arena.Integration
         {
             return new ArenaInputExecutionContext(SessionId, Handle, TargetTick, events);
         }
-    }
-
-    public sealed class ArenaInputOutcome
-    {
-        public ArenaInputOutcome(OperationState state, string code)
-        {
-            if (state != OperationState.Succeeded && state != OperationState.Rejected && state != OperationState.Failed && state != OperationState.Cancelled) throw new ArgumentOutOfRangeException(nameof(state));
-            if (string.IsNullOrWhiteSpace(code)) throw new ArgumentException("An Arena outcome code is required.", nameof(code));
-            State = state;
-            Code = code;
-        }
-
-        public OperationState State { get; }
-        public string Code { get; }
     }
 
     public sealed class ArenaTraceMetadata
@@ -117,20 +103,6 @@ namespace Arena.Integration
         [DataMember(Order = 5)] public string ObservationBarrier { get; private set; }
     }
 
-    public sealed class ArenaOperationLookup
-    {
-        public ArenaOperationLookup(OperationReadState readState, OperationState state, ArenaOperationResult result)
-        {
-            ReadState = readState;
-            State = state;
-            Result = result;
-        }
-
-        public OperationReadState ReadState { get; }
-        public OperationState State { get; }
-        public ArenaOperationResult Result { get; }
-    }
-
     public sealed class ArenaOperationResultPage
     {
         public ArenaOperationResultPage(IEnumerable<ArenaOperationResult> items, int nextIndex, bool hasMore)
@@ -193,13 +165,13 @@ namespace Arena.Integration
 
     public sealed class ArenaDiagnosticSnapshot
     {
-        public ArenaDiagnosticSnapshot(string sessionId, ArenaSessionState state, ulong tick, ulong observationTick, ObservationReference observationReference, ArenaObservation observation, EvaluationReport evaluation, string faultCode, IReadOnlyList<DiagnosticReport> diagnostics)
+        public ArenaDiagnosticSnapshot(string sessionId, ArenaSessionState state, ulong tick, ulong observationTick, StateSnapshotReference observationReference, ArenaObservation observation, EvaluationReport evaluation, string faultCode, IReadOnlyList<DiagnosticReport> diagnostics)
         {
             SessionId = sessionId;
             State = state;
             Tick = tick;
             ObservationTick = observationTick;
-            ObservationReference = observationReference;
+            StateSnapshotReference = observationReference;
             Observation = observation;
             Evaluation = evaluation;
             FaultCode = faultCode;
@@ -210,7 +182,7 @@ namespace Arena.Integration
         public ArenaSessionState State { get; }
         public ulong Tick { get; }
         public ulong ObservationTick { get; }
-        public ObservationReference ObservationReference { get; }
+        public StateSnapshotReference StateSnapshotReference { get; }
         public ArenaObservation Observation { get; }
         public EvaluationReport Evaluation { get; }
         public string FaultCode { get; }
@@ -225,7 +197,7 @@ namespace Arena.Integration
 
     public interface IArenaOperationReader
     {
-        ArenaOperationLookup Find(OperationHandle handle);
+        OperationRead<ArenaOperationResult> Find(OperationHandle handle);
         ArenaOperationResultPage Read(int afterIndex, int maxItems);
     }
 }

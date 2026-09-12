@@ -1,5 +1,5 @@
 {
   "name": "Game.Arena.Composition",
-  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Integration", "Framework.DeterministicSimulation", "framework.deterministic-playback", "Module.SimulationPrimitives", "Module.InvariantChecks", "Module.TraceBuffer", "Module.TickInputBuffer", "module.diagnostics", "module.runtime-control", "module.runtime-observation", "module.testability-oracles", "module.testability-evidence"],
+  "references": ["Game.Arena.Domain", "Game.Arena.Application", "Game.Arena.Integration", "Framework.DeterministicSimulation", "framework.deterministic-playback", "Module.SimulationPrimitives", "Module.Verification.Invariant", "Module.Verification.TraceBuffer", "Module.TickInputBuffer", "Module.Verification.Diagnostics", "Module.Verification.RuntimeControl", "Module.Verification.StateSnapshot", "Module.Verification.Oracle", "Module.Verification.Evidence"],
   "noEngineReferences": true
 }

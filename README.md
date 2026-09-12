@@ -1,6 +1,6 @@
 # Arena / Replay Lab
 
-一個完整的 DDD／Clean Architecture Unity 參考應用，展示如何把純 C# 遊戲接上 deterministic simulation／playback framework 與被動式 testability modules。
+一個完整的 DDD／Clean Architecture Unity 參考應用，展示如何把純 C# 遊戲接上 deterministic simulation／playback framework 與可組裝的 verification capabilities。
 
 從 **[連續教學：Arena guide](docs/arena-guide/README.md)** 開始。十章沿同一份正式程式，從領域規則、接線、生命週期與隨機，一路到診斷、錄製、失敗重現與 Unity。文件以短段落與 list 說明，不需閱讀舊專案歷史。
 
@@ -33,8 +33,9 @@ dotnet run --project tools/arena-checks -- rerun failure.json
 
 - [Arena game](Assets/game/arena/README.md)：Domain、Application、Infrastructure、Integration、Composition、Unity、Editor。
 - [Deterministic simulation](Assets/framework.deterministic-simulation/README.md)：tick、phase、messages、session、realtime runner。
-- [Runtime observation](Assets/modules/module.runtime-observation/README.md)與[runtime control](Assets/modules/module.runtime-control/README.md)：被動 observation publication／lookup 與 operation admission／state。
-- [Testability oracles](Assets/modules/module.testability-oracles/README.md)與[testability evidence](Assets/modules/module.testability-evidence/README.md)：純 evaluation 與有界 evidence manifest/bundle。
+- [State snapshot](Assets/modules/module.verification.state-snapshot/README.md)與[runtime control](Assets/modules/module.verification.runtime-control/README.md)：被動 snapshot publication／lookup 與 authoritative operation admission／state。
+- [Oracle](Assets/modules/module.verification.oracle/README.md)與[evidence](Assets/modules/module.verification.evidence/README.md)：純 evaluation 與有界 reference／artifact manifest。
+- [Verification capability family 命名規範](docs/modularization.md)：family 是 taxonomy，不是 dependency cluster。
 - [Deterministic playback](Assets/framework.deterministic-playback/README.md)：通用 adapter lifecycle 與 playback cursor；Arena 自己擁有 recording schema、policy 與 determinism 判定。
 - [Unity adapters](Assets/framework.deterministic-simulation.unity/README.md)：可重用 pool／presentation，以及獨立的可選 sensors。
 - [可執行章節](tools/arena-checks/README.md)與[獨立框架檢查](tools/framework-checks/README.md)。

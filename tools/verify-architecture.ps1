@@ -70,8 +70,8 @@ $arenaAllowed = @{
     'Game.Arena.Domain' = @()
     'Game.Arena.Application' = @('Game.Arena.Domain')
     'Game.Arena.Infrastructure' = @('Game.Arena.Domain','Game.Arena.Application','Module.SeededRandom','Module.SimulationObjectRegistry')
-    'Game.Arena.Integration' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Infrastructure','Framework.DeterministicSimulation','Module.SimulationPrimitives','Module.InvariantChecks','Module.TraceBuffer','module.diagnostics','module.runtime-control','module.runtime-observation','module.testability-oracles')
-    'Game.Arena.Composition' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Integration','Framework.DeterministicSimulation','framework.deterministic-playback','Module.SimulationPrimitives','Module.InvariantChecks','Module.TraceBuffer','Module.TickInputBuffer','module.diagnostics','module.runtime-control','module.runtime-observation','module.testability-oracles','module.testability-evidence')
+    'Game.Arena.Integration' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Infrastructure','Framework.DeterministicSimulation','Module.SimulationPrimitives','Module.Verification.Invariant','Module.Verification.TraceBuffer','Module.Verification.Diagnostics','Module.Verification.RuntimeControl','Module.Verification.StateSnapshot','Module.Verification.Oracle')
+    'Game.Arena.Composition' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Integration','Framework.DeterministicSimulation','framework.deterministic-playback','Module.SimulationPrimitives','Module.Verification.Invariant','Module.Verification.TraceBuffer','Module.TickInputBuffer','Module.Verification.Diagnostics','Module.Verification.RuntimeControl','Module.Verification.StateSnapshot','Module.Verification.Oracle','Module.Verification.Evidence')
 }
 foreach ($arenaName in $arenaAllowed.Keys) {
     if (-not $definitions.ContainsKey($arenaName)) { throw "Missing Arena assembly: $arenaName" }

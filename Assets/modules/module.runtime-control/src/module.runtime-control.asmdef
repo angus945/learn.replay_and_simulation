@@ -1,7 +1,0 @@
-{
-  "name": "module.runtime-control",
-  "rootNamespace": "RuntimeControl",
-  "references": [],
-  "autoReferenced": true,
-  "noEngineReferences": true
-}
