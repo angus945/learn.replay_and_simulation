@@ -10,9 +10,9 @@
 - `src/Contract/RealtimeRunnerContracts.cs`：ISimulationTickSource、IRealtimeInputSource、IRealtimePresentation；依職責注入 Runner，不接受 Func／Action 組裝。
 - `tests/SessionTemplateContractChecks.cs`：不依賴 Unity／NUnit 的契約檢查，另由 NUnit wrapper 執行。
 
-這是基本 simulation 模板，不自帶本專案的 request 排程、ActionResult、hash、failure artifact 或 Replay。Realtime 控制權由 Session.CreateRealtimeRunner 提供；其餘能力由 Testability 整合。
-通用的 testability／Replay 延伸由 Framework.Testability 提供，見 [正式輸入接線](../../docs/arena-guide/04-input.md)與 [Replay](../../docs/arena-guide/08-replay.md)；基本 host 保持不依賴它。
-Domain 不需要繼承框架型別。SimulationPipeline／SimulationRunner 低階 API 仍保留；Demo 已使用 Definition／Testability Session／RealtimeSimulationRunner 完整路徑。
+這是基本 simulation 模板，不自帶本專案的 request 排程、operation result、state digest、failure evidence 或 Replay。Realtime 控制權由 Session.CreateRealtimeRunner 提供；其餘能力由 adopter host 明確編排。
+Observation、control、oracle、evidence 是互不依賴 simulation 的被動 modules；Replay lifecycle 由 `framework.deterministic-playback` 提供。見 [正式輸入接線](../../docs/arena-guide/04-input.md)與 [Replay](../../docs/arena-guide/08-replay.md)。
+Domain 不需要繼承框架型別。SimulationPipeline／SimulationRunner 低階 API 仍保留；Demo 的 `ArenaSession` 組合 SimulationSession、各 adapter 與 RealtimeSimulationRunner，但沒有通用 testability super-session。
 
 ## 執行契約
 

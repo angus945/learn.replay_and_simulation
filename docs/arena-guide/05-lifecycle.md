@@ -50,7 +50,7 @@ builder.RegisterInternalCommandHandler<RespawnCommand>(reaction);
   → RespawnCommand：預約 due tick
 PrePhysics：死者不再移動
 StructuralCommit：移除死者；生成到期敵人；再提交出生
-Testability：capture 新的活動成員 snapshot
+ArenaSession：publish 新的活動成員 observation
 ```
 
 同 tick 隨後再 Attack 死者會回 target-dead。到了 commit 後它已從 repository 移除，下一 tick 使用舊 ID 則回 target-not-found。Arena 不保留 tombstone；需要死亡歷史請讀結果／trace，不從目前 Actors 清單尋找死者。
@@ -88,27 +88,23 @@ using System;
 using Arena.Application;
 using Arena.Composition;
 using Arena.Integration;
-using Testability.Templates;
 
 ArenaScenario scenario = new ArenaScenario(tickDelta: .25f,
     damage: 100, respawnMinTicks: 2, respawnMaxTicks: 2,
     maxEnemySpawns: 2);
-using (TestableSimulationSession<ArenaRuntime, ArenaScenario,
-    ArenaInput, ArenaObservation> session =
-    new ArenaDefinition().CreateTestSession(scenario))
+using (ArenaSession session = new ArenaDefinition().CreateSession(scenario))
 {
     ulong player = session.Observe().PlayerId;
     ulong enemy = 0;
     foreach (ActorSnapshot actor in session.Observe().Actors)
         if (actor.Enemy) { enemy = actor.Id; break; }
 
-    session.Gameplay.Submit(session.Id, 1, 1,
-        new ArenaInput(ArenaAction.Attack, player, enemy));
-    session.Simulation.Step();
+    session.Submit(new ArenaInput(ArenaAction.Attack, player, enemy), 1);
+    session.Step();
     Console.WriteLine(session.Observe().Actors.Count); // 1
     Console.WriteLine(session.Observe().PendingRespawnTicks[0]); // 3
-    session.Simulation.Step(); // tick 2，仍等待
-    session.Simulation.Step(); // tick 3，commit 出生
+    session.Step(); // tick 2，仍等待
+    session.Step(); // tick 3，commit 出生
     Console.WriteLine(session.Observe().EnemiesSpawned); // 2
     Console.WriteLine(session.Observe().FindActor(enemy) == null); // True
 }

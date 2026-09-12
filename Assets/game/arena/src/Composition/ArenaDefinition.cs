@@ -1,38 +1,113 @@
 using System;
+using System.Collections.Generic;
 using Arena.Integration;
 using DeterministicSimulation.Framework;
-using InvariantChecks;
-using Testability.Templates;
+using TestabilityOracles;
 
 namespace Arena.Composition
 {
-    /// <summary>The one production composition used by live play, tests, recording and replay.</summary>
-    public sealed class ArenaDefinition : ReplayableSimulationDefinition<ArenaRuntime, ArenaScenario, ArenaInput, ArenaObservation>
+    /// <summary>Adopter-owned composition for simulation, observation, control, oracles, evidence and playback.</summary>
+    public sealed class ArenaDefinition
     {
-        public const string DefaultPolicy = "arena-v1/canonical-v1/splitmix64-streams-1-2/lifetime-v1";
-        private readonly bool failureOracle;
-        public ArenaDefinition(bool failureOracle = false) { this.failureOracle = failureOracle; }
-        public override string PolicyId => DefaultPolicy + (failureOracle ? "/training-position-oracle-v1" : "");
-        protected override void ValidateScenario(ArenaScenario scenario) => scenario.Validate();
-        protected override float GetTickDelta(ArenaScenario scenario) => scenario.TickDelta;
-        protected override ArenaRuntime CreateWorld(ArenaScenario scenario) => new ArenaRuntime(scenario);
-        protected override void DestroyWorld(ArenaRuntime world) { } // All world resources are managed and session-owned.
-        protected override void ConfigureWorld(SimulationBuilder builder, ArenaRuntime world, ArenaScenario scenario) => ArenaSimulationWiring.Configure(builder, world);
-        protected override InputOutcome ExecuteInput(ArenaRuntime world, ArenaInput input, InputExecutionContext context) => ArenaSimulationWiring.Execute(world, input, context);
-        protected override ArenaObservation CaptureObservation(ArenaRuntime world) => new ArenaObservation(world);
-        protected override byte[] EncodeCanonicalState(ArenaObservation observation) => ArenaCanonicalState.Encode(observation);
-        protected override void ConfigureInvariants(InvariantRegistry<ArenaObservation> invariants)
+        private sealed class CoreDefinition : SimulationDefinition<ArenaRuntime, ArenaScenario>
         {
-            invariants.Register(new ArenaInvariant());
-            if (failureOracle) invariants.Register(new TrainingPositionOracle());
+            protected override void ValidateScenario(ArenaScenario scenario)
+            {
+                scenario.Validate();
+            }
+
+            protected override float GetTickDelta(ArenaScenario scenario)
+            {
+                return scenario.TickDelta;
+            }
+
+            protected override ArenaRuntime CreateWorld(ArenaScenario scenario)
+            {
+                return new ArenaRuntime(scenario);
+            }
+
+            protected override void Configure(SimulationBuilder builder, ArenaRuntime world, ArenaScenario scenario)
+            {
+                ArenaSimulationWiring.Configure(builder, world);
+            }
+
+            protected override void DestroyWorld(ArenaRuntime world)
+            {
+            }
         }
-        protected override TemplateLimits CreateDefaultLimits(ArenaScenario scenario) =>
-            new TemplateLimits(scenario.MaxTicks, scenario.MaxInputs, scenario.TraceCapacity, maxTotalPayloadBytes: 16777216);
-        protected override TemplateTraceMetadata DescribeInput(ArenaInput input) => new TemplateTraceMetadata(input.Kind.ToString(), actor: input.Actor, target: input.Target);
-        protected override TemplateTraceMetadata DescribeMessage(object message) => ArenaSimulationWiring.Describe(message);
-        protected override string EncodeScenario(ArenaScenario scenario) => ArenaCodecs.Encode(scenario);
-        protected override ArenaScenario DecodeScenario(string payload) => ArenaCodecs.Decode<ArenaScenario>(payload);
-        protected override string EncodeInput(ArenaInput input) => ArenaCodecs.Encode(input ?? throw new ArgumentNullException(nameof(input)));
-        protected override ArenaInput DecodeInput(string payload) => ArenaCodecs.Decode<ArenaInput>(payload);
+
+        public const string DefaultPolicy = "arena-v2/modules-v1/canonical-v1/splitmix64-streams-1-2/lifetime-v1";
+        private readonly bool failureOracle;
+        private readonly CoreDefinition core = new CoreDefinition();
+
+        public ArenaDefinition(bool failureOracle = false)
+        {
+            this.failureOracle = failureOracle;
+        }
+
+        public string PolicyId
+        {
+            get { return DefaultPolicy + (failureOracle ? "/training-position-oracle-v1" : string.Empty); }
+        }
+
+        public ArenaSession CreateSession(ArenaScenario scenario = null, ArenaLimits limits = null)
+        {
+            ArenaScenario actualScenario = scenario ?? new ArenaScenario();
+            return new ArenaSession(this, actualScenario, limits);
+        }
+
+        public ArenaReplay CreateReplay(ArenaRecording recording)
+        {
+            return new ArenaReplay(this, recording);
+        }
+
+        internal SimulationSession<ArenaRuntime, ArenaScenario> CreateCoreSession(ArenaScenario scenario, Action<SimulationPhase, bool> phaseObserver, Action<MessageDispatch> dispatchObserver)
+        {
+            return core.CreateSession(scenario, phaseObserver, dispatchObserver);
+        }
+
+        internal string EncodeScenario(ArenaScenario scenario)
+        {
+            return ArenaCodecs.Encode(scenario);
+        }
+
+        internal ArenaScenario DecodeScenario(string payload)
+        {
+            return ArenaCodecs.Decode<ArenaScenario>(payload);
+        }
+
+        internal string EncodeInput(ArenaInput input)
+        {
+            if (input == null) throw new ArgumentNullException(nameof(input));
+            return ArenaCodecs.Encode(input);
+        }
+
+        internal ArenaInput DecodeInput(string payload)
+        {
+            return ArenaCodecs.Decode<ArenaInput>(payload);
+        }
+
+        internal ArenaLimits CreateLimits(ArenaScenario scenario)
+        {
+            return new ArenaLimits(scenario.MaxTicks, scenario.MaxInputs, scenario.TraceCapacity, 65536, 16777216);
+        }
+
+        internal ArenaTraceMetadata DescribeInput(ArenaInput input)
+        {
+            return new ArenaTraceMetadata(input.Kind.ToString(), actor: input.Actor, target: input.Target);
+        }
+
+        internal ArenaTraceMetadata DescribeMessage(object message)
+        {
+            return ArenaSimulationWiring.Describe(message);
+        }
+
+        internal OracleSet<ArenaObservation> CreateOracleSet()
+        {
+            List<ITestOracle<ArenaObservation>> oracles = new List<ITestOracle<ArenaObservation>>();
+            oracles.Add(new ArenaInvariantOracle(new ArenaInvariant()));
+            if (failureOracle) oracles.Add(new ArenaInvariantOracle(new TrainingPositionOracle()));
+            return new OracleSet<ArenaObservation>(PolicyId + "/oracles", oracles);
+        }
     }
 }

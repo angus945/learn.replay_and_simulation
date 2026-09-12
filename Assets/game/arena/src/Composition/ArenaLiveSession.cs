@@ -4,8 +4,7 @@ using Arena.Domain;
 using Arena.Integration;
 using DeterministicSimulation;
 using DeterministicSimulation.Framework;
-using Testability;
-using Testability.Templates;
+using RuntimeControl;
 using TickInputBuffering;
 using TickInputBuffering.Contract;
 
@@ -15,31 +14,62 @@ namespace Arena.Composition
     public sealed class ArenaLiveSession : IDisposable, IRealtimeInputSource, IRealtimePresentation
     {
         private TickInputBuffer input = CreateInputBuffer();
-        private readonly TestableSimulationSession<ArenaRuntime, ArenaScenario, ArenaInput, ArenaObservation> session;
+        private readonly ArenaSession session;
         private readonly RealtimeSimulationRunner runner;
         private readonly int ownerThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
         private bool disposed;
         private bool inputDirty;
-        private ulong sequence;
         public ArenaLiveSession(ArenaScenario scenario = null)
         {
-            session = new ArenaDefinition().CreateTestSession(scenario ?? new ArenaScenario());
+            session = new ArenaDefinition().CreateSession(scenario ?? new ArenaScenario());
             PreviousObservation = session.Observe();
             CurrentObservation = PreviousObservation;
             runner = session.CreateRealtimeRunner(input: this, presentation: this);
         }
         public ArenaObservation PreviousObservation { get; private set; }
         private ArenaObservation CurrentObservation { get; set; }
-        public ulong TickNumber => session.CurrentTick;
-        public float PresentationAlpha => runner.IsPaused || session.State != SessionState.Running ? 1f : runner.PresentationAlpha;
-        public SessionState State => session.State;
-        public TemplateFailure Failure => session.Failure;
-        public Exception DriverFailure => runner.Failure;
-        public bool IsPaused => runner.IsPaused;
-        public double PendingSeconds => runner.PendingSeconds;
-        public IDiagnosticReader<ArenaObservation> Diagnostics => session.Diagnostics;
-        public ArenaObservation Observe() => session.Observe();
-        public TemplateRecording CaptureRecording() => session.CaptureRecording();
+        public ulong TickNumber
+        {
+            get { return session.CurrentTick; }
+        }
+        public float PresentationAlpha
+        {
+            get { return runner.IsPaused || session.State != ArenaSessionState.Running ? 1f : runner.PresentationAlpha; }
+        }
+        public ArenaSessionState State
+        {
+            get { return session.State; }
+        }
+        public ArenaFailure Failure
+        {
+            get { return session.Failure; }
+        }
+        public Exception DriverFailure
+        {
+            get { return runner.Failure; }
+        }
+        public bool IsPaused
+        {
+            get { return runner.IsPaused; }
+        }
+        public double PendingSeconds
+        {
+            get { return runner.PendingSeconds; }
+        }
+        public IArenaDiagnosticReader Diagnostics
+        {
+            get { return session.Diagnostics; }
+        }
+
+        public ArenaObservation Observe()
+        {
+            return session.Observe();
+        }
+
+        public ArenaRecording CaptureRecording()
+        {
+            return session.CaptureRecording();
+        }
         public void CaptureAxes(float x, float y)
         {
             EnsureInputAccess();
@@ -63,11 +93,25 @@ namespace Arena.Composition
             buffer.RegisterAxis(0); buffer.RegisterAxis(1); buffer.RegisterButton(0); buffer.Seal();
             return buffer;
         }
-        public void AdvanceTime(float seconds) => runner.AdvanceTime(seconds);
-        public void UpdatePresentation() => runner.UpdatePresentation();
+        public void AdvanceTime(float seconds)
+        {
+            runner.AdvanceTime(seconds);
+        }
+
+        public void UpdatePresentation()
+        {
+            runner.UpdatePresentation();
+        }
         public void Pause() { runner.Pause(); ClearInput(); }
-        public void Resume() => runner.Resume();
-        public void Stop() => session.Stop();
+        public void Resume()
+        {
+            runner.Resume();
+        }
+
+        public void Stop()
+        {
+            session.Stop();
+        }
         public void Dispose()
         {
             if (disposed) return;
@@ -102,8 +146,8 @@ namespace Arena.Composition
         }
         private void Submit(ulong tick, ArenaInput value)
         {
-            SubmissionResult admission = session.Gameplay.Submit(session.Id, ++sequence, tick, value);
-            if (!admission.Queued) session.Stop();
+            OperationAdmission admission = session.Submit(value, tick);
+            if (!admission.IsAdmitted) session.Stop();
         }
         void IRealtimePresentation.CaptureTickState(ulong tick)
         { PreviousObservation = CurrentObservation; CurrentObservation = session.Observe(); }

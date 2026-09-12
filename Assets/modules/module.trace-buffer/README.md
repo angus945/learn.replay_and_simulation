@@ -29,4 +29,4 @@ TraceBatch<string> next = reader.Read(cursor, 64);
 - Batch 擁有自己的唯讀紀錄陣列，但不深拷貝 T。T 必須為不可變 payload。
 - 單執行緒；未提供 thread safety、持久化或 transport。容量限制的是筆數，不是任意 payload 的 byte 數。
 
-Simulation 的 Session／Tick／Wave／Actor 欄位留在 framework.testability 的 TraceEntry payload，本 module 不解釋它們。
+Simulation 的 Session／Tick／Wave／Actor 欄位由 adopter 定義在自己的 payload（Arena 使用 `ArenaTraceEntry`）；本 module 不解釋它們。

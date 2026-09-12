@@ -4,23 +4,24 @@
 
 本章問題：如何證明「重播相同」不只是畫面相似？如果只保存位置，便無法驗證 Attack 的拒絕理由、RNG 消耗、重生排程或首次失敗。
 
-Testability 保存外部輸入及逐 tick 證據；Replay 以同一 Definition 建立新世界，再走同一 Application 和 pipeline，重新推導內部結果。
+ArenaSession 保存外部輸入及逐 tick 證據；ArenaReplay 以同一 Definition 建立新世界，再走同一 Application 和 pipeline，重新推導內部結果。`framework.deterministic-playback` 擁有 adapter lifecycle 與 step cursor，但不知道 Arena 的檔案格式或 policy。
 
 ## 接點一：穩定 codec 與明確 PolicyId
 
-[ArenaCodecs](../../Assets/game/arena/src/Integration/ArenaEvidence.cs) 使用既有 ArtifactJson utility 序列化 ArenaScenario／ArenaInput。這個 utility 的名字不表示 Arena 支援任何舊 game artifact；現行保存格式只有 TemplateRecording。
+[ArenaCodecs](../../Assets/game/arena/src/Integration/ArenaEvidence.cs) 使用 DataContractJsonSerializer 序列化 ArenaScenario／ArenaInput。現行保存格式只有 schema 2 的 `ArenaRecording`，不讀已退役的 schema 1 格式。
 
-ArenaDefinition 覆寫這四個 hooks：
+ArenaDefinition 明確提供 adopter-owned codec 方法：
 
 ```csharp
-protected override string EncodeScenario(ArenaScenario scenario)
-    => ArenaCodecs.Encode(scenario);
-protected override ArenaScenario DecodeScenario(string payload)
-    => ArenaCodecs.Decode<ArenaScenario>(payload);
-protected override string EncodeInput(ArenaInput input)
-    => ArenaCodecs.Encode(input ?? throw new ArgumentNullException(nameof(input)));
-protected override ArenaInput DecodeInput(string payload)
-    => ArenaCodecs.Decode<ArenaInput>(payload);
+internal string EncodeScenario(ArenaScenario scenario)
+{
+    return ArenaCodecs.Encode(scenario);
+}
+
+internal ArenaInput DecodeInput(string payload)
+{
+    return ArenaCodecs.Decode<ArenaInput>(payload);
+}
 ```
 
 這些成員位於 ArenaDefinition，引用 System 和 Arena.Integration。codec 必須無副作用，decode 回獨立物件；不要在 decode 抽亂數或呼叫 use case。
@@ -29,16 +30,16 @@ PolicyId 由 `ArenaDefinition.DefaultPolicy` 及選配 oracle suffix 組成，�
 
 ## 錄製包含什麼、不包含什麼
 
-TemplateRecording 保存：
+ArenaRecording 保存：
 
-- encoded scenario、Policy、Runtime、TickDelta、實際 TemplateLimits。
-- initial hash 與 admitted external inputs 的 sequence／tick／payload。
-- 每個 TemplateTick 的 hash、ActionResults，包含沒有輸入的尾段。
-- 首次 TemplateFailure 與有界 trace。
+- encoded scenario、Policy、Runtime、TickDelta、實際 ArenaLimits。
+- initial digest 與 admitted external inputs 的 sequence／tick／payload。
+- 每個 ArenaRecordedTick 的 digest、operation results，包含沒有輸入的尾段。
+- 失敗 tick 的 ArenaRecordedFailure 與有界 ArenaTraceEntry。
 
 它不保存整個 Actor object graph、不保存 Unity frame delta、不把 RespawnCommand／ArenaFactMessage 當新輸入，不保存任意 observation 作 restore checkpoint。
 
-已排隊但尚未到期的 input 可以保留在 recording；Replay 只跑到最後一個已錄製 tick，不會為了未來 input 擅自延長情境。CaptureRecording 不停止正常 session；Reset 會清空該 session 的舊歷史，因此跨 Reset 要分開保存。
+已排隊但尚未到期的 input 可以保留在 recording；Replay 只跑到最後一個已錄製 tick，不會為了未來 input 擅自延長情境。CaptureRecording 不停止正常 session；重新開始要建立新的 session，因此兩次執行要分開保存。
 
 ## 接點二：從正式輸入得到真正的 JSON round trip
 
@@ -50,34 +51,27 @@ using System.IO;
 using Arena.Application;
 using Arena.Composition;
 using Arena.Integration;
-using Testability.Templates;
 
 ArenaDefinition definition = new ArenaDefinition();
-TemplateRecording recording;
-using (TestableSimulationSession<ArenaRuntime, ArenaScenario,
-    ArenaInput, ArenaObservation> session = definition.CreateTestSession(
-    new ArenaScenario(tickDelta: .25f)))
+ArenaRecording recording;
+using (ArenaSession session = definition.CreateSession(new ArenaScenario(tickDelta: .25f)))
 {
     ulong player = session.Observe().PlayerId;
-    session.Gameplay.Submit(session.Id, 1, 1,
-        new ArenaInput(ArenaAction.Move, player, x: 1f));
-    session.Gameplay.Submit(session.Id, 2, 3,
-        new ArenaInput(ArenaAction.Move, player));
-    for (int tick = 0; tick < 8; tick++) session.Simulation.Step();
+    session.Submit(new ArenaInput(ArenaAction.Move, player, x: 1f), 1);
+    session.Submit(new ArenaInput(ArenaAction.Move, player), 3);
+    for (int tick = 0; tick < 8; tick++) session.Step();
 
     using (MemoryStream stream = new MemoryStream())
     {
-        TemplateRecordingIO.Write(stream, session.CaptureRecording());
+        ArenaRecordingIO.Write(stream, session.CaptureRecording());
         stream.Position = 0;
-        recording = TemplateRecordingIO.Read(stream);
+        recording = ArenaRecordingIO.Read(stream);
     }
 }
-using (TemplateReplay<ArenaRuntime, ArenaScenario,
-    ArenaInput, ArenaObservation> replay = definition.CreateReplay(recording))
+using (ArenaReplay replay = definition.CreateReplay(recording))
 {
     replay.Play();
-    for (int frame = 0; frame < 1000 &&
-        replay.State == TemplateReplayState.Playing; frame++)
+    for (int frame = 0; frame < 1000 && replay.State == ArenaReplayState.Playing; frame++)
         replay.AdvanceTime(1f / 144f);
 
     Console.WriteLine(replay.State); // Completed
@@ -93,8 +87,8 @@ using (TemplateReplay<ArenaRuntime, ArenaScenario,
 ## 三種結果必須分開
 
 - Completed：正常錄製的全部 ticks 與預期相符。
-- ReproducedFailure：在預期 tick 重現相同 failure fingerprint，也通過相應的 results／hash 比對。重現成功，但原遊戲情境仍失敗。
-- Diverged：第一個 policy／initial hash／tick hash／result／failure 差異，保存 FirstDifference 並停止。
+- ReproducedFailure：在預期 tick 重現相同 failure fingerprint，也通過相應的 results／digest 比對。重現成功，但原遊戲情境仍失敗。
+- Diverged：第一個 policy／initial digest／tick digest／result／failure 差異，保存 FirstDifference 並停止。
 
 拿第 7 章 oracle failure 的 recording，用 `new ArenaDefinition(failureOracle: true)` 重播，應得到 ReproducedFailure。改成普通 `new ArenaDefinition()`，policy 不同，應在 tick 0 Diverged，而不是少跑一個 oracle 後宣稱成功。
 
@@ -102,7 +96,7 @@ Replay 不對外提供 Submit，因此播放時沒有即時玩家輸入混入。
 
 ## 接點三：讓檔案邊界可預期
 
-`TemplateRecordingIO` 操作 caller 提供的 stream；路徑、關閉 stream、不覆寫政策由 host 負責。Arena CLI／Unity 使用新檔寫入，不把一次新故障覆蓋成舊錄製。
+`ArenaRecordingIO` 操作 caller 提供的 stream；路徑、關閉 stream、不覆寫政策由 host 負責。Arena CLI／Unity 使用新檔寫入，不把一次新故障覆蓋成舊錄製。
 
 ```powershell
 dotnet run --project tools/arena-checks -- capture .utmp/arena-success.json
@@ -123,8 +117,8 @@ recording reader 在反序列化前限制 bytes，limits 另限制 ticks、input
 dotnet run --project tools/arena-checks -- replay
 ```
 
-預期包含正常錄製、JSON、不同播放 frame 排程、第一個差異、policy 拒絕及 invariant failure 重現。第 5 章的致死 Attack／seeded 重生也必須透過同一路徑驗證，不能只驗證直線移動。
+預期包含正常錄製、JSON、不同播放 frame 排程、第一個差異、policy 拒絕及 oracle failure 重現。第 5 章的致死 Attack／seeded 重生也必須透過同一路徑驗證，不能只驗證直線移動。
 
-反例：只改錄製中的某個 input payload，保留原始預期 hash／results，應得到 Diverged。不要同時重新計算預期證據，否則只是驗證新的遊戲，不是在驗證原錄製。
+反例：只改錄製中的某個 input payload，保留原始預期 digest／results，應得到 Diverged。不要同時重新計算預期證據，否則只是驗證新的遊戲，不是在驗證原錄製。
 
-下一章把手動 session 接上可組裝 realtime runner，仍保留這整套 recording／hash／invariant 流程，而不是另做只能在 Unity 玩的 loop。
+下一章把手動 session 接上可組裝 realtime runner，仍保留這整套 recording／digest／oracle 流程，而不是另做只能在 Unity 玩的 loop。

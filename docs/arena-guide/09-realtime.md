@@ -11,7 +11,7 @@ framework 的 RealtimeSimulationRunner 負責時間與唯一驅動權，ArenaLiv
 [ArenaLiveSession](../../Assets/game/arena/src/Composition/ArenaLiveSession.cs) 是純 C#，實作 `IRealtimeInputSource`、`IRealtimePresentation`、`IDisposable`。它私有持有：
 
 - 一個 TickInputBuffer：保存最近的軸值與按下邊緣。
-- 由普通 ArenaDefinition 建立的 TestableSimulationSession。
+- 由普通 ArenaDefinition 建立的 ArenaSession。
 - 從該 session.CreateRealtimeRunner 取得的唯一 runner。
 - 這段 session 的 input sequence，以及最近兩個 tick 的 immutable observation。
 
@@ -22,14 +22,14 @@ framework 的 RealtimeSimulationRunner 負責時間與唯一驅動權，ArenaLiv
 ArenaLiveSession constructor 的核心接線：
 
 ```csharp
-session = new ArenaDefinition().CreateTestSession(
+session = new ArenaDefinition().CreateSession(
     scenario ?? new ArenaScenario());
 PreviousObservation = session.Observe();
 CurrentObservation = PreviousObservation;
 runner = session.CreateRealtimeRunner(input: this, presentation: this);
 ```
 
-框架私有 tick source 保證 runner 仍走 Testability.StepCore，因此 results、hash、invariant、trace、recording 沒有被即時模式繞過。
+ArenaSession 的私有 tick source 保證 runner 仍走 ArenaSession.StepCore，因此 results、digest、oracle、trace、recording 沒有被即時模式繞過。
 
 持有 runner 時，公開 manual Step、Reset、session.Dispose 受 ownership 限制。Pause 只清除累積時間並保留所有權，不是把 manual drive 權交出去。真正要手動接管，需在 callback 外先 Dispose runner，再操作 session；ArenaLiveSession 封裝內沒有提供這條控制路徑。
 
@@ -40,7 +40,7 @@ Unity 每個 frame 呼叫 `CaptureAxes`／`CaptureAttack`；它們只更新 buff
 1. `input.ConsumeTick(tick.Number)`。
 2. 將最新 X/Y 送為 Move input，指定該 tick，sequence 遞增。
 3. 若 Attack 有新的 Pressed edge，從 snapshot 挑選最近敵人，送一筆 Attack。
-4. 全部經 `session.Gameplay.Submit`，沒有直接呼叫 Application。
+4. 全部經 `session.Submit`，沒有直接呼叫 Application。
 
 選最近敵人是輸入 adapter 的目標選擇；AttackRange 驗證仍在 Application。因此 adapter 選到距離外目標只得到正常 out-of-range，不把這條規則再實作一份。
 
@@ -94,7 +94,7 @@ using (ArenaLiveSession live = new ArenaLiveSession(
 }
 ```
 
-此結果仍可交給第 8 章的 TemplateReplay。回放不需模仿原來的 `.5f` frame，只需重送錄製中已分配到 tick 的輸入。
+此結果仍可交給第 8 章的 ArenaReplay。回放不需模仿原來的 `.5f` frame，只需重送錄製中已分配到 tick 的輸入。
 
 ## 時間、停止與 ownership
 

@@ -2,10 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Arena.Composition;
 using Arena.Integration;
 using Arena.Unity;
 using NUnit.Framework;
-using Testability.Templates;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
@@ -218,16 +218,21 @@ namespace Arena.Tests.PlayMode
                     path.value = savedPath;
                     yield return Activate(root.Q<Button>("load-replay"));
                     fixture.RefreshHud();
-                    Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Paused));
+                    Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Paused));
                     Assert.That(root.Q<Button>("save-recording").enabledSelf, Is.False);
                     Assert.That(root.Q<Button>("live-toggle").enabledSelf, Is.False);
                     ArenaObservation replay = host.CurrentObservation;
                     path.value = missingPath;
                     yield return Activate(root.Q<Button>("load-replay"));
                     Assert.That(host.CurrentObservation, Is.SameAs(replay));
-                    Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Paused));
+                    Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Paused));
                     Assert.That(host.LiveTickNumber, Is.EqualTo(3));
-                    host.InvokeUi(() => host.SaveRecording());
+                    void SaveRecordingFromUi()
+                    {
+                        host.SaveRecording();
+                    }
+
+                    host.InvokeUi(SaveRecordingFromUi);
                     Assert.That(host.UiMessage, Does.Contain("InvalidOperationException"));
                     Assert.That(host.CurrentObservation, Is.SameAs(replay));
                     Assert.That(host.AdapterFailure, Is.Null);
@@ -239,10 +244,10 @@ namespace Arena.Tests.PlayMode
                     Assert.That(host.TickNumber, Is.Zero);
                     fixture.RefreshHud();
                     yield return Activate(root.Q<Button>("replay-play"));
-                    Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Playing));
+                    Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Playing));
                     fixture.RefreshHud();
                     yield return Activate(root.Q<Button>("replay-pause"));
-                    Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Paused));
+                    Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Paused));
                     fixture.RefreshHud();
                     yield return Activate(root.Q<Button>("return-live"));
                     fixture.RefreshHud();

@@ -37,7 +37,7 @@ host.AdvanceFrame(.5f);
 host.RenderFrame();
 ```
 
-CaptureControls 只交給第 9 章的 buffer adapter；AdvanceFrame 在 live 模式只推進 ArenaLiveSession，在 replay 模式只推進 TemplateReplay。不要在 FixedUpdate 再呼叫一次 Step，也不要在 Update 改 Actor.Position。
+CaptureControls 只交給第 9 章的 buffer adapter；AdvanceFrame 在 live 模式只推進 ArenaLiveSession，在 replay 模式只推進 ArenaReplay。不要在 FixedUpdate 再呼叫一次 Step，也不要在 Update 改 Actor.Position。
 
 Host 捕捉 input／presentation adapter exception，保存第一次 AdapterFailure 並停止後續 frame 驅動。畫面錯誤不是普通 Attack rejection，也不應假裝成已成功重現的 domain failure。
 
@@ -63,13 +63,13 @@ Game ActorId、simulation registry handle、Unity pooled instance generation 是
 
 ## 接點三：診斷 presenter 與 retained view 分開
 
-[ArenaDiagnosticsPanel](../../Assets/game/arena/src/Unity/ArenaDiagnosticsPanel.cs) 的 constructor 只接 `IDiagnosticReader<ArenaObservation>`，沒有 session、Admin 或 gameplay port。
+[ArenaDiagnosticsPanel](../../Assets/game/arena/src/Unity/ArenaDiagnosticsPanel.cs) 的 constructor 只接 `IArenaDiagnosticReader`，沒有 session 或 control port。
 
 `ArenaDiagnosticsPanel` 名稱保留，但它只負責讀取、整理、快取：observation、invariant report、fault、cursor trace。沒有 `OnGUI`、`GUILayout` 或 UI Toolkit 元素。它不重跑 checks，不執行 Step。來源 overwrite、漏讀與本地 history 淘汰分開顯示；讀不到資料不是綠色成功。
 
 [ArenaHudView](../../Assets/game/arena/src/Unity/ArenaHudView.cs) 才負責實際 UI Toolkit 畫面。接線順序是：
 
-1. Host 把目前 session 的 `IDiagnosticReader` 交給 presenter。
+1. Host 把目前 session 的 `IArenaDiagnosticReader` 交給 presenter。
 2. Presenter 可見時約 10 Hz 讀取，保留最新 160 筆 trace，只有新保留 record 才格式化顯示文字。
 3. View 使用同一個 `TraceRows` 清單作 `ListView.itemsSource`，`fixedItemHeight = 42`、`FixedHeight` 虛擬化。最多只需要可見區域與少量重用列，不把全部歷史變成畫面物件。
 4. `makeItem` 建立列、`bindItem` 套用快取 Summary。點選列可在明確的 detail 區域閱讀完整 record／input sequence、session、tick、phase 與內容；不依靠 runtime 不保證顯示的原生 tooltip。只有 `TraceRevision` 改變且面板可見時才 `RefreshItems()`，不是每 frame `Rebuild()`。
@@ -85,9 +85,9 @@ Hide evidence 會隱藏 sidebar、停止 presenter 的自動輪詢／格式化�
 
 [ArenaReplayControls](../../Assets/game/arena/src/Unity/ArenaReplayControls.cs) 是 ArenaHost 的另一個 partial 檔案；UI 行為順序是：
 
-1. Live 中以 WASD／方向鍵移動，Space 攻擊。所有輸入由 tick buffer → Gameplay.Submit 保存。
+1. Live 中以 WASD／方向鍵移動，Space 攻擊。所有輸入由 tick buffer → ArenaSession.Submit 保存。
 2. 按 Save recording，檔案寫到 `Application.persistentDataPath/ArenaRecordings/arena-<UTC>-<GUID>.json`，CreateNew 不覆寫。
-3. 按 Load path，讀 TemplateRecording，按明確已知 policy 選 Definition，建立獨立 replay session。
+3. 按 Load path，讀 ArenaRecording，按明確已知 policy 選 Definition，建立獨立 replay session。
 4. pause 原 live、清輸入、Snap replay 初始狀態，並重新 bind replay.Diagnostics。
 5. Play／Pause／Step +1／Restart replay 操作播放世界。Restart 後取得新 Diagnostics reader，不能保留舊 session facade。
 6. Return live Dispose replay、恢復原 live 的 pause 狀態／時間權威、清輸入、Snap live observation，重新 bind live.Diagnostics。

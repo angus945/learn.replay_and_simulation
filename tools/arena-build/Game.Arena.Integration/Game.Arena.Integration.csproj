@@ -13,8 +13,12 @@
     <ProjectReference Include="../Game.Arena.Application/Game.Arena.Application.csproj" />
     <ProjectReference Include="../Game.Arena.Infrastructure/Game.Arena.Infrastructure.csproj" />
     <ProjectReference Include="../Framework.DeterministicSimulation/Framework.DeterministicSimulation.csproj" />
-    <ProjectReference Include="../Framework.Testability/Framework.Testability.csproj" />
     <ProjectReference Include="../Module.SimulationPrimitives/Module.SimulationPrimitives.csproj" />
     <ProjectReference Include="../Module.InvariantChecks/Module.InvariantChecks.csproj" />
+    <ProjectReference Include="../Module.TraceBuffer/Module.TraceBuffer.csproj" />
+    <ProjectReference Include="../Module.Diagnostics/Module.Diagnostics.csproj" />
+    <ProjectReference Include="../Module.RuntimeControl/Module.RuntimeControl.csproj" />
+    <ProjectReference Include="../Module.RuntimeObservation/Module.RuntimeObservation.csproj" />
+    <ProjectReference Include="../Module.TestabilityOracles/Module.TestabilityOracles.csproj" />
   </ItemGroup>
 </Project>

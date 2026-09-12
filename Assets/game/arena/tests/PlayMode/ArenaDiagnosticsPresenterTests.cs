@@ -3,10 +3,9 @@ using System.Collections;
 using Arena.Composition;
 using Arena.Integration;
 using Arena.Unity;
-using InvariantChecks;
+using Diagnostics;
 using NUnit.Framework;
-using Testability;
-using Testability.Templates;
+using TestabilityOracles;
 using TraceBuffering;
 
 namespace Arena.Tests.PlayMode
@@ -27,7 +26,7 @@ namespace Arena.Tests.PlayMode
             string invariants = panel.InvariantText;
             string observation = panel.ObservationText;
             string traceStatus = panel.TraceStatusText;
-            DiagnosticSnapshot<ArenaObservation> initial = panel.Snapshot;
+            ArenaDiagnosticSnapshot initial = panel.Snapshot;
             int revision = panel.Revision;
             int traceRevision = panel.TraceRevision;
             for (int index = 0; index < 5; index++) panel.Poll();
@@ -43,7 +42,12 @@ namespace Arena.Tests.PlayMode
             Assert.That(panel.ObservationText, Is.SameAs(observation));
             Assert.That(panel.TraceStatusText, Is.SameAs(traceStatus));
             Assert.That(rows.IsReadOnly, Is.True);
-            Assert.Throws<NotSupportedException>(() => rows.Add(null));
+            void AddNullRow()
+            {
+                rows.Add(null);
+            }
+
+            Assert.Throws<NotSupportedException>(AddNullRow);
         }
 
         [Test]
@@ -171,27 +175,27 @@ namespace Arena.Tests.PlayMode
             {
                 session.CaptureAxes(1, 0);
                 session.AdvanceTime(.25f);
-                TemplateRecording before = session.CaptureRecording();
+                ArenaRecording before = session.CaptureRecording();
                 ArenaDiagnosticsPanel panel = new ArenaDiagnosticsPanel(session.Diagnostics);
                 for (int index = 0; index < 10; index++) panel.Poll();
-                TemplateRecording after = session.CaptureRecording();
+                ArenaRecording after = session.CaptureRecording();
                 Assert.That(session.TickNumber, Is.EqualTo(2));
                 Assert.That(after.Ticks.Count, Is.EqualTo(before.Ticks.Count));
-                Assert.That(after.Ticks[1].Hash, Is.EqualTo(before.Ticks[1].Hash));
+                Assert.That(after.Ticks[1].Digest, Is.EqualTo(before.Ticks[1].Digest));
                 Assert.That(after.Inputs.Count, Is.EqualTo(before.Inputs.Count));
                 Assert.That(panel.Snapshot.Tick, Is.EqualTo(2));
             }
         }
 
-        private sealed class CountingReader : IDiagnosticReader<ArenaObservation>
+        private sealed class CountingReader : IArenaDiagnosticReader
         {
             private readonly int capacity;
-            private TraceBuffer<TraceEntry> trace;
+            private TraceBuffer<ArenaTraceEntry> trace;
 
             public CountingReader(int capacity)
             {
                 this.capacity = capacity;
-                trace = new TraceBuffer<TraceEntry>(capacity);
+                trace = new TraceBuffer<ArenaTraceEntry>(capacity);
             }
 
             public string SessionId { get; set; } = "presenter-test-session";
@@ -202,20 +206,23 @@ namespace Arena.Tests.PlayMode
             public void Append(int count, string code = "received")
             {
                 for (int index = 0; index < count; index++)
-                    trace.Writer.Record(new TraceEntry(SessionId, 0, (ulong)index, "Test", "Fact", code));
+                    trace.Writer.Record(new ArenaTraceEntry(SessionId, 0, index, "Test", "Fact", code));
             }
 
-            public void ResetStream() { trace = new TraceBuffer<TraceEntry>(capacity); }
+            public void ResetStream()
+            {
+                trace = new TraceBuffer<ArenaTraceEntry>(capacity);
+            }
 
-            public DiagnosticSnapshot<ArenaObservation> ObserveDiagnostics()
+            public ArenaDiagnosticSnapshot ReadSnapshot()
             {
                 SnapshotReads++;
                 // Fresh equivalent report/snapshot objects must not force presenter text allocation.
-                return new DiagnosticSnapshot<ArenaObservation>(SessionId, SessionState.Running, 0, null,
-                    new InvariantReport(false, 0, 0, Array.Empty<InvariantViolation>()), null);
+                EvaluationReport evaluation = new EvaluationReport("presenter-test", "tick:0", TestVerdict.Passed, Array.Empty<OracleResult>(), Array.Empty<EvaluationError>());
+                return new ArenaDiagnosticSnapshot(SessionId, ArenaSessionState.Running, 0, 0, default, null, evaluation, null, Array.Empty<DiagnosticReport>());
             }
 
-            public TraceBatch<TraceEntry> ReadTrace(TraceCursor cursor, int maxItems)
+            public TraceBatch<ArenaTraceEntry> ReadTrace(TraceCursor cursor, int maxItems)
             {
                 TraceReads++;
                 LastMaximum = maxItems;

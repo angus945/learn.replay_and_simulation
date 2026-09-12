@@ -2,24 +2,42 @@ using System;
 using System.IO;
 using Arena.Composition;
 using Arena.Integration;
-using Testability.Templates;
 using UnityEngine;
 
 namespace Arena.Unity
 {
     public sealed partial class ArenaHost
     {
-        private TemplateReplay<ArenaRuntime, ArenaScenario, ArenaInput, ArenaObservation> replay;
+        private ArenaReplay replay;
         private string replayPath = string.Empty;
         private string replayMessage = "Recording every submitted input from tick 0. Save a run, then load it to verify replay.";
         private bool resumeLiveAfterReplay;
         private string uiError;
-        public TemplateReplayState? PlaybackState => replay?.State;
-        public TemplateDifference ReplayDifference => replay?.FirstDifference;
-        public string RecordingPath => replayPath;
-        public string ReplayPath { get => replayPath; set => replayPath = value ?? string.Empty; }
-        public string ReplayStatus => replay == null ? (livePaused ? "LIVE / PAUSED" : "LIVE / RECORDING")
-            : "REPLAY / " + replay.State + "  " + replay.CurrentTick + "/" + replay.EndTick;
+        public ArenaReplayState? PlaybackState
+        {
+            get { return replay?.State; }
+        }
+        public ArenaReplayDifference ReplayDifference
+        {
+            get { return replay?.FirstDifference; }
+        }
+        public string RecordingPath
+        {
+            get { return replayPath; }
+        }
+        public string ReplayPath
+        {
+            get { return replayPath; }
+            set { replayPath = value ?? string.Empty; }
+        }
+        public string ReplayStatus
+        {
+            get
+            {
+                if (replay == null) return livePaused ? "LIVE / PAUSED" : "LIVE / RECORDING";
+                return "REPLAY / " + replay.State + "  " + replay.CurrentTick + "/" + replay.EndTick;
+            }
+        }
         public string UiMessage
         {
             get
@@ -27,9 +45,9 @@ namespace Arena.Unity
                 if (uiError != null) return uiError;
                 if (replay?.FirstDifference != null)
                     return "DIVERGED at tick " + replay.FirstDifference.Tick + " / " + replay.FirstDifference.Category;
-                if (replay?.State == TemplateReplayState.Completed)
-                    return "VERIFIED / all recorded tick hashes and action results match.";
-                if (replay?.State == TemplateReplayState.ReproducedFailure)
+                if (replay?.State == ArenaReplayState.Completed)
+                    return "VERIFIED / all recorded tick digests and operation results match.";
+                if (replay?.State == ArenaReplayState.ReproducedFailure)
                     return "REPRODUCED FAILURE / the recorded failure fingerprint matches. This is not a replay divergence.";
                 return replayMessage;
             }
@@ -43,7 +61,7 @@ namespace Arena.Unity
             Directory.CreateDirectory(directory);
             string path = Path.Combine(directory, "arena-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N") + ".json");
             using (FileStream stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
-                TemplateRecordingIO.Write(stream, live.CaptureRecording());
+                ArenaRecordingIO.Write(stream, live.CaptureRecording());
             replayPath = path;
             replayMessage = "Saved " + Path.GetFileName(path) + ". Load path to replay in a fresh session.";
             Debug.Log("Arena recording saved: " + path, this);
@@ -53,8 +71,8 @@ namespace Arena.Unity
         public void LoadReplay(string path)
         {
             EnsureInitialized();
-            TemplateRecording recording;
-            using (FileStream stream = File.OpenRead(path)) recording = TemplateRecordingIO.Read(stream);
+            ArenaRecording recording;
+            using (FileStream stream = File.OpenRead(path)) recording = ArenaRecordingIO.Read(stream);
             // A recording chooses among known compiled policies, never executable rules supplied by a file.
             ArenaDefinition definition = new ArenaDefinition();
             if (recording.Policy != definition.PolicyId)
@@ -63,7 +81,7 @@ namespace Arena.Unity
                 if (recording.Policy != definition.PolicyId)
                     throw new InvalidDataException("Unknown Arena recording policy: " + recording.Policy);
             }
-            TemplateReplay<ArenaRuntime, ArenaScenario, ArenaInput, ArenaObservation> next = definition.CreateReplay(recording);
+            ArenaReplay next = definition.CreateReplay(recording);
             try
             {
                 if (replay == null)

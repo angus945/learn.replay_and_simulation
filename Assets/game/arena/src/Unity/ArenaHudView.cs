@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using Arena.Composition;
 using Arena.Integration;
-using Testability.Templates;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -93,13 +93,13 @@ namespace Arena.Unity
                 diagnosticErrorLabel = Require<Label>("diagnostic-error-label");
                 traceDetailPanel = Require<VisualElement>("trace-detail-panel");
                 traceDetail = Require<Label>("trace-detail");
-                Connect("trace-detail-close", () => SetShown(traceDetailPanel, false));
+                Connect("trace-detail-close", CloseTraceDetail);
                 replayPath = Require<TextField>("replay-path");
                 replayPath.RegisterValueChangedCallback(OnPathChanged);
-                diagnosticsToggle = Connect("diagnostics-toggle", () => SetDiagnosticsVisible(!DiagnosticsVisible));
-                saveRecording = Connect("save-recording", () => host.SaveRecording());
-                liveToggle = Connect("live-toggle", () => { if (host.IsLivePaused) host.ResumeLive(); else host.PauseLive(); });
-                Connect("load-replay", () => host.LoadReplay(host.ReplayPath));
+                diagnosticsToggle = Connect("diagnostics-toggle", ToggleDiagnostics);
+                saveRecording = Connect("save-recording", SaveRecording);
+                liveToggle = Connect("live-toggle", ToggleLive);
+                Connect("load-replay", LoadReplay);
                 replayPlay = Connect("replay-play", host.PlayReplay);
                 replayPause = Connect("replay-pause", host.PauseReplay);
                 replayStep = Connect("replay-step", host.StepReplay);
@@ -197,9 +197,9 @@ namespace Arena.Unity
             SetEnabled(saveRecording, !host.IsReplaying);
             SetEnabled(liveToggle, !host.IsReplaying);
             SetEnabled(returnLive, host.IsReplaying);
-            SetEnabled(replayPlay, host.PlaybackState == TemplateReplayState.Paused);
-            SetEnabled(replayStep, host.PlaybackState == TemplateReplayState.Paused);
-            SetEnabled(replayPause, host.PlaybackState == TemplateReplayState.Playing);
+            SetEnabled(replayPlay, host.PlaybackState == ArenaReplayState.Paused);
+            SetEnabled(replayStep, host.PlaybackState == ArenaReplayState.Paused);
+            SetEnabled(replayPause, host.PlaybackState == ArenaReplayState.Playing);
             SetEnabled(replayRestart, host.IsReplaying);
 
             if (!DiagnosticsVisible) return;
@@ -324,13 +324,53 @@ namespace Arena.Unity
         {
             Button button = Require<Button>(name);
             button.focusable = false;
-            button.clicked += () => { host.InvokeUi(action); Root.Focus(); nextLabels = 0; };
+            void InvokeAction()
+            {
+                host.InvokeUi(action);
+                Root.Focus();
+                nextLabels = 0;
+            }
+            button.clicked += InvokeAction;
             return button;
         }
 
-        private void OnPathChanged(ChangeEvent<string> change) => host.ReplayPath = change.newValue;
+        private void CloseTraceDetail()
+        {
+            SetShown(traceDetailPanel, false);
+        }
+
+        private void ToggleDiagnostics()
+        {
+            SetDiagnosticsVisible(!DiagnosticsVisible);
+        }
+
+        private void SaveRecording()
+        {
+            host.SaveRecording();
+        }
+
+        private void ToggleLive()
+        {
+            if (host.IsLivePaused) host.ResumeLive();
+            else host.PauseLive();
+        }
+
+        private void LoadReplay()
+        {
+            host.LoadReplay(host.ReplayPath);
+        }
+
+        private void OnPathChanged(ChangeEvent<string> change)
+        {
+            host.ReplayPath = change.newValue;
+        }
+
         private T Require<T>(string name) where T : VisualElement
-            => Root.Q<T>(name) ?? throw new InvalidOperationException("ArenaHud.uxml is missing " + name + ".");
+        {
+            T element = Root.Q<T>(name);
+            if (element == null) throw new InvalidOperationException("ArenaHud.uxml is missing " + name + ".");
+            return element;
+        }
         private static void SetText(TextElement element, string value)
         {
             string next = value ?? string.Empty;

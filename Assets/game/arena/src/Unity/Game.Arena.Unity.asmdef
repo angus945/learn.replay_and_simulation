@@ -4,12 +4,12 @@
   "references": [
     "Game.Arena.Composition",
     "Game.Arena.Integration",
-    "Framework.Testability",
+    "Module.TraceBuffer",
+    "module.testability-oracles",
     "Framework.DeterministicSimulation",
     "Framework.DeterministicSimulation.Unity",
     "Module.SimulationPrimitives",
     "Module.SimulationObjectRegistry",
-    "Module.TraceBuffer",
     "Module.InvariantChecks",
     "Unity.InputSystem"
   ]

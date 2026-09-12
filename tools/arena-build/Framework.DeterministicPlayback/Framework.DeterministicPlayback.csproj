@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>framework.deterministic-playback</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/framework.deterministic-playback/src/Deterministic.Playback/**/*.cs" />
+    <ProjectReference Include="../Module.DeterministicModel/Module.DeterministicModel.csproj" />
+    <ProjectReference Include="../Module.DeterministicHistory/Module.DeterministicHistory.csproj" />
+  </ItemGroup>
+</Project>

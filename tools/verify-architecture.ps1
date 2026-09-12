@@ -13,7 +13,11 @@ function Visit-Assembly([string] $name) {
     if ($visited[$name]) { return }
     $active[$name] = $true
     foreach ($reference in $definitions[$name].references) {
-        if ($definitions.ContainsKey($reference)) { Visit-Assembly $reference }
+        if ($definitions.ContainsKey($reference)) {
+            Visit-Assembly $reference
+            continue
+        }
+        if ($reference -notlike 'Unity.*') { throw "Unknown assembly reference: $name -> $reference" }
     }
     $active.Remove($name)
     $visited[$name] = $true
@@ -54,7 +58,7 @@ foreach ($file in (& rg --files (Join-Path $projectRoot 'Assets') -g '*.meta')) 
 Write-Output "PASS: $($definitions.Count) assembly definitions; acyclic, no Module->Framework/Game, no Framework->Game, pure assemblies disable engine references; $($assetGuids.Count) valid unique asset GUIDs."
 
 # These APIs were retired after baseline 22f6966. Historical documents and fixtures are intentionally excluded.
-$retiredApi = '\b(GameplaySession|GameplayRequest|TickReport|HashCheckpoint|FailureArtifact|ReplayArtifact|ReplayPlayback|ReplayPlaybackState|ReplayFile|ScenarioRerun|FailureRerun|RerunReport|RerunDifference|GameplayStateHasher|IGameplayControl|ISimulationControl|IRealtimeTickDriver|IActionResultReader|IGameplayCapabilities|GameplayCapabilities|ActionDescriptor|ActionLookupState|ActionLookup|ActionResultPage|SimulationDriveMode|IReplayPlayback|ITestSession|IStateObserver|Old_Simulation)\b'
+$retiredApi = '\b(GameplaySession|GameplayRequest|TickReport|HashCheckpoint|FailureArtifact|ReplayArtifact|ReplayPlayback|ReplayPlaybackState|ReplayFile|ScenarioRerun|FailureRerun|RerunReport|RerunDifference|GameplayStateHasher|IGameplayControl|ISimulationControl|IRealtimeTickDriver|IActionResultReader|IGameplayCapabilities|GameplayCapabilities|ActionDescriptor|ActionLookupState|ActionLookup|ActionResultPage|SimulationDriveMode|IReplayPlayback|ITestSession|IStateObserver|Old_Simulation|ReplayableSimulationDefinition|TestableSimulationSession|TemplateReplay|TemplateRecording|TemplateRecordingIO|ITemplateGameplay|ITemplateSimulation|ITemplateAdmin|ITemplateResults|IDiagnosticReader|DiagnosticSnapshot|InvariantReport|TestRun|TestabilityRuntime|TestabilityBuilder)\b'
 $activeSources = @(& rg --files (Join-Path $projectRoot 'Assets') (Join-Path $projectRoot 'tools') -g '*.cs' -g '*.csproj' -g '*.asmdef' -g '!**/obj/**' -g '!**/bin/**')
 foreach ($source in $activeSources) {
     if ((Get-Content -LiteralPath $source -Raw) -match $retiredApi) { throw "Active source references retired API: $source ($($Matches[0]))" }
@@ -66,8 +70,8 @@ $arenaAllowed = @{
     'Game.Arena.Domain' = @()
     'Game.Arena.Application' = @('Game.Arena.Domain')
     'Game.Arena.Infrastructure' = @('Game.Arena.Domain','Game.Arena.Application','Module.SeededRandom','Module.SimulationObjectRegistry')
-    'Game.Arena.Integration' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Infrastructure','Framework.DeterministicSimulation','Framework.Testability','Module.SimulationPrimitives','Module.InvariantChecks')
-    'Game.Arena.Composition' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Integration','Framework.DeterministicSimulation','Framework.Testability','Module.SimulationPrimitives','Module.InvariantChecks','Module.TickInputBuffer')
+    'Game.Arena.Integration' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Infrastructure','Framework.DeterministicSimulation','Module.SimulationPrimitives','Module.InvariantChecks','Module.TraceBuffer','module.diagnostics','module.runtime-control','module.runtime-observation','module.testability-oracles')
+    'Game.Arena.Composition' = @('Game.Arena.Domain','Game.Arena.Application','Game.Arena.Integration','Framework.DeterministicSimulation','framework.deterministic-playback','Module.SimulationPrimitives','Module.InvariantChecks','Module.TraceBuffer','Module.TickInputBuffer','module.diagnostics','module.runtime-control','module.runtime-observation','module.testability-oracles','module.testability-evidence')
 }
 foreach ($arenaName in $arenaAllowed.Keys) {
     if (-not $definitions.ContainsKey($arenaName)) { throw "Missing Arena assembly: $arenaName" }
@@ -76,7 +80,13 @@ foreach ($arenaName in $arenaAllowed.Keys) {
     }
     $arenaProject = Join-Path $projectRoot "tools/arena-build/$arenaName/$arenaName.csproj"
     [xml]$arenaProjectXml = Get-Content -LiteralPath $arenaProject -Raw
-    $arenaProjectRefs = @($arenaProjectXml.Project.ItemGroup.ProjectReference | Where-Object { $_ -and $_.Include } | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.Include) })
+    $arenaProjectDirectory = Split-Path -Parent $arenaProject
+    $arenaProjectRefs = @($arenaProjectXml.Project.ItemGroup.ProjectReference | Where-Object { $_ -and $_.Include } | ForEach-Object {
+        $referenceProject = Join-Path $arenaProjectDirectory $_.Include
+        [xml]$referenceProjectXml = Get-Content -LiteralPath $referenceProject -Raw
+        [string]$referenceAssemblyName = @($referenceProjectXml.Project.PropertyGroup.AssemblyName | Where-Object { $_ })[0]
+        if ([string]::IsNullOrWhiteSpace($referenceAssemblyName)) { [IO.Path]::GetFileNameWithoutExtension($_.Include) } else { $referenceAssemblyName }
+    })
     $arenaAssemblyRefs = @($definitions[$arenaName].references | Where-Object { $_ })
     if (($arenaProjectRefs | Sort-Object) -join ',' -cne (($arenaAssemblyRefs | Sort-Object) -join ',')) { throw "Headless/Unity dependency mismatch: $arenaName" }
 }

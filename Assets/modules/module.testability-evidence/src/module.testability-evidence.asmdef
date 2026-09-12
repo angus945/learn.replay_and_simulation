@@ -1,0 +1,7 @@
+{
+  "name": "module.testability-evidence",
+  "rootNamespace": "TestabilityEvidence",
+  "references": [],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

@@ -3,7 +3,6 @@ using System.IO;
 using Arena.Composition;
 using Arena.Integration;
 using Arena.Tests;
-using Testability.Templates;
 
 internal static class Program
 {
@@ -19,23 +18,22 @@ internal static class Program
             if (command == "capture" || command == "capture-failure")
             {
                 if (args.Length != 2) return Usage();
-                TemplateRecording recording = ArenaContractChecks.CreateRecording(command == "capture-failure");
-                using (FileStream stream = new FileStream(args[1], FileMode.CreateNew, FileAccess.Write)) TemplateRecordingIO.Write(stream, recording);
+                ArenaRecording recording = ArenaContractChecks.CreateRecording(command == "capture-failure");
+                using (FileStream stream = new FileStream(args[1], FileMode.CreateNew, FileAccess.Write)) ArenaRecordingIO.Write(stream, recording);
                 Console.WriteLine("Saved " + recording.Ticks.Count + " ticks to " + Path.GetFullPath(args[1])); return 0;
             }
             if (command == "rerun")
             {
                 if (args.Length != 2) return Usage();
-                TemplateRecording recording;
-                using (FileStream stream = File.OpenRead(args[1])) recording = TemplateRecordingIO.Read(stream);
+                ArenaRecording recording;
+                using (FileStream stream = File.OpenRead(args[1])) recording = ArenaRecordingIO.Read(stream);
                 if (recording.Policy != ArenaDefinition.DefaultPolicy && recording.Policy != new ArenaDefinition(true).PolicyId)
                     throw new ArgumentException("Unknown Arena policy. Select an explicit supported composition.");
-                using (TemplateReplay<ArenaRuntime, ArenaScenario, ArenaInput, ArenaObservation> replay =
-                    new ArenaDefinition(recording.Policy != ArenaDefinition.DefaultPolicy).CreateReplay(recording))
+                using (ArenaReplay replay = new ArenaDefinition(recording.Policy != ArenaDefinition.DefaultPolicy).CreateReplay(recording))
                 {
-                    while (replay.State == TemplateReplayState.Paused) replay.Step();
+                    while (replay.State == ArenaReplayState.Paused) replay.Step();
                     Console.WriteLine(replay.State + " tick=" + replay.CurrentTick + (replay.FirstDifference == null ? "" : " difference=" + replay.FirstDifference.Category));
-                    return replay.State == TemplateReplayState.Completed || replay.State == TemplateReplayState.ReproducedFailure ? 0 : 1;
+                    return replay.State == ArenaReplayState.Completed || replay.State == ArenaReplayState.ReproducedFailure ? 0 : 1;
                 }
             }
             if (args.Length > 1) return Usage();

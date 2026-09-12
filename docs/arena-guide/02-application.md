@@ -64,7 +64,7 @@ application.Advance(1, .25f);    // 第 1 個 tick，玩家 X=1
 
 Application 建構時要求空 repository，建立玩家與初始敵人，再提交初始結構。每個 session 都必須重新建立這一組物件；只換一個 SessionId 而沿用原 repository 並不叫隔離。
 
-這段是內層用例測試，不是供 Unity 或外部工具直接操作世界的入口。第 4 章之後，正式 host 只走 `Gameplay.Submit`；Application 的公開方法仍是受信任整合程式的內部邊界，不是安全沙箱。
+這段是內層用例測試，不是供 Unity 或外部工具直接操作世界的入口。第 4 章之後，正式 host 只走 `ArenaSession.Submit`；Application 的公開方法仍是受信任整合程式的內部邊界，不是安全沙箱。
 
 ## 一次 Attack 怎麼執行
 
@@ -95,6 +95,6 @@ dotnet build tools/arena-build/Game.Arena.Application/Game.Arena.Application.csp
 
 本章片段的 Move 回 moved；CLI 的 application selector 則用致死 Attack 示範回傳 facts，再由測試明確接 OnDefeated／ScheduleRespawn／Advance／Commit，驗證 due tick 與新身分。[ArenaApplicationTests](../../Assets/game/arena/tests/Application/ArenaApplicationTests.cs) 另以 fake ports 驗證內層用例、拒絕不扣血／不多抽亂數、預約上限和排程副本，需獨立執行 NUnit 才能取得該層結果。
 
-反例：若在 Application 加入 `using Testability.Templates`，現行 Application project 因沒有這項引用而無法編譯。不要「修好」為新增 framework reference；應將 mapping 放到 Integration。
+反例：若在 Application 加入 `using RuntimeControl`，現行 Application project 因沒有這項引用而無法編譯。不要「修好」為新增 module reference；應將 operation mapping 放到 Integration／Composition。
 
 另一個反例是完成致死 Attack 後立即要求 Actors.Count 減少；尚未接反應／commit，這個期待應失敗。下一章先建立固定 phase，第 5 章再把 Defeated 事實接到該邊界。

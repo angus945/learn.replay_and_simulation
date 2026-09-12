@@ -5,7 +5,6 @@ using Arena.Integration;
 using Arena.Unity;
 using DeterministicSimulation.Unity;
 using NUnit.Framework;
-using Testability.Templates;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -124,7 +123,7 @@ namespace Arena.Tests.PlayMode
                 Assert.That(live.Tick, Is.EqualTo(3));
                 host.LoadReplay(savedPath);
                 Assert.That(host.IsReplaying, Is.True);
-                Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Paused));
+                Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Paused));
                 Assert.That(host.TickNumber, Is.Zero);
                 Assert.That(host.Views.TryGetView(live.PlayerId, out GameObject view), Is.True);
                 Assert.That(view.transform.position.x, Is.Zero);
@@ -134,14 +133,14 @@ namespace Arena.Tests.PlayMode
                 host.PlayReplay();
                 host.AdvanceFrame(.125f);
                 host.RenderFrame();
-                Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Completed));
+                Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Completed));
                 Assert.That(host.ReplayDifference, Is.Null);
                 Assert.That(host.LiveTickNumber, Is.EqualTo(3), "Replay must not drive the suspended live session.");
                 host.RestartReplay();
                 Assert.That(host.TickNumber, Is.Zero);
                 Assert.That(view.transform.position.x, Is.Zero);
                 host.PlayReplay(); host.PauseReplay();
-                Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Paused));
+                Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Paused));
                 host.ReturnToLive();
                 host.RenderFrame();
                 Assert.That(host.IsReplaying, Is.False);
@@ -175,17 +174,17 @@ namespace Arena.Tests.PlayMode
                 panel.Poll();
                 session.CaptureAxes(1, 0);
                 session.AdvanceTime(2.5f);
-                TemplateRecording before = session.CaptureRecording();
-                string hash = before.Ticks[before.Ticks.Count - 1].Hash;
+                ArenaRecording before = session.CaptureRecording();
+                string digest = before.Ticks[before.Ticks.Count - 1].Digest;
                 for (int index = 0; index < 5; index++) panel.Poll();
                 Assert.That(panel.SourceOverwrittenCount, Is.GreaterThan(0));
                 Assert.That(panel.MissedCount, Is.GreaterThan(0));
                 Assert.That(panel.HistoryCount, Is.LessThanOrEqualTo(160));
                 Assert.That(panel.Snapshot.Tick, Is.EqualTo(20));
                 Assert.That(session.TickNumber, Is.EqualTo(20));
-                TemplateRecording after = session.CaptureRecording();
+                ArenaRecording after = session.CaptureRecording();
                 Assert.That(after.Ticks.Count, Is.EqualTo(before.Ticks.Count));
-                Assert.That(after.Ticks[after.Ticks.Count - 1].Hash, Is.EqualTo(hash));
+                Assert.That(after.Ticks[after.Ticks.Count - 1].Digest, Is.EqualTo(digest));
             }
         }
 
@@ -193,12 +192,11 @@ namespace Arena.Tests.PlayMode
         public IEnumerator HostAcceptsKnownOraclePolicyReproducesFailureAndRejectsUnknownPolicy()
         {
             ArenaScenario scenario = new ArenaScenario(tickDelta: .125f);
-            TemplateRecording recording;
-            using (TestableSimulationSession<ArenaRuntime, ArenaScenario, ArenaInput, ArenaObservation> session =
-                new ArenaDefinition(failureOracle: true).CreateTestSession(scenario))
+            ArenaRecording recording;
+            using (ArenaSession session = new ArenaDefinition(failureOracle: true).CreateSession(scenario))
             {
-                session.Gameplay.Submit(session.Id, 1, 1,
-                    new ArenaInput(Arena.Application.ArenaAction.Move, session.Observe().PlayerId, x: 1));
+                ArenaInput input = new ArenaInput(Arena.Application.ArenaAction.Move, session.Observe().PlayerId, x: 1);
+                session.Submit(input, 1);
                 for (int index = 0; index < 4; index++) session.Step();
                 Assert.That(session.Failure, Is.Not.Null);
                 recording = session.CaptureRecording();
@@ -213,20 +211,23 @@ namespace Arena.Tests.PlayMode
             host.enabled = false;
             try
             {
-                using (FileStream file = File.Create(path)) TemplateRecordingIO.Write(file, recording);
-                TemplateRecording unknown = new TemplateRecording("unknown-policy", recording.Runtime, recording.Scenario,
-                    recording.TickDelta, recording.Limits, recording.InitialHash, recording.Inputs, recording.Ticks,
-                    recording.Failure, recording.Trace, recording.DroppedTraceEntries);
-                using (FileStream file = File.Create(unknownPath)) TemplateRecordingIO.Write(file, unknown);
+                using (FileStream file = File.Create(path)) ArenaRecordingIO.Write(file, recording);
+                ArenaRecording unknown = new ArenaRecording("unknown-policy", recording.Runtime, recording.Scenario, recording.TickDelta, recording.Limits, recording.InitialDigest, recording.Inputs, recording.Ticks, recording.Trace, recording.DroppedTraceEntries);
+                using (FileStream file = File.Create(unknownPath)) ArenaRecordingIO.Write(file, unknown);
                 host.Initialize(cameraObject.AddComponent<Camera>(), null, player, enemy, scenario);
                 host.LoadReplay(path);
-                Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Paused));
-                Assert.Throws<InvalidDataException>(() => host.LoadReplay(unknownPath));
-                Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.Paused), "Rejected policies leave the current replay intact.");
+                Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Paused));
+                void LoadUnknownReplay()
+                {
+                    host.LoadReplay(unknownPath);
+                }
+
+                Assert.Throws<InvalidDataException>(LoadUnknownReplay);
+                Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.Paused), "Rejected policies leave the current replay intact.");
                 host.PlayReplay();
                 host.AdvanceFrame(1);
                 host.RenderFrame();
-                Assert.That(host.PlaybackState, Is.EqualTo(TemplateReplayState.ReproducedFailure));
+                Assert.That(host.PlaybackState, Is.EqualTo(ArenaReplayState.ReproducedFailure));
                 Assert.That(host.ReplayDifference, Is.Null);
                 Assert.That(host.LiveTickNumber, Is.Zero);
             }

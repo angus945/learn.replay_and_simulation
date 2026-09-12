@@ -1,0 +1,18 @@
+[submodule "modules/module.deterministic-simulation"]
+	path = modules/module.deterministic-simulation
+	url = https://github.com/crafty-racoon/module.deterministic-simulation.git
+[submodule "Assets/modules/module.diagnostics"]
+	path = Assets/modules/module.diagnostics
+	url = https://github.com/crafty-racoon/module.diagnostics.git
+[submodule "Assets/modules/module.deterministic-model"]
+	path = Assets/modules/module.deterministic-model
+	url = https://github.com/crafty-racoon/module.deterministic-model.git
+	ignore = untracked
+[submodule "Assets/modules/module.deterministic-history"]
+	path = Assets/modules/module.deterministic-history
+	url = https://github.com/crafty-racoon/module.deterministic-history.git
+	ignore = untracked
+[submodule "Assets/framework.deterministic-playback"]
+	path = Assets/framework.deterministic-playback
+	url = https://github.com/crafty-racoon/framework.deterministic-playback.git
+	ignore = untracked

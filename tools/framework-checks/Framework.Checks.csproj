@@ -4,8 +4,11 @@
     <ImplicitUsings>disable</ImplicitUsings><Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../arena-build/Framework.Testability/Framework.Testability.csproj" />
-    <Compile Include="../../Assets/framework.testability/tests/TemplateContractChecks.cs" Link="TemplateContractChecks.cs" />
+    <ProjectReference Include="../arena-build/Framework.DeterministicSimulation/Framework.DeterministicSimulation.csproj" />
+    <ProjectReference Include="../arena-build/Module.RuntimeObservation/Module.RuntimeObservation.csproj" />
+    <ProjectReference Include="../arena-build/Module.RuntimeControl/Module.RuntimeControl.csproj" />
+    <ProjectReference Include="../arena-build/Module.TestabilityOracles/Module.TestabilityOracles.csproj" />
+    <ProjectReference Include="../arena-build/Module.TestabilityEvidence/Module.TestabilityEvidence.csproj" />
     <Compile Include="../../Assets/framework.deterministic-simulation/tests/SessionTemplateContractChecks.cs" Link="SessionTemplateContractChecks.cs" />
     <Compile Include="../../Assets/framework.deterministic-simulation/tests/CoreHardeningContractChecks.cs" Link="CoreHardeningContractChecks.cs" />
     <Compile Include="../../Assets/modules/module.wave-dispatcher/tests/WaveDispatcherContractChecks.cs" Link="WaveDispatcherContractChecks.cs" />

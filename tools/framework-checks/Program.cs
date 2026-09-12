@@ -1,6 +1,5 @@
 using System;
 using DeterministicSimulation.Framework.Tests;
-using Testability.Tests;
 using WaveDispatching.Tests;
 
 internal static class Program
@@ -24,18 +23,14 @@ internal static class Program
             SessionTemplateContractChecks.RealtimeTimingAndOwnership();
             SessionTemplateContractChecks.RealtimeFailuresAndReentry();
             Console.WriteLine("PASS framework definition / session / realtime ownership");
-            TemplateContractChecks.AdmissionAndDiagnostics();
-            TemplateContractChecks.OrderingResetAndLimits();
-            TemplateContractChecks.ReplayFrameMatrix();
-            TemplateContractChecks.FailureReplay();
-            TemplateContractChecks.InvariantAndCaptureFailures();
-            TemplateContractChecks.DivergenceAndMalformedRecording();
-            TemplateContractChecks.ThreadAndReentry();
-            TemplateContractChecks.PhaseAndFileBounds();
-            TemplateContractChecks.MetadataCausationAndResultPages();
-            TemplateContractChecks.PolicyAndReplaySetupFailures();
-            TemplateContractChecks.RealtimeRecordingAndOwnership();
-            Console.WriteLine("PASS framework testability / diagnostics / recording / replay (no Game assembly)");
+            ModuleContractChecks.RuntimeObservation();
+            ModuleContractChecks.RuntimeControl();
+            ModuleContractChecks.TestabilityOracles();
+            ModuleContractChecks.TestabilityEvidence();
+            Console.WriteLine("PASS passive observation / control / oracle / evidence modules");
+            HostWorkflowContractChecks.DocumentWorkspace();
+            HostWorkflowContractChecks.ImportQueue();
+            Console.WriteLine("PASS non-simulation workspace / explicit asynchronous host progress");
             return 0;
         }
         catch (Exception exception) { Console.Error.WriteLine(exception); return 1; }

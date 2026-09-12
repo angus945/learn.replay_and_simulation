@@ -1,8 +1,6 @@
 using System;
 using Arena.Composition;
 using Arena.Integration;
-using Testability;
-using Testability.Templates;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -27,17 +25,50 @@ namespace Arena.Unity
         private ArenaHudView hud;
         private readonly ArenaPerformanceMetrics performance = new ArenaPerformanceMetrics();
 
-        public bool IsInitialized => live != null && !disposed;
-        public bool IsReplaying => replay != null;
-        public bool IsLivePaused => livePaused;
-        public ulong TickNumber => CurrentObservation?.Tick ?? 0;
-        public ulong LiveTickNumber => live == null ? 0 : live.TickNumber;
-        public ArenaObservation CurrentObservation => replay == null ? live?.Observe() : replay.Observe();
-        public Exception AdapterFailure => adapterFailure;
-        public ArenaActorPresentation Views => views;
-        public ArenaDiagnosticsPanel DiagnosticsPanel => diagnostics;
-        public ArenaHudView Hud => hud;
-        public ArenaPerformanceMetrics Performance => performance;
+        public bool IsInitialized
+        {
+            get { return live != null && !disposed; }
+        }
+        public bool IsReplaying
+        {
+            get { return replay != null; }
+        }
+        public bool IsLivePaused
+        {
+            get { return livePaused; }
+        }
+        public ulong TickNumber
+        {
+            get { return CurrentObservation?.Tick ?? 0; }
+        }
+        public ulong LiveTickNumber
+        {
+            get { return live == null ? 0 : live.TickNumber; }
+        }
+        public ArenaObservation CurrentObservation
+        {
+            get { return replay == null ? live?.Observe() : replay.Observe(); }
+        }
+        public Exception AdapterFailure
+        {
+            get { return adapterFailure; }
+        }
+        public ArenaActorPresentation Views
+        {
+            get { return views; }
+        }
+        public ArenaDiagnosticsPanel DiagnosticsPanel
+        {
+            get { return diagnostics; }
+        }
+        public ArenaHudView Hud
+        {
+            get { return hud; }
+        }
+        public ArenaPerformanceMetrics Performance
+        {
+            get { return performance; }
+        }
 
         private void Awake()
         {
@@ -175,7 +206,10 @@ namespace Arena.Unity
             if (IsInitialized) live.ClearInput();
         }
 
-        private void OnDestroy() => DisposeSessions();
+        private void OnDestroy()
+        {
+            DisposeSessions();
+        }
 
         public void DisposeSessions()
         {
@@ -193,7 +227,7 @@ namespace Arena.Unity
             }
         }
 
-        private void BindDiagnostics(IDiagnosticReader<ArenaObservation> reader)
+        private void BindDiagnostics(IArenaDiagnosticReader reader)
         {
             diagnostics = new ArenaDiagnosticsPanel(reader);
             diagnostics.Poll();
@@ -215,6 +249,9 @@ namespace Arena.Unity
             if (live == null) throw new InvalidOperationException("Initialize the Arena host first.");
         }
 
-        private static float Axis(bool negative, bool positive) => (positive ? 1f : 0f) - (negative ? 1f : 0f);
+        private static float Axis(bool negative, bool positive)
+        {
+            return (positive ? 1f : 0f) - (negative ? 1f : 0f);
+        }
     }
 }

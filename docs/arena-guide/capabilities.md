@@ -21,13 +21,13 @@
 - 確定性依賴：穩定 ID／ordered repository、獨立 RNG streams、tick-based due queue、出生預算。這些由 modules 與 Application 分工，不由 framework 猜遊戲政策。
 - Realtime ownership／catch-up：只有 session factory 產生的 runner 驅動；Pause 不交出權限，callback 不重入，Dispose 順序明確。live input methods 拒絕非 owner／disposed 呼叫；Pause／Stopped／Faulted 顯示最新可用 snapshot，alpha=1。見 [09](09-realtime.md)。執行 `realtime`；低階極端錯誤契約另見 framework tests。
 
-## Testability 接線
+## Testability module 與 Arena host 接線
 
 - 正式 input bridge：ArenaInput → 框架 Intent／Command → ExecuteInput → ArenaRequest。見 [04](04-input.md)。執行 `input`。
-- Admission：identity、sequence、target tick、input/payload 容量；Queued 不等於 Accepted。
-- 執行結果：成功、業務拒絕、非法參數分開；Find／Read 不從 trace 推測。Stop/Fault 取消未執行輸入，Reset 更換 identity。
+- Admission：registry identity、產生的 sequence、target tick、input/payload 容量；Admitted 不等於 Succeeded。
+- 執行結果：成功、業務拒絕、非法參數分開；Find／Read 不從 trace 推測。Stop／Fault／Dispose 取消未執行輸入；重新執行建立新 session identity。
 - Observation：immutable snapshot、不洩漏 Actor；Observe／Diagnostics 不再推進或重算。見 [06](06-observation.md)。執行 `observation`。
-- Canonical state：明確 schema、有序 actor、持續方向、不可變 ArenaRules／TickDelta、RNG、pending due ticks、ID／registry evidence；hash 由 framework 計算，非完整 restore checkpoint。
+- Canonical state：明確 schema、有序 actor、持續方向、不可變 ArenaRules／TickDelta、RNG、pending due ticks、ID／registry evidence；digest 由 Arena adapter 計算，非完整 restore checkpoint。
 - Invariant／oracle：Domain invariant 與 post-tick oracle 不混用；每 session 建新 checks，training oracle 使用不同 policy。見 [07](07-diagnostics.md)。執行 `diagnostics`。
 - Trace：外部 action causation、fact／command metadata、phase、lifecycle、bounded cursor；來源缺口與本地顯示淘汰分開。
 - 首次 failure：attempted tick、LastCompletedTick、ObservationTick、results／hash 的邊界明確；不承諾 rollback 或故障後續跑。
@@ -39,7 +39,7 @@
 
 - Input System → TickInputBuffer → Submit：frame axes 與 press edge 分開，模式切換清 buffer。見 [10](10-unity.md)、[ArenaHost](../../Assets/game/arena/src/Unity/ArenaHost.cs)。
 - Observation → ActorPose → UnityActorPresentation／Pool：stable game ID 與 instance generation 分開；死亡移除、出生 snap、catch-up pair、跨 session snap。capture／Snap 後快取 ID→view，HUD 重用角色標籤。
-- 唯讀 diagnostics presenter：ArenaDiagnosticsPanel 只有 IDiagnosticReader，不取得 Step／Admin；10 Hz 自動讀取、最新 160 筆 history、快取文字、來源／cursor／本地缺口分開。
+- 唯讀 diagnostics presenter：ArenaDiagnosticsPanel 只有 IArenaDiagnosticReader，不取得 Step／Control；10 Hz 自動讀取、最新 160 筆 history、快取文字、來源／cursor／本地缺口分開。
 - UI Toolkit retained view：ArenaHudView 與 UXML／USS 分離，固定高度 42 的 ListView 虛擬化；TraceRevision 改變才 RefreshItems。隱藏 evidence 停止自動讀取，重新顯示續讀並報缺口；owned UIDocument／PanelSettings 在 dispose 釋放。
 - 時間可觀察性：目標 Hz 與實測 FPS／tick/s 分開；至少 .5 秒 wall-clock 更新，live debt 是 Live runner 的剩餘時間，Replay 時此欄不量測其 accumulator。未改 Time.deltaTime／maximumDeltaTime 或 owner-thread 政策。
 - Recording／Replay UI：保存新檔、載入、播放、pause、step、restart、return live；播放不推進原 live world。

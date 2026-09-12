@@ -15,34 +15,34 @@ post-tick invariant／oracle 讀取 observation，檢查整合結果或測試政
 - `ArenaInvariant`：正式的 committed-state 檢查，驗證身分順序、血量、方向與 registry/repository 數量。
 - `TrainingPositionOracle`：只在示範故障時啟用，玩家 X > 1.5 回 `tutorial.position-limit`。它不是 Arena 的移動限制，也不在正常 Unity composition 啟用。
 
-## 接點一：每個 session 都建立新的 checks
+## 接點一：每個 session 都建立新的 oracle set
 
 這段位於 ArenaDefinition：
 
 ```csharp
-protected override void ConfigureInvariants(
-    InvariantRegistry<ArenaObservation> invariants)
+internal OracleSet<ArenaObservation> CreateOracleSet()
 {
-    invariants.Register(new ArenaInvariant());
-    if (failureOracle)
-        invariants.Register(new TrainingPositionOracle());
+    List<ITestOracle<ArenaObservation>> oracles = new List<ITestOracle<ArenaObservation>>();
+    oracles.Add(new ArenaInvariantOracle(new ArenaInvariant()));
+    if (failureOracle) oracles.Add(new ArenaInvariantOracle(new TrainingPositionOracle()));
+    return new OracleSet<ArenaObservation>(PolicyId + "/oracles", oracles);
 }
 ```
 
-framework 建立 registry、呼叫 ConfigureInvariants、Seal，並在每個 tick 的 capture/hash 後 Evaluate。Definition 只保存 bool 組裝選項，不共用會累積狀態的 invariant instance。
+ArenaSession 要求 Definition 建立 oracle set，並在每個 tick 的 observation/digest 後明確呼叫 Evaluate。`module.testability-oracles` 只按已給順序執行純 evaluation，不知道 tick 或 session lifecycle。Definition 只保存 bool 組裝選項，不共用會累積狀態的 invariant instance。
 
-tick 0 有 observation/hash，但 invariant report 尚未 Evaluated。consumer 應同時看 Evaluated、report.Tick 和 failure，而不是只顯示一個綠色 PASS。
+tick 0 建立 observation/digest，也完成 initial evaluation。consumer 應同時看 report context、verdict、errors 和 session failure，而不是只顯示一個綠色 PASS。
 
 啟用 oracle 時，ArenaDefinition.PolicyId 加上 `/training-position-oracle-v1`。normal policy 不得把少了一個 oracle 的 replay 誤判為已重現同樣失敗。
 
 ## 接點二：讓 trace 知道遊戲訊息的原因
 
-framework 自動記錄 admission、phase、dispatch、ActionResult、hash 與 failure；它不知道 ArenaFact.Actor 的語意。ArenaDefinition 因此提供 DescribeInput／DescribeMessage，委派 [ArenaSimulationWiring.Describe](../../Assets/game/arena/src/Integration/ArenaSimulationWiring.cs)。
+ArenaSession 記錄 admission、phase、dispatch、operation result、digest 與 failure；通用 trace buffer 不知道 ArenaFact.Actor 的語意。ArenaDefinition 因此提供 DescribeInput／DescribeMessage，委派 [ArenaSimulationWiring.Describe](../../Assets/game/arena/src/Integration/ArenaSimulationWiring.cs)。
 
 例如對 fact message 回傳：
 
 ```csharp
-return new TemplateTraceMetadata(
+return new ArenaTraceMetadata(
     fact.Fact.Kind.ToString(),
     fact.Sequence,
     fact.Fact.Actor.Value,
@@ -50,25 +50,25 @@ return new TemplateTraceMetadata(
     fact.Fact.Amount.ToString(CultureInfo.InvariantCulture));
 ```
 
-這是 Describe 的 ArenaFactMessage 分支，引用 `Testability.Templates`、`System.Globalization`。它只描述資料，不改 dispatch；額外 event 的 causation 需由第 5 章明確攜帶 sequence，不能指望框架猜出是哪個外部要求。
+這是 Describe 的 ArenaFactMessage 分支。它只描述資料，不改 dispatch；額外 event 的 causation 需由第 5 章明確攜帶 sequence，不能指望 module 猜出是哪個外部要求。
 
 Action sequence 和 trace record sequence 不相同。前者連回操作；後者只是診斷分頁 cursor。phase／自主 commit 通知可能沒有單一外部原因，不應硬塞最後一筆 action sequence。
 
 ## 接點三：只把 reader 交給診斷 consumer
 
-以下放在已有 `session` 的測試／console 方法，引用 `Testability`、`TraceBuffering`、`Arena.Integration`：
+以下放在已有 `session` 的測試／console 方法，引用 `TraceBuffering`、`Arena.Integration`：
 
 ```csharp
-IDiagnosticReader<ArenaObservation> reader = session.Diagnostics;
-DiagnosticSnapshot<ArenaObservation> snapshot = reader.ObserveDiagnostics();
+IArenaDiagnosticReader reader = session.Diagnostics;
+ArenaDiagnosticSnapshot snapshot = reader.ReadSnapshot();
 TraceCursor cursor = default;
-TraceBatch<TraceEntry> batch = reader.ReadTrace(cursor, 64);
+TraceBatch<ArenaTraceEntry> batch = reader.ReadTrace(cursor, 64);
 cursor = batch.NextCursor;
 ```
 
-讀取不 Step、不重新 capture、不重算 invariant，不新增 trace。多次 Poll 不應改變 gameplay hash。Trace 有界；讀者落後會看見 MissedCount／StreamChanged，不能把缺失資料說成沒有事件。
+讀取不 Step、不重新 capture、不重算 oracle，不新增 trace。多次 Poll 不應改變 gameplay digest。Trace 有界；讀者落後會看見 MissedCount／StreamChanged，不能把缺失資料說成沒有事件。
 
-Unity 的 [ArenaDiagnosticsPanel](../../Assets/game/arena/src/Unity/ArenaDiagnosticsPanel.cs) 只取得這個 reader。來源 overwrite、尚未讀到就遺失、面板本地歷史淘汰是三件不同事；reader 無法 Submit／Step／Reset。
+Unity 的 [ArenaDiagnosticsPanel](../../Assets/game/arena/src/Unity/ArenaDiagnosticsPanel.cs) 只取得這個 reader。來源 overwrite、尚未讀到就遺失、面板本地歷史淘汰是三件不同事；reader 無法 Submit／Step／Stop。
 
 它現在是「診斷 presenter」，不是一個自行繪圖的 `OnGUI` 面板：
 
@@ -89,24 +89,19 @@ using System;
 using Arena.Application;
 using Arena.Composition;
 using Arena.Integration;
-using Testability;
-using Testability.Templates;
 
 ArenaDefinition definition = new ArenaDefinition(failureOracle: true);
-using (TestableSimulationSession<ArenaRuntime, ArenaScenario,
-    ArenaInput, ArenaObservation> session = definition.CreateTestSession(
-    new ArenaScenario(tickDelta: .25f)))
+using (ArenaSession session = definition.CreateSession(new ArenaScenario(tickDelta: .25f)))
 {
-    session.Gameplay.Submit(session.Id, 1, 1,
-        new ArenaInput(ArenaAction.Move, session.Observe().PlayerId, x: 1f));
-    session.Simulation.Step(); // X=1，仍合法
-    session.Simulation.Step(); // X=2，oracle 失敗
+    session.Submit(new ArenaInput(ArenaAction.Move, session.Observe().PlayerId, x: 1f), 1);
+    session.Step(); // X=1，仍合法
+    session.Step(); // X=2，oracle 失敗
 
-    Console.WriteLine(session.State == SessionState.Faulted); // True
+    Console.WriteLine(session.State == ArenaSessionState.Faulted); // True
     Console.WriteLine(session.Failure.Code); // tutorial.position-limit
     Console.WriteLine(session.Failure.Tick); // 2
     Console.WriteLine(session.LastCompletedTick); // 1
-    TemplateRecording evidence = session.CaptureRecording();
+    ArenaRecording evidence = session.CaptureRecording();
 }
 ```
 
@@ -117,7 +112,7 @@ X=2 是合法 Domain 狀態，只違反測試 oracle。不要修改 Actor 加入
 - 保存第一次 failure 的 stage、attempted tick、LastCompletedTick、sequence、code、exception type 等證據。
 - 讀 Diagnostics，並區分 ObservationTick；不承諾取得任意 partial-world state。
 - CaptureRecording，交給下一章的 Replay。
-- 不再 Step；Stop 不覆蓋第一次故障。要繼續新實驗，Reset 或建立新 session。
+- 不再 Step；Stop 不覆蓋第一次故障。要繼續新實驗，建立新的 session。
 
 已執行且 Accepted 的操作不回滾。同 tick 未完成與尚未到期的輸入也不能捏造成功結果；外部 future inputs 由結果查詢顯示取消。limits 只限制可返回的 tick／資料容量，不會中止永不返回的 callback；沒有 process watchdog。
 
@@ -127,8 +122,8 @@ X=2 是合法 Domain 狀態，只違反測試 oracle。不要修改 Actor 加入
 dotnet run --project tools/arena-checks -- diagnostics
 ```
 
-此 selector 檢查 reader 的唯讀性、Reset stream identity、來源 overwrite、非 crash oracle failure，以及 phase exception 保留上一份 observation 並可重播。action／fact／command 的 trace causation 由第 5 章 lifecycle selector 驗證；Unity 面板自己的 history／gap 行為另由 PlayMode 測試驗證。具體本次通過情況由執行結果決定。
+此 selector 檢查 reader 的唯讀性、observation reference、來源 overwrite、非 crash oracle failure，以及 evidence bundle 的明確建立。action／fact／command 的 trace causation 由第 5 章 lifecycle selector 驗證；Unity 面板自己的 history／gap 行為另由 PlayMode 測試驗證。具體本次通過情況由執行結果決定。
 
-反例：在 Overlay.Refresh 直接呼叫 invariant.Evaluate 或 Application.Execute，會讓顯示次數影響診斷／世界；應移回 framework 的固定評估流程。另一個反例是只看最近 report 是 PASS 而忽略 report tick，導致把上一 tick 成功當成故障 tick 成功。
+反例：在 Overlay.Refresh 直接呼叫 oracle.Evaluate 或 Application.Execute，會讓顯示次數影響診斷／世界；應移回 ArenaSession 的固定評估流程。另一個反例是只看最近 report 是 PASS 而忽略 context/tick，導致把上一 tick 成功當成故障 tick 成功。
 
 下一章把同樣的 failure 以 JSON 保存，並要求在乾淨世界再次出現同樣的 fingerprint，而不只是播放動畫到同一畫面。

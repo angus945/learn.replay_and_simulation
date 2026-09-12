@@ -1,4 +1,4 @@
-# Arena：DDD／Clean Architecture 與兩個 framework 的完整接線
+# Arena：DDD／Clean Architecture 與可組合執行邊界
 
 這份教材只使用一個 Arena。Domain、手動測試、Unity 即時操作、錄製及 Replay 都執行同一份規則；不在學到下一章時更換另一套遊戲。
 
@@ -14,7 +14,7 @@ Arena 有一名玩家與依序重生的敵人：
 - Unity 只取樣輸入、轉交時間、顯示 immutable observation。拖動 Transform 不會改變權威位置。
 - 同一 scenario 與外部輸入可保存為 JSON，在新 session 比對逐 tick hash、操作結果及首次失敗。
 
-這些規則足以展示 Aggregate、Application ports、外圍 adapters 與兩 framework 的合作，不需要為移動、血量、重生各建立一個假想 bounded context。Arena 是一個小型 bounded context；資料夾和 assembly 是依賴邊界，不等於不同領域。
+這些規則足以展示 Aggregate、Application ports、外圍 adapters、兩個 lifecycle framework 與四個被動 module 的合作，不需要為移動、血量、重生各建立一個假想 bounded context。Arena 是一個小型 bounded context；資料夾和 assembly 是依賴邊界，不等於不同領域。
 
 ## 先執行，再依序讀十章
 
@@ -52,7 +52,8 @@ Unity host ───────────────→ Composition
                                ↓
                              Domain
 
-Composition / Integration → Testability → DeterministicSimulation → modules
+Composition → DeterministicPlayback / DeterministicSimulation / passive modules
+Integration → DeterministicSimulation / passive modules
 Infrastructure → registry / seeded-random modules
 Unity presentation → DeterministicSimulation.Unity
 ```
@@ -66,13 +67,15 @@ Unity presentation → DeterministicSimulation.Unity
 
 這個方向同時落在 [Unity asmdef](../../Assets/game/arena/src/Application/Game.Arena.Application.asmdef) 與 [.NET ProjectReference](../../tools/arena-build/Game.Arena.Application/Game.Arena.Application.csproj)。`tools/arena-build` 的分層 library 以 netstandard2.1 建置 production sources；CLI 引用組裝工程，不把全部來源壓在同一 assembly 來假裝分層。
 
-## 兩個 framework 各負責什麼
+## Framework、module 與 adopter 各負責什麼
 
 `framework.deterministic-simulation` 提供固定 tick、phase、三類訊息與 reaction drain、session/world 生命週期、唯一 realtime driver。它不決定誰能攻擊、敵人何時出生。
 
-`framework.testability` 延伸上述 session，提供帶 identity／sequence／target tick 的 admission、結果查詢、snapshot／hash／invariant 流程、有界 trace、recording 與 Replay。它不另寫一個 game loop，也不自動猜哪些狀態應入 hash。
+`framework.deterministic-playback` 提供 adapter lifecycle、cursor 與 replay execution history；它不知道 Arena recording、state digest 或 oracle policy。
 
-`ArenaDefinition` 繼承 `ReplayableSimulationDefinition`，不是讓 Actor 繼承 framework。框架回呼 outer adapters，adapters 再呼叫 Application；這就是把「框架執行流程」與「內層規則」接在一起的地方。
+`module.runtime-observation`、`module.runtime-control`、`module.testability-oracles`、`module.testability-evidence` 分別提供 observation reference、operation state、純 evaluation 與 evidence bundle。它們彼此獨立，也不引用 Unity、simulation 或 playback。
+
+`ArenaDefinition` 是普通的 adopter composition，不繼承通用 testability template。`ArenaSession` 明確擁有 Prepare／Submit／Step／Observe／Evaluate／Persist／Cleanup 的順序；framework 回呼 outer adapters，adapters 再呼叫 Application。這就是把「框架執行流程」與「內層規則」接在一起的地方。
 
 ## 教材的驗收標準
 
@@ -88,8 +91,8 @@ Unity presentation → DeterministicSimulation.Unity
 ## 刻意不做的事
 
 - 不保留舊 game 的玩法、API、scenario 或 recording 相容。
-- 不把 Protocol、transport、遠端認證或自動探索器當兩 framework 的必備接線。
+- 不把 Protocol、transport、遠端認證或自動探索器當 framework 或 module 的必備接線。
 - 不宣稱跨平台 bitwise determinism、任意 snapshot restore、rollback 或 process watchdog。
 - Unity physics sensors 是獨立選配 adapter，Arena 沒有接碰撞傷害、dynamic Rigidbody authority 或 physics outcome recording。參考 [Unity framework](../../Assets/framework.deterministic-simulation.unity/README.md)，不要把 phase 名稱當作已執行 PhysX 的證據。
 
-需要查 API 時再讀 [Simulation reference](../../Assets/framework.deterministic-simulation/README.md)、[Testability reference](../../Assets/framework.testability/README.md) 與使用到的 module README；這些是工具書，不是額外的必修 game 教學。
+需要查 API 時再讀 [Simulation reference](../../Assets/framework.deterministic-simulation/README.md)、[Playback reference](../../Assets/framework.deterministic-playback/README.md)與四個 module README；這些是工具書，不是額外的必修 game 教學。

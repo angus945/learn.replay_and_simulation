@@ -4,8 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Arena.Integration;
-using InvariantChecks;
-using Testability;
+using TestabilityOracles;
 using TraceBuffering;
 
 namespace Arena.Unity
@@ -15,9 +14,9 @@ namespace Arena.Unity
     {
         private const int SummaryLineLength = 64;
 
-        internal ArenaTraceRow(TraceRecord<TraceEntry> record)
+        internal ArenaTraceRow(TraceRecord<ArenaTraceEntry> record)
         {
-            TraceEntry entry = record.Entry;
+            ArenaTraceEntry entry = record.Entry;
             Sequence = record.Sequence;
             string first = string.Format(CultureInfo.InvariantCulture, "#{0}  t{1}  {2}/{3}",
                 record.Sequence, entry.Tick, entry.Stage, entry.Type);
@@ -49,26 +48,29 @@ namespace Arena.Unity
     {
         private const int HistoryCapacity = 160;
         private const int BatchCapacity = 512;
-        private readonly IDiagnosticReader<ArenaObservation> reader;
+        private readonly IArenaDiagnosticReader reader;
         private readonly List<ArenaTraceRow> history = new List<ArenaTraceRow>(HistoryCapacity);
         private TraceCursor cursor;
         private float nextPoll;
         private bool visible = true;
         private bool refreshImmediately = true;
 
-        public ArenaDiagnosticsPanel(IDiagnosticReader<ArenaObservation> reader)
+        public ArenaDiagnosticsPanel(IArenaDiagnosticReader reader)
         {
             this.reader = reader ?? throw new ArgumentNullException(nameof(reader));
             // IList is the UI Toolkit ListView contract. AsReadOnly prevents a view from changing history.
             TraceRows = history.AsReadOnly();
         }
 
-        public DiagnosticSnapshot<ArenaObservation> Snapshot { get; private set; }
+        public ArenaDiagnosticSnapshot Snapshot { get; private set; }
         public long MissedCount { get; private set; }
         public long SourceOverwrittenCount { get; private set; }
         public long LocalEvictedCount { get; private set; }
         public bool HasMore { get; private set; }
-        public int HistoryCount => history.Count;
+        public int HistoryCount
+        {
+            get { return history.Count; }
+        }
         public IList TraceRows { get; }
         public int TraceRevision { get; private set; }
         public int Revision { get; private set; }
@@ -91,9 +93,9 @@ namespace Arena.Unity
         /// <summary>Explicit polling bypasses visibility and throttling, including in deterministic tests.</summary>
         public void Poll()
         {
-            DiagnosticSnapshot<ArenaObservation> next = reader.ObserveDiagnostics();
+            ArenaDiagnosticSnapshot next = reader.ReadSnapshot();
             bool sessionChanged = Snapshot != null && !string.Equals(Snapshot.SessionId, next.SessionId, StringComparison.Ordinal);
-            TraceBatch<TraceEntry> batch = reader.ReadTrace(sessionChanged ? default : cursor, BatchCapacity);
+            TraceBatch<ArenaTraceEntry> batch = reader.ReadTrace(sessionChanged ? default : cursor, BatchCapacity);
             bool reset = sessionChanged || batch.StreamChanged;
             long previousMissed = MissedCount;
             long previousOverwritten = SourceOverwrittenCount;
@@ -161,9 +163,9 @@ namespace Arena.Unity
             }
         }
 
-        private bool UpdateSnapshotText(DiagnosticSnapshot<ArenaObservation> next)
+        private bool UpdateSnapshotText(ArenaDiagnosticSnapshot next)
         {
-            DiagnosticSnapshot<ArenaObservation> previous = Snapshot;
+            ArenaDiagnosticSnapshot previous = Snapshot;
             bool changed = false;
             if (previous == null || !string.Equals(previous.SessionId, next.SessionId, StringComparison.Ordinal))
             {
@@ -181,9 +183,9 @@ namespace Arena.Unity
                 if (!string.IsNullOrEmpty(next.FaultCode)) StateText += "\nFAULT  " + next.FaultCode;
                 changed = true;
             }
-            if (previous == null || !SameInvariantText(previous.Invariants, next.Invariants))
+            if (previous == null || !SameInvariantText(previous.Evaluation, next.Evaluation))
             {
-                InvariantText = FormatInvariants(next.Invariants);
+                InvariantText = FormatInvariants(next.Evaluation);
                 changed = true;
             }
             if (previous == null || !SameObservationText(previous.Observation, next.Observation))
@@ -194,15 +196,14 @@ namespace Arena.Unity
             return changed;
         }
 
-        private static bool SameInvariantText(InvariantReport left, InvariantReport right)
+        private static bool SameInvariantText(EvaluationReport left, EvaluationReport right)
         {
             if (ReferenceEquals(left, right)) return true;
-            if (left == null || right == null || left.Evaluated != right.Evaluated || left.Tick != right.Tick ||
-                left.CheckCount != right.CheckCount || left.Violations.Count != right.Violations.Count) return false;
-            for (int index = 0; index < left.Violations.Count; index++)
+            if (left == null || right == null || left.Verdict != right.Verdict || left.Results.Count != right.Results.Count || left.Errors.Count != right.Errors.Count) return false;
+            for (int index = 0; index < left.Results.Count; index++)
             {
-                InvariantViolation first = left.Violations[index];
-                InvariantViolation second = right.Violations[index];
+                OracleResult first = left.Results[index];
+                OracleResult second = right.Results[index];
                 if (!string.Equals(first.Code, second.Code, StringComparison.Ordinal) ||
                     !string.Equals(first.Detail, second.Detail, StringComparison.Ordinal)) return false;
             }
@@ -224,15 +225,17 @@ namespace Arena.Unity
             return true;
         }
 
-        private static string FormatInvariants(InvariantReport report)
+        private static string FormatInvariants(EvaluationReport report)
         {
-            if (report == null) return "INVARIANTS  NOT AVAILABLE";
-            string checks = !report.Evaluated ? "NOT EVALUATED" : report.Violations.Count == 0 ? "PASS" : "FAIL";
+            if (report == null) return "ORACLES  NOT AVAILABLE";
+            string checks = report.Verdict.ToString().ToUpperInvariant();
             StringBuilder text = new StringBuilder();
-            text.AppendFormat(CultureInfo.InvariantCulture, "INVARIANTS  {0} / {1} checks\nEvaluated at tick {2} · reads do not run checks",
-                checks, report.CheckCount, report.Tick);
-            foreach (InvariantViolation violation in report.Violations)
-                text.Append('\n').Append(violation.Code).Append(": ").Append(violation.Detail);
+            text.AppendFormat(CultureInfo.InvariantCulture, "ORACLES  {0} / {1} checks\nReads do not run evaluation", checks, report.Results.Count);
+            foreach (OracleResult result in report.Results)
+            {
+                if (result.Verdict == TestVerdict.Passed) continue;
+                text.Append('\n').Append(result.Code).Append(": ").Append(result.Detail);
+            }
             return text.ToString();
         }
 

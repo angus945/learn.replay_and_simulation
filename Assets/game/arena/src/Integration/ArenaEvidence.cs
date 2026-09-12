@@ -1,8 +1,9 @@
 using System;
 using System.IO;
+using System.Runtime.Serialization.Json;
+using System.Security.Cryptography;
 using System.Text;
 using InvariantChecks;
-using Testability;
 
 namespace Arena.Integration
 {
@@ -11,13 +12,40 @@ namespace Arena.Integration
         public static string Encode<T>(T value)
         {
             using (MemoryStream stream = new MemoryStream())
-            { ArtifactJson.Write(stream, value); return Encoding.UTF8.GetString(stream.ToArray()); }
+            {
+                Write(stream, value);
+                return Encoding.UTF8.GetString(stream.ToArray());
+            }
         }
         public static T Decode<T>(string payload) where T : class
         {
             if (payload == null) throw new ArgumentNullException(nameof(payload));
             using (MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(payload)))
-                return ArtifactJson.Read<T>(stream) ?? throw new ArgumentException("Null arena payload.");
+            {
+                return Read<T>(stream) ?? throw new ArgumentException("Null arena payload.");
+            }
+        }
+        public static void Write<T>(Stream destination, T value)
+        {
+            DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T));
+            serializer.WriteObject(destination, value);
+        }
+        public static T Read<T>(Stream source)
+        {
+            DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T));
+            return (T)serializer.ReadObject(source);
+        }
+    }
+    public static class ArenaStateDigest
+    {
+        public static string Compute(ArenaObservation observation)
+        {
+            byte[] canonical = ArenaCanonicalState.Encode(observation);
+            using (SHA256 algorithm = SHA256.Create())
+            {
+                byte[] digest = algorithm.ComputeHash(canonical);
+                return BitConverter.ToString(digest).Replace("-", string.Empty).ToLowerInvariant();
+            }
         }
     }
     public static class ArenaCanonicalState
@@ -59,7 +87,10 @@ namespace Arena.Integration
     }
     public sealed class ArenaInvariant : IInvariant<ArenaObservation>
     {
-        public string Code => "arena.committed-state";
+        public string Code
+        {
+            get { return "arena.committed-state"; }
+        }
         public InvariantViolation Evaluate(ArenaObservation state)
         {
             if (state.RegistryActiveCount != state.Actors.Count) return new InvariantViolation(Code, "Registry/repository disagreement.");
@@ -80,7 +111,10 @@ namespace Arena.Integration
     /// <summary>Opt-in teaching oracle, never enabled by the normal gameplay composition.</summary>
     public sealed class TrainingPositionOracle : IInvariant<ArenaObservation>
     {
-        public string Code => "tutorial.position-limit";
+        public string Code
+        {
+            get { return "tutorial.position-limit"; }
+        }
         public InvariantViolation Evaluate(ArenaObservation state)
         {
             ActorSnapshot player = state.FindActor(state.PlayerId);
