@@ -1,0 +1,35 @@
+{
+  "projectName": "NarrativeEditor",
+  "buildScript": "ci/build.ps1",
+  "testScript": "ci/test.ps1",
+  "testResultsRoot": "artifacts/test-results",
+  "configuration": "Release",
+  "localCi": {
+    "outputRoot": "artifacts/local-ci",
+    "remote": "origin",
+    "shutdownDotnetBuildServers": true,
+    "packageVersion": "ci-{shortCommit}-{nonce}",
+    "versionCommands": ["git", "dotnet", "node"],
+    "phases": [
+      { "id": "debug-mode", "script": "ci/test-editor-modes.ps1", "arguments": ["-Configuration", "Debug"] },
+      { "id": "release-tests", "script": "ci/test.ps1", "arguments": ["-Configuration", "{configuration}", "-ContinueOnFailure"] },
+      { "id": "package", "script": "ci/package.ps1", "arguments": ["-Configuration", "{configuration}", "-Runtime", "win-x64", "-Version", "{packageVersion}", "-OutputRoot", "{runDirectory}"], "requiresSuccess": true },
+      { "id": "release-preview", "script": "ci/test-release-preview.ps1", "arguments": ["-PackageRoot", "{runDirectory}/package/NarrativeEditor-{packageVersion}-win-x64"], "requiresSuccess": true }
+    ],
+    "artifacts": [
+      "package/NarrativeEditor-{packageVersion}-win-x64.zip",
+      "package/NarrativeEditor-{packageVersion}-win-x64.zip.sha256"
+    ]
+  },
+  "commonTestArguments": ["-ContinueOnFailure", "-SkipDependencyPreparation"],
+  "dependencyPreparation": { "enabled": true, "script": "frameworks/framework.narrative-runner/ci/prepare-dependencies.ps1", "arguments": ["-ModulesRoot", "modules"] },
+  "suites": [
+    { "id": "distribution", "label": "Distribution tests", "arguments": ["-SkipEditorTests", "-SkipRunnerTests", "-SkipModuleTests", "-SkipBackend"] },
+    { "id": "editor-core", "label": "Editor core tests (CLI, Application, Preview)", "arguments": ["-SkipDistribution", "-SkipRunnerTests", "-SkipModuleTests", "-SkipBackend", "-SkipWebTests", "-SkipBrowserTests"] },
+    { "id": "web", "label": "Web component tests", "arguments": ["-SkipDistribution", "-SkipRunnerTests", "-SkipModuleTests", "-SkipBackend", "-OnlyEditorTestProject", "Narrative.Editor.Web.Tests"] },
+    { "id": "browser", "label": "Browser tests", "arguments": ["-SkipDistribution", "-SkipRunnerTests", "-SkipModuleTests", "-SkipBackend", "-OnlyEditorTestProject", "Narrative.Editor.Web.BrowserTests"] },
+    { "id": "runner", "label": "Runner tests and neutral host", "arguments": ["-SkipDistribution", "-SkipEditorTests", "-SkipModuleTests", "-SkipBackend"] },
+    { "id": "modules", "label": "Module tests", "arguments": ["-SkipDistribution", "-SkipEditorTests", "-SkipRunnerTests", "-SkipBackend"] },
+    { "id": "backends", "label": "Backend tests", "arguments": ["-SkipDistribution", "-SkipEditorTests", "-SkipRunnerTests", "-SkipModuleTests"] }
+  ]
+}

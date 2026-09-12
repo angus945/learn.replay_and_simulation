@@ -1,6 +1,3 @@
-[submodule "modules/module.deterministic-simulation"]
-	path = modules/module.deterministic-simulation
-	url = https://github.com/crafty-racoon/module.deterministic-simulation.git
 [submodule "Assets/modules/module.diagnostics"]
 	path = Assets/modules/module.diagnostics
 	url = https://github.com/crafty-racoon/module.diagnostics.git
