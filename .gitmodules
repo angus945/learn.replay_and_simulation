@@ -1,6 +1,3 @@
-[submodule "Assets/modules/module.diagnostics"]
-	path = Assets/modules/module.diagnostics
-	url = https://github.com/crafty-racoon/module.diagnostics.git
 [submodule "Assets/modules/module.deterministic-model"]
 	path = Assets/modules/module.deterministic-model
 	url = https://github.com/crafty-racoon/module.deterministic-model.git
@@ -13,3 +10,6 @@
 	path = Assets/framework.deterministic-playback
 	url = https://github.com/crafty-racoon/framework.deterministic-playback.git
 	ignore = untracked
+[submodule "Assets/modules/module.verification.diagnostics"]
+	path = Assets/modules/module.verification.diagnostics
+	url = https://github.com/crafty-racoon/module.verification.diagnostics.git
